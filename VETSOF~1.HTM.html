@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VETSOFT — Especificaciones Funcionales</title>
+<style>
+  :root {
+    --primary: #1A3C5E;
+    --accent: #2E86AB;
+    --light: #EBF4F9;
+    --text: #1F2D3D;
+    --muted: #6B7A8D;
+    --border: #D0E4F0;
+    --white: #ffffff;
+    --success: #27AE60;
+    --warning: #E67E22;
+    --row-alt: #F5FAFE;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #EEF3F8;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── LAYOUT ── */
+  #wrap { max-width: 900px; margin: 0 auto; padding: 32px 20px 60px; }
+
+  /* ── COVER ── */
+  #cover {
+    background: linear-gradient(130deg, #1A3C5E 0%, #2E86AB 100%);
+    border-radius: 12px;
+    padding: 52px 48px 48px;
+    color: #fff;
+    margin-bottom: 24px;
+  }
+  #cover .label {
+    font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase;
+    color: rgba(255,255,255,0.5); margin-bottom: 14px;
+  }
+  #cover h1 { font-size: 44px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+  #cover .sub { font-size: 16px; color: rgba(255,255,255,0.65); margin-top: 10px; margin-bottom: 36px; }
+  #cover .meta { display: flex; gap: 32px; flex-wrap: wrap; }
+  #cover .mi .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.38); }
+  #cover .mi .val { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.88); margin-top: 2px; }
+
+  /* ── MÓDULO ── */
+  .modulo {
+    background: var(--white);
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.04);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .mod-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 20px 26px;
+    border-bottom: 1px solid var(--border);
+    background: var(--white);
+  }
+  .mod-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--light);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .mod-header h2 { font-size: 17px; font-weight: 700; color: var(--primary); }
+  .mod-header .mod-num { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+  .mod-body { padding: 22px 26px; }
+
+  /* ── SECCIÓN DENTRO DEL MÓDULO ── */
+  .sec { margin-bottom: 24px; }
+  .sec:last-child { margin-bottom: 0; }
+  .sec-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .9px; color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  /* ── LISTA DE CAMPOS ── */
+  .fields { display: flex; flex-direction: column; gap: 6px; }
+  .field {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--row-alt); border-radius: 6px;
+    padding: 9px 12px; border: 1px solid var(--border);
+  }
+  .field .fn {
+    font-weight: 600; color: var(--primary);
+    min-width: 180px; flex-shrink: 0; font-size: 13px;
+  }
+  .field .fd { font-size: 13px; color: var(--text); }
+  .field .fd .tag {
+    display: inline-block; background: var(--light);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 1px 7px; font-size: 11px; color: var(--accent);
+    font-weight: 600; margin-right: 4px;
+  }
+
+  /* ── NOTA / INFO ── */
+  .nota {
+    background: var(--light); border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0; padding: 12px 16px; margin-top: 12px;
+    font-size: 13px; line-height: 1.65;
+  }
+  .nota p + p { margin-top: 5px; }
+  .nota strong { color: var(--primary); }
+
+  .warn {
+    background: #FEF9EC; border-left: 3px solid var(--warning);
+    border-radius: 0 6px 6px 0; padding: 12px 16px; margin-top: 12px;
+    font-size: 13px; line-height: 1.65;
+  }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block; border-radius: 4px;
+    padding: 2px 8px; font-size: 11px; font-weight: 700;
+    vertical-align: middle; margin-left: 6px;
+  }
+  .b-v2 { background: #FDE8CC; color: #B85C00; }
+
+  /* ── INTRO ── */
+  .intro-card {
+    background: var(--white);
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.04);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .intro-card .intro-head {
+    background: var(--primary);
+    padding: 20px 26px;
+    color: #fff;
+  }
+  .intro-card .intro-head h2 { font-size: 17px; font-weight: 700; }
+  .intro-card .intro-head p { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 3px; }
+  .intro-card .intro-body { padding: 24px 26px; }
+
+  .intro-body > p {
+    font-size: 14px; line-height: 1.75; color: var(--text);
+    margin-bottom: 20px;
+  }
+
+  .areas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .area-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .area-card .area-head {
+    padding: 14px 16px 10px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--row-alt);
+  }
+  .area-card .area-icon { font-size: 22px; }
+  .area-card .area-head h3 { font-size: 14px; font-weight: 700; color: var(--primary); }
+  .area-card .area-body { padding: 12px 16px; font-size: 13px; color: var(--text); line-height: 1.65; }
+
+  .flujo {
+    background: var(--light);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+  }
+  .flujo h3 { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 14px; text-transform: uppercase; letter-spacing: .7px; }
+  .flujo-steps {
+    display: flex; flex-wrap: wrap; gap: 0; align-items: flex-start;
+  }
+  .flujo-step {
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 100px; flex: 1;
+  }
+  .flujo-step .fs-box {
+    background: var(--primary); color: #fff;
+    border-radius: 8px; padding: 10px 12px;
+    text-align: center; font-size: 12px; font-weight: 600;
+    width: 100%; line-height: 1.4;
+  }
+  .flujo-step .fs-sub {
+    font-size: 11px; color: var(--muted);
+    text-align: center; margin-top: 5px; padding: 0 4px;
+    line-height: 1.4;
+  }
+  .flujo-arrow {
+    font-size: 18px; color: var(--accent);
+    padding: 0 6px; margin-top: 12px; flex-shrink: 0;
+  }
+
+  .conexion-box {
+    background: #F0FAF4;
+    border: 1px solid #B2DFC3;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .conexion-box strong { color: #1A5E35; }
+
+  /* ── FOOTER ── */
+  #footer {
+    text-align: center; font-size: 12px;
+    color: var(--muted); padding-top: 16px;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+
+  <!-- COVER -->
+  <div id="cover">
+    <div class="label">Especificaciones Funcionales</div>
+    <h1>VETSOFT</h1>
+    <div class="sub">Sistema de Gestión para Clínicas Veterinarias</div>
+    <div class="meta">
+      <div class="mi"><div class="lbl">Versión</div><div class="val">v1.0 · Julio 2026</div></div>
+      <div class="mi"><div class="lbl">Preparado por</div><div class="val">APSOL</div></div>
+      <div class="mi"><div class="lbl">Estado</div><div class="val">En construcción</div></div>
+    </div>
+  </div>
+
+
+  <!-- ── INTRODUCCIÓN ── -->
+  <div class="intro-card">
+    <div class="intro-head">
+      <h2>¿Cómo funciona una clínica veterinaria?</h2>
+      <p>Contexto del negocio antes de entrar en los módulos del sistema</p>
+    </div>
+    <div class="intro-body">
+
+      <p>Una clínica veterinaria es bastante más que un consultorio médico. En la práctica, conviven bajo el mismo techo <strong>tres áreas de negocio distintas</strong> que operan de forma simultánea y se cruzan constantemente: la parte médica, la peluquería y la tienda (también llamada "pet shop" o "farmacia"). Entender cómo funciona cada una es clave para entender qué tiene que hacer el sistema.</p>
+
+      <div class="areas-grid">
+
+        <div class="area-card">
+          <div class="area-head">
+            <span class="area-icon">🩺</span>
+            <h3>Área Médica</h3>
+          </div>
+          <div class="area-body">
+            Es el corazón de la clínica. Aquí trabajan los veterinarios. Cada animal tiene una <strong>ficha clínica</strong> donde quedan registradas todas sus consultas, diagnósticos, tratamientos y el plan de vacunación. El médico atiende por turno, revisa el historial del paciente, y al terminar la consulta puede recetar medicamentos o indicar un seguimiento.<br><br>
+            Las vacunas son parte central de esta área: cada tipo de vacuna tiene una duración determinada, y cuando se acerca el vencimiento hay que avisar al dueño para que traiga al animal a reforzarla.
+          </div>
+        </div>
+
+        <div class="area-card">
+          <div class="area-head">
+            <span class="area-icon">✂️</span>
+            <h3>Peluquería</h3>
+          </div>
+          <div class="area-body">
+            Funciona como un servicio separado dentro de la clínica. No interviene el veterinario: hay peluqueros especializados que realizan baños, cortes, deslanado y otros servicios estéticos.<br><br>
+            Tiene su propia agenda, su propio flujo de turnos y sus propios clientes habituales. Muchos dueños llevan al animal a la peluquería con una frecuencia distinta a la médica. Por eso, aunque comparte la base de pacientes, la peluquería opera de forma independiente y necesita su propio calendario.
+          </div>
+        </div>
+
+        <div class="area-card">
+          <div class="area-head">
+            <span class="area-icon">🛒</span>
+            <h3>Tienda / Pet Shop</h3>
+          </div>
+          <div class="area-body">
+            Muchas clínicas tienen también una pequeña tienda donde venden productos: medicamentos, alimentos balanceados, antiparasitarios, accesorios, juguetes, ropa para mascotas, etc.<br><br>
+            Estos productos tienen stock físico que hay que controlar: cuando se vende una unidad, hay que descontarla del inventario. Cuando el stock baja de cierto nivel, hay que reponer. A diferencia de los servicios (como una consulta o un baño), los productos son bienes tangibles que se agotan.
+          </div>
+        </div>
+
+      </div>
+
+      <div class="flujo">
+        <h3>Cómo se conectan las tres áreas en el día a día</h3>
+        <div class="flujo-steps">
+          <div class="flujo-step">
+            <div class="fs-box">El dueño llama o escribe</div>
+            <div class="fs-sub">Pide turno médico o de peluquería</div>
+          </div>
+          <div class="flujo-arrow">→</div>
+          <div class="flujo-step">
+            <div class="fs-box">Recepción agenda el turno</div>
+            <div class="fs-sub">En la agenda médica o en la de peluquería</div>
+          </div>
+          <div class="flujo-arrow">→</div>
+          <div class="flujo-step">
+            <div class="fs-box">Se envía un aviso automático</div>
+            <div class="fs-sub">WhatsApp al dueño confirmando el turno</div>
+          </div>
+          <div class="flujo-arrow">→</div>
+          <div class="flujo-step">
+            <div class="fs-box">El animal es atendido</div>
+            <div class="fs-sub">El vet o peluquero registra lo que hizo</div>
+          </div>
+          <div class="flujo-arrow">→</div>
+          <div class="flujo-step">
+            <div class="fs-box">Se cobra al dueño</div>
+            <div class="fs-sub">Servicios + productos. Se emite comprobante AFIP.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="conexion-box">
+        <strong>¿Por qué necesita un sistema?</strong><br>
+        Hoy la mayoría de las clínicas manejan todo esto con una combinación de agenda de papel, grupos de WhatsApp y planillas de Excel. El resultado es información dispersa, errores frecuentes, vacunas que se vencen sin que nadie avisó y stock que se pierde sin control. VETSOFT centraliza todo en un único lugar, conecta las tres áreas y automatiza los avisos, para que el equipo de la clínica pueda concentrarse en atender animales en lugar de perseguir datos.
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ── ROLES Y ACCESOS ── -->
+  <div class="modulo">
+    <div class="mod-header">
+      <div class="mod-icon">👤</div>
+      <div>
+        <h2>Roles y Accesos</h2>
+        <div class="mod-num">Usuarios del sistema</div>
+      </div>
+    </div>
+    <div class="mod-body">
+      <div class="sec">
+        <div class="sec-title">Perfiles de Usuario</div>
+        <div class="fields">
+          <div class="field">
+            <span class="fn">Administrador</span>
+            <span class="fd">Acceso total al sistema. Puede gestionar todos los módulos: pacientes, historia clínica, ambas agendas, inventario, facturación y configuración de la clínica (catálogo de vacunas, tipos de servicios de peluquería, datos AFIP, etc.).</span>
+          </div>
+          <div class="field">
+            <span class="fn">Veterinario</span>
+            <span class="fd">Accede a la ficha del paciente, historia clínica, vacunas, agenda médica y cobros. No accede a la configuración de la clínica ni al inventario completo.</span>
+          </div>
+          <div class="field">
+            <span class="fn">Peluquero/a</span>
+            <span class="fd">Acceso restringido. Solo puede ver, agendar, modificar y cancelar turnos de la agenda de peluquería. No tiene acceso a historia clínica, inventario, facturación ni configuración.</span>
+          </div>
+        </div>
+        <div class="nota">
+          <p>Cada usuario de la clínica tiene asignado un único rol. Un administrador puede crear, editar y desactivar usuarios.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── FLUJOS DE ATENCIÓN ── -->
+  <div class="modulo">
+    <div class="mod-header">
+      <div class="mod-icon">🔄</div>
+      <div>
+        <h2>Flujos de Atención</h2>
+        <div class="mod-num">Los tres recorridos posibles dentro de la clínica</div>
+      </div>
+    </div>
+    <div class="mod-body">
+
+      <div class="sec">
+        <div class="flujo">
+          <h3>Flujo 1 — Venta directa (sin consulta ni turno)</h3>
+          <div class="flujo-steps">
+            <div class="flujo-step"><div class="fs-box">Cliente entra a comprar</div><div class="fs-sub">No hay turno ni historia clínica</div></div>
+            <div class="flujo-arrow">→</div>
+            <div class="flujo-step"><div class="fs-box">Se seleccionan los productos</div><div class="fs-sub">Desde el catálogo de inventario</div></div>
+            <div class="flujo-arrow">→</div>
+            <div class="flujo-step"><div class="fs-box">Se cobra</div><div class="fs-sub">Se descuenta stock automáticamente</div></div>
+            <div class="flujo-arrow">→</div>
+            <div class="flujo-step"><div class="fs-box">Se emite comprobante</div><div class="fs-sub">Factura AFIP o Remito, a elección</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="flujo">
+          <h3>Flujo 2 — Turno y atención de peluquería</h3>
+          <div class="flujo-steps">
+            <div class="flujo-step"><div class="fs-box">Admin o peluquero agenda el turno</div><div class="fs-sub">En la agenda de peluquería</div></div>
+            <div class="flujo-arrow">→</div>
+            <div class="flujo-step"><div class="fs-box">WhatsApp al dueño</div><div class="fs-sub">Confirmación inmediata + recordatorio el día anterior</div></div>
+            <div class="flujo-arrow">→</div>
+            <div class="flujo-step"><div class="fs-box">El animal es atendido</div><div class="fs-sub">Baño, corte u otro servicio</div></div>
+            <div class="flujo-arrow">→</div>
+            <div class="flujo-step"><div class="fs-box">Cobro en caja</div><div class="fs-sub">Se factura el servicio de peluquería</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="flujo">
+          <h3>Flujo 3 — Consulta médica (con o sin turno previo)</h3>
+          <div class="flujo-steps">
+            <div class="flujo-step"><div class="fs-box">El animal llega a la clínica</div><div class="fs-sub">Con turno agendado o sin él</div></div>
+            <div class="flujo-arrow">→</div>
+            <div class="flujo-step"><div class="fs-box">El veterinario atiende</div><div class="fs-sub">Registra diagnóstico en historia clínica</div></div>
+            <div class="flujo-arrow">→</div>
+            <div class="flujo-step"><div class="fs-box">Cobro (opcional)</div><div class="fs-sub">Puede no cobrarse si es seguimiento sin cargo</div></div>
+            <div class="flujo-arrow">→</div>
+            <div class="flujo-step"><div class="fs-box">Se emite comprobante</div><div class="fs-sub">Solo si se cobró</div></div>
+          </div>
+        </div>
+        <div class="nota">
+          <p>Es habitual que los dueños lleguen sin turno previo. El sistema debe permitir crear una consulta directamente desde la ficha del paciente sin que exista un turno asociado.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ── M1: FICHA DEL PACIENTE ── -->
+  <div class="modulo">
+    <div class="mod-header">
+      <div class="mod-icon">🐾</div>
+      <div>
+        <h2>Ficha del Paciente</h2>
+        <div class="mod-num">Módulo 1</div>
+      </div>
+    </div>
+    <div class="mod-body">
+
+      <div class="sec">
+        <div class="sec-title">Datos del Animal</div>
+        <div class="fields">
+          <div class="field"><span class="fn">Nombre</span><span class="fd">Nombre de la mascota.</span></div>
+          <div class="field"><span class="fn">Especie</span><span class="fd"><span class="tag">selector</span> Perro, Gato, Ave, Roedor, Reptil, Otro.</span></div>
+          <div class="field"><span class="fn">Raza</span><span class="fd">Texto libre. Depende de la especie seleccionada.</span></div>
+          <div class="field"><span class="fn">Sexo</span><span class="fd"><span class="tag">selector</span> Macho / Hembra / Indeterminado.</span></div>
+          <div class="field"><span class="fn">Fecha de nacimiento</span><span class="fd">Fecha exacta o aproximada. El sistema calcula la edad automáticamente.</span></div>
+          <div class="field"><span class="fn">Foto</span><span class="fd">Subida de imagen del animal. Se muestra en la ficha y en el encabezado de cada consulta.</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Datos del Dueño</div>
+        <div class="fields">
+          <div class="field"><span class="fn">Nombre completo</span><span class="fd">Nombre y apellido del propietario.</span></div>
+          <div class="field"><span class="fn">Teléfono</span><span class="fd">Número de WhatsApp al que se enviarán los avisos automáticos.</span></div>
+          <div class="field"><span class="fn">Email</span><span class="fd">Opcional. Para envío de comprobantes y documentos.</span></div>
+          <div class="field"><span class="fn">Dirección</span><span class="fd">Opcional.</span></div>
+        </div>
+        <div class="nota">
+          <p><strong>Búsqueda siempre por paciente, nunca por dueño.</strong> El operador busca por el nombre del animal. El dueño aparece vinculado automáticamente al abrir la ficha.</p>
+          <p>Un dueño se carga una sola vez. Si tiene varias mascotas, cada una tiene su propia ficha, todas vinculadas al mismo dueño. No hace falta volver a cargar los datos del propietario.</p>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Estado del Paciente</div>
+        <div class="fields">
+          <div class="field"><span class="fn">Estado</span><span class="fd"><span class="tag">selector</span> Activo / Fallecido / Transferido. Con fecha y nota opcional al cambiar.</span></div>
+        </div>
+        <div class="nota">
+          <p>Los pacientes inactivos no se eliminan. Su historial queda disponible para consulta.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ── M2: HISTORIA CLÍNICA ── -->
+  <div class="modulo">
+    <div class="mod-header">
+      <div class="mod-icon">🩺</div>
+      <div>
+        <h2>Historia Clínica</h2>
+        <div class="mod-num">Módulo 2</div>
+      </div>
+    </div>
+    <div class="mod-body">
+
+      <div class="sec">
+        <div class="sec-title">Registro de Consulta</div>
+        <div class="fields">
+          <div class="field"><span class="fn">Fecha y hora</span><span class="fd">Se registra automáticamente al crear la consulta.</span></div>
+          <div class="field"><span class="fn">Veterinario</span><span class="fd">Usuario que crea la consulta. Se asigna automáticamente por sesión.</span></div>
+          <div class="field"><span class="fn">Notas clínicas</span><span class="fd">Campo de texto libre. El veterinario escribe todo lo que considera relevante: motivo, observaciones, diagnóstico, indicaciones.</span></div>
+          <div class="field"><span class="fn">Archivos adjuntos</span><span class="fd">Subida de imágenes o PDFs (radiografías, análisis de laboratorio). Quedan vinculados a esa consulta.</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Visualización del Historial</div>
+        <div class="nota">
+          <p>Las consultas se muestran en orden cronológico inverso (más reciente primero) dentro de la ficha del paciente.</p>
+          <p>Cada entrada muestra: fecha, veterinario y las primeras líneas de las notas. El veterinario puede expandir para ver el registro completo.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ── M3: VACUNAS ── -->
+  <div class="modulo">
+    <div class="mod-header">
+      <div class="mod-icon">💉</div>
+      <div>
+        <h2>Vacunas y Recordatorios</h2>
+        <div class="mod-num">Módulo 3</div>
+      </div>
+    </div>
+    <div class="mod-body">
+
+      <div class="sec">
+        <div class="sec-title">Catálogo de Vacunas</div>
+        <div class="nota">
+          <p>Cada clínica configura su propio catálogo de vacunas. Por cada vacuna se define:</p>
+        </div>
+        <div class="fields" style="margin-top:10px">
+          <div class="field"><span class="fn">Nombre de la vacuna</span><span class="fd">Texto libre. Ej.: "Séxtuple canina", "Antirrábica", "Triple felina".</span></div>
+          <div class="field"><span class="fn">Días hasta vencimiento</span><span class="fd">Número de días. El sistema calcula automáticamente la fecha de próxima aplicación al registrar una dosis.</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Registro de Aplicación</div>
+        <div class="fields">
+          <div class="field"><span class="fn">Vacuna aplicada</span><span class="fd"><span class="tag">selector</span> Desplegable con las vacunas del catálogo de la clínica.</span></div>
+          <div class="field"><span class="fn">Fecha de aplicación</span><span class="fd">Por defecto: fecha de hoy. Editable.</span></div>
+          <div class="field"><span class="fn">Fecha de vencimiento</span><span class="fd">Calculada automáticamente: fecha de aplicación + días configurados en el catálogo. Editable si el veterinario necesita ajustarla.</span></div>
+          <div class="field"><span class="fn">Lote / observaciones</span><span class="fd">Texto libre opcional.</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Recordatorio Automático por WhatsApp</div>
+        <div class="nota">
+          <p>Cuando una vacuna se acerca a su fecha de vencimiento, el sistema envía un mensaje automático al teléfono del dueño.</p>
+          <p><strong>Cuándo se envía:</strong> X días antes del vencimiento (configurable por la clínica, ej.: 7 días antes).</p>
+          <p><strong>Conexión:</strong> Evolution API. Conexión inicial sin costo, con un límite aproximado de 30 mensajes diarios por número conectado.</p>
+          <p><strong>Escala:</strong> Para clínicas con mayor volumen de mensajes, se puede migrar a la API oficial de Meta (WhatsApp Business API). Esto requiere aprobación de Meta y tiene costo por mensaje.</p>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Panel de Vencimientos</div>
+        <div class="nota">
+          <p>Vista para el staff de la clínica: listado de todos los pacientes con vacunas próximas a vencer, ordenados por fecha. Permite identificar a quiénes avisar antes de que el sistema lo haga automáticamente.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ── M4: AGENDA MÉDICA ── -->
+  <div class="modulo">
+    <div class="mod-header">
+      <div class="mod-icon">📅</div>
+      <div>
+        <h2>Agenda Médica</h2>
+        <div class="mod-num">Módulo 4</div>
+      </div>
+    </div>
+    <div class="mod-body">
+
+      <div class="sec">
+        <div class="sec-title">Gestión de Turnos</div>
+        <div class="fields">
+          <div class="field"><span class="fn">Paciente</span><span class="fd">Búsqueda del paciente existente o creación de uno nuevo desde el turno.</span></div>
+          <div class="field"><span class="fn">Veterinario</span><span class="fd"><span class="tag">selector</span> Profesional asignado al turno.</span></div>
+          <div class="field"><span class="fn">Fecha y hora</span><span class="fd">Selección en el calendario. El sistema verifica disponibilidad del veterinario.</span></div>
+          <div class="field"><span class="fn">Motivo</span><span class="fd">Texto libre. Ej.: "Control anual", "Consulta por vómitos".</span></div>
+          <div class="field"><span class="fn">Estado</span><span class="fd"><span class="tag">selector</span> Pendiente → Confirmado → En atención → Finalizado. También: Cancelado / No asistió.</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Vista de Calendario</div>
+        <div class="nota">
+          <p>Vista día o semana. Cada turno se muestra como un bloque con el nombre del paciente y el estado. Se puede hacer click para ver el detalle o cambiar el estado.</p>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Aviso al Dueño</div>
+        <div class="nota">
+          <p>Se envía un mensaje automático por WhatsApp al dueño al confirmar el turno, y otro recordatorio el día anterior. Los mensajes son configurables por la clínica.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ── M5: AGENDA PELUQUERÍA ── -->
+  <div class="modulo">
+    <div class="mod-header">
+      <div class="mod-icon">✂️</div>
+      <div>
+        <h2>Agenda de Peluquería</h2>
+        <div class="mod-num">Módulo 5</div>
+      </div>
+    </div>
+    <div class="mod-body">
+
+      <div class="sec">
+        <div class="sec-title">Catálogo de Servicios de Peluquería</div>
+        <div class="nota">
+          <p>El administrador define los tipos de servicio disponibles. Cada servicio tiene nombre y duración preestablecida. La duración se usa para bloquear el tiempo en el calendario automáticamente.</p>
+        </div>
+        <div class="fields" style="margin-top:10px">
+          <div class="field"><span class="fn">Nombre del servicio</span><span class="fd">Texto libre. Ejemplos: "Baño — perro chico", "Baño — perro mediano", "Baño — perro grande", "Baño y corte — chico", "Baño y corte — mediano", "Baño y corte — grande".</span></div>
+          <div class="field"><span class="fn">Duración</span><span class="fd">En minutos. Define cuánto tiempo ocupa ese servicio en el calendario. Ej.: "Baño — perro chico": 45 min, "Baño y corte — grande": 120 min.</span></div>
+          <div class="field"><span class="fn">Precio</span><span class="fd">Precio de referencia para el cobro posterior.</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Gestión de Turnos de Peluquería</div>
+        <div class="nota">
+          <p>Agenda independiente de la médica. La carga es manual por el admin o el peluquero. No tiene integración con la historia clínica.</p>
+          <p>No hay asignación de peluquero por turno en esta versión.</p>
+        </div>
+        <div class="fields" style="margin-top:10px">
+          <div class="field"><span class="fn">Paciente</span><span class="fd">Vinculado a la ficha existente del animal.</span></div>
+          <div class="field"><span class="fn">Servicio</span><span class="fd"><span class="tag">selector</span> Desplegable con los servicios configurados por el administrador. Al elegir el servicio, la duración se asigna automáticamente al bloque del calendario.</span></div>
+          <div class="field"><span class="fn">Fecha y hora</span><span class="fd">Selección manual en el calendario de peluquería.</span></div>
+        </div>
+        <div class="nota">
+          <p>El turno se agrega al calendario y se envía el aviso al dueño. No tiene estados adicionales en esta versión.</p>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Avisos al Dueño por WhatsApp</div>
+        <div class="nota">
+          <p><strong>Confirmación:</strong> Se envía automáticamente al registrar el turno. Incluye día, hora y servicio agendado.</p>
+          <p><strong>Recordatorio:</strong> Se envía el día anterior al turno.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ── M6: INVENTARIO ── -->
+  <div class="modulo">
+    <div class="mod-header">
+      <div class="mod-icon">📦</div>
+      <div>
+        <h2>Inventario</h2>
+        <div class="mod-num">Módulo 6</div>
+      </div>
+    </div>
+    <div class="mod-body">
+
+      <div class="sec">
+        <div class="sec-title">Productos</div>
+        <div class="nota">
+          <p>Solo los productos son inventariables. Los servicios no descuentan stock.</p>
+        </div>
+        <div class="fields" style="margin-top:10px">
+          <div class="field"><span class="fn">Nombre</span><span class="fd">Nombre del producto. Ej.: "Frontline Plus", "Jeringa 5ml".</span></div>
+          <div class="field"><span class="fn">Categoría</span><span class="fd"><span class="tag">selector</span> Configurable por la clínica. Ej.: Medicamentos, Insumos, Alimentos, Accesorios.</span></div>
+          <div class="field"><span class="fn">Stock actual</span><span class="fd">Cantidad disponible. Se actualiza automáticamente con cada venta o ajuste manual.</span></div>
+          <div class="field"><span class="fn">Stock mínimo</span><span class="fd">Umbral de alerta. Cuando el stock cae por debajo, el sistema notifica al admin.</span></div>
+          <div class="field"><span class="fn">Precio de venta</span><span class="fd">Precio unitario que se usa al facturar.</span></div>
+          <div class="field"><span class="fn">Código de barras</span><span class="fd">Opcional. Permite identificar el producto con un lector de código de barras en recepción y en ventas.</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Movimientos de Stock</div>
+        <div class="fields">
+          <div class="field"><span class="fn">Entrada (recepción de mercadería)</span><span class="fd">Se registra cuando llega mercadería del proveedor. El operador indica el producto y la cantidad recibida; el stock sube automáticamente. Se puede registrar proveedor y costo de manera opcional.</span></div>
+          <div class="field"><span class="fn">Salida por venta</span><span class="fd">Se descuenta automáticamente al facturar o emitir un remito con productos.</span></div>
+          <div class="field"><span class="fn">Ajuste manual</span><span class="fd">El admin puede corregir el stock con una nota justificando el cambio (ej.: rotura, pérdida).</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Lectura de Código de Barras</div>
+        <div class="nota">
+          <p>El sistema soporta lectura de código de barras mediante un lector externo USB o Bluetooth (tipo pistola de escaneo). Se utiliza en dos momentos:</p>
+        </div>
+        <div class="fields" style="margin-top:10px">
+          <div class="field"><span class="fn">Recepción de mercadería</span><span class="fd">Al escanear el código de barras de un producto, se lo identifica automáticamente en el inventario y se carga la cantidad recibida.</span></div>
+          <div class="field"><span class="fn">Venta / entrega</span><span class="fd">Al facturar, el operador puede escanear el código de barras del producto en lugar de buscarlo manualmente. El ítem se agrega al cobro de forma inmediata.</span></div>
+        </div>
+        <div class="nota">
+          <p>El campo de código de barras se agrega a la ficha del producto. Si un producto no tiene código de barras registrado, se puede buscar por nombre de forma habitual.</p>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Multi-tenant</div>
+        <div class="nota">
+          <p>Cada clínica tiene su propio inventario aislado. Una clínica no ve ni afecta el inventario de otra.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ── M7: FACTURACIÓN ── -->
+  <div class="modulo">
+    <div class="mod-header">
+      <div class="mod-icon">🧾</div>
+      <div>
+        <h2>Facturación</h2>
+        <div class="mod-num">Módulo 7</div>
+      </div>
+    </div>
+    <div class="mod-body">
+
+      <div class="sec">
+        <div class="sec-title">Composición del Cobro</div>
+        <div class="nota">
+          <p>Un cobro puede incluir cualquier combinación de productos y servicios.</p>
+        </div>
+        <div class="fields" style="margin-top:10px">
+          <div class="field"><span class="fn">Productos</span><span class="fd">Inventariables. Al agregarlos al cobro, se descuenta el stock automáticamente.</span></div>
+          <div class="field"><span class="fn">Servicios</span><span class="fd">No inventariables. Precio configurable por la clínica. Ej.: "Consulta", "Cirugía", "Baño y corte".</span></div>
+          <div class="field"><span class="fn">Cantidad</span><span class="fd">Por ítem. Multiplica el precio unitario.</span></div>
+          <div class="field"><span class="fn">Descuento</span><span class="fd">Opcional. Porcentaje o monto fijo por ítem o sobre el total.</span></div>
+          <div class="field"><span class="fn">Total</span><span class="fd">Calculado automáticamente.</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Tipo de Comprobante</div>
+        <div class="nota">
+          <p>Al momento de cobrar, el operador elige entre dos opciones según la necesidad del cliente:</p>
+        </div>
+        <div class="fields" style="margin-top:10px">
+          <div class="field"><span class="fn">Factura oficial (AFIP)</span><span class="fd">Comprobante electrónico con validez fiscal. Opciones: Factura A, B o C según el tipo de cliente. Requiere conexión con AFIP vía SDK, que devuelve el CAE (código de autorización) en tiempo real. El PDF se genera automáticamente y se puede enviar al dueño por WhatsApp o email.</span></div>
+          <div class="field"><span class="fn">Remito (no oficial)</span><span class="fd">Comprobante interno sin validez fiscal. No requiere AFIP ni datos del receptor. Sirve para registrar la entrega de productos o la prestación de un servicio sin emitir factura. <strong>También descuenta stock</strong> de la misma forma que la factura oficial.</span></div>
+        </div>
+        <div class="warn" style="margin-top:12px">
+          <p>⚙️ <strong>Requisito para facturas AFIP:</strong> La clínica debe tener CUIT activo, punto de venta habilitado y certificado digital configurado. Se configura una sola vez al dar de alta la clínica en el sistema.</p>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Estado del Cobro</div>
+        <div class="fields">
+          <div class="field"><span class="fn">Estado</span><span class="fd"><span class="tag">selector</span> Pendiente / Pagado / Pago parcial.</span></div>
+          <div class="field"><span class="fn">Método de pago</span><span class="fd"><span class="tag">selector</span> Efectivo / Transferencia / Tarjeta (registro manual).</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ── PANTALLAS INTERACTIVAS ── -->
+  <div class="modulo" id="mockups">
+    <div class="mod-header">
+      <div class="mod-icon">🖥️</div>
+      <div>
+        <h2>Pantallas Ilustrativas</h2>
+        <div class="mod-num">Referencia visual — no es el diseño final</div>
+      </div>
+    </div>
+    <div class="mod-body">
+      <p style="margin-bottom:16px; color:var(--muted); font-size:13px;">Las siguientes pantallas muestran cómo se vería el flujo principal del sistema. Son esquemáticas e ilustrativas — el diseño visual final puede variar.</p>
+
+      <!-- TABS -->
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;" id="mock-tabs">
+        <button class="mtab active" onclick="showMock('m-ficha')">🐾 Ficha del Paciente</button>
+        <button class="mtab" onclick="showMock('m-hc')">🩺 Historia Clínica</button>
+        <button class="mtab" onclick="showMock('m-agenda')">📅 Agenda</button>
+        <button class="mtab" onclick="showMock('m-vacunas')">💉 Vacunas</button>
+        <button class="mtab" onclick="showMock('m-inventario')">📦 Inventario</button>
+        <button class="mtab" onclick="showMock('m-cobro')">🧾 Cobro</button>
+      </div>
+
+      <div id="mock-container" style="background:#F0F4F8; border-radius:10px; padding:16px; border:1px solid var(--border);">
+
+        <!-- FICHA DEL PACIENTE -->
+        <div id="m-ficha" class="mock-screen">
+          <div class="mock-topbar">
+            <span class="mock-logo">VETSOFT</span>
+            <div class="mock-nav">
+              <span class="mock-nav-item active">Pacientes</span>
+              <span class="mock-nav-item">Agenda</span>
+              <span class="mock-nav-item">Inventario</span>
+              <span class="mock-nav-item">Cobros</span>
+            </div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-sidebar">
+              <div class="mock-search">🔍 Buscar paciente...</div>
+              <div class="mock-patient-list">
+                <div class="mock-patient active">
+                  <div class="mock-avatar">🐕</div>
+                  <div><div class="mpn">Rocky</div><div class="mpo">Dueño: Carlos Méndez</div></div>
+                </div>
+                <div class="mock-patient">
+                  <div class="mock-avatar">🐈</div>
+                  <div><div class="mpn">Luna</div><div class="mpo">Dueño: Ana Gómez</div></div>
+                </div>
+                <div class="mock-patient">
+                  <div class="mock-avatar">🐕</div>
+                  <div><div class="mpn">Thor</div><div class="mpo">Dueño: Marcos Ruiz</div></div>
+                </div>
+                <div class="mock-patient">
+                  <div class="mock-avatar">🐈</div>
+                  <div><div class="mpn">Mochi</div><div class="mpo">Dueño: Valeria Paz</div></div>
+                </div>
+              </div>
+            </div>
+            <div class="mock-main">
+              <div class="mock-ficha-header">
+                <div style="font-size:40px;">🐕</div>
+                <div>
+                  <div style="font-size:20px;font-weight:700;color:#1A3C5E;">Rocky</div>
+                  <div style="font-size:13px;color:#6B7A8D;">Perro · Labrador · Macho · 4 años</div>
+                  <div style="margin-top:6px;"><span class="mock-badge green">Activo</span></div>
+                </div>
+                <div style="margin-left:auto;display:flex;gap:8px;">
+                  <div class="mock-btn">+ Nueva consulta</div>
+                  <div class="mock-btn outline">Editar ficha</div>
+                </div>
+              </div>
+              <div class="mock-tabs-inner">
+                <span class="mti active">Historial clínico</span>
+                <span class="mti">Vacunas</span>
+                <span class="mti">Turnos</span>
+                <span class="mti">Cobros</span>
+              </div>
+              <div class="mock-hc-list">
+                <div class="mock-hc-item">
+                  <div class="mock-hc-fecha">14 jul 2026</div>
+                  <div class="mock-hc-dr">Dr. González</div>
+                  <div class="mock-hc-nota">Control anual. Animal en buen estado general. Se realizó desparasitación interna. Se indica repetir en 6 meses.</div>
+                </div>
+                <div class="mock-hc-item">
+                  <div class="mock-hc-fecha">02 mar 2026</div>
+                  <div class="mock-hc-dr">Dr. González</div>
+                  <div class="mock-hc-nota">Consulta por vómitos reiterados. Se indica dieta blanda por 48hs y Metronidazol 250mg cada 12hs durante 5 días.</div>
+                </div>
+                <div class="mock-hc-item">
+                  <div class="mock-hc-fecha">10 oct 2025</div>
+                  <div class="mock-hc-dr">Dra. Ramírez</div>
+                  <div class="mock-hc-nota">Revisión post-quirúrgica. Herida cicatrizada correctamente. Se da el alta.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HISTORIA CLÍNICA -->
+        <div id="m-hc" class="mock-screen" style="display:none;">
+          <div class="mock-topbar">
+            <span class="mock-logo">VETSOFT</span>
+            <div class="mock-nav">
+              <span class="mock-nav-item active">Pacientes</span>
+              <span class="mock-nav-item">Agenda</span>
+              <span class="mock-nav-item">Inventario</span>
+              <span class="mock-nav-item">Cobros</span>
+            </div>
+          </div>
+          <div class="mock-body" style="display:block;padding:20px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+              <div style="font-size:28px;">🐕</div>
+              <div>
+                <div style="font-weight:700;font-size:16px;color:#1A3C5E;">Nueva consulta — Rocky</div>
+                <div style="font-size:12px;color:#6B7A8D;">Perro · Labrador · 4 años · Dr. González · 20 jul 2026</div>
+              </div>
+            </div>
+            <div class="mock-form">
+              <div class="mock-form-field">
+                <label>Notas clínicas</label>
+                <textarea rows="6" placeholder="Motivo de consulta, examen físico, diagnóstico, indicaciones...">Animal presenta leve cojera en pata delantera derecha. Sin signos de fractura a la palpación. Se recomienda reposo y antiinflamatorio (Meloxicam 0,5mg/kg) por 5 días. Control en una semana si no mejora.</textarea>
+              </div>
+              <div class="mock-form-field">
+                <label>Archivos adjuntos</label>
+                <div class="mock-dropzone">📎 Arrastrá archivos aquí o hacé click para subir (imágenes, PDFs)</div>
+              </div>
+              <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+                <div class="mock-btn outline">Cancelar</div>
+                <div class="mock-btn">Guardar consulta</div>
+                <div class="mock-btn" style="background:#27AE60;">Guardar y generar receta</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AGENDA -->
+        <div id="m-agenda" class="mock-screen" style="display:none;">
+          <div class="mock-topbar">
+            <span class="mock-logo">VETSOFT</span>
+            <div class="mock-nav">
+              <span class="mock-nav-item">Pacientes</span>
+              <span class="mock-nav-item active">Agenda</span>
+              <span class="mock-nav-item">Inventario</span>
+              <span class="mock-nav-item">Cobros</span>
+            </div>
+          </div>
+          <div class="mock-body" style="display:block;padding:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div style="display:flex;gap:8px;">
+                <div class="mock-btn outline">◀</div>
+                <div style="font-weight:700;font-size:15px;color:#1A3C5E;padding:6px 10px;">Semana del 20 al 26 de julio, 2026</div>
+                <div class="mock-btn outline">▶</div>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <div class="mock-btn outline">Día</div>
+                <div class="mock-btn">Semana</div>
+                <div class="mock-btn outline">Dr. González ▾</div>
+                <div class="mock-btn" style="background:#27AE60;">+ Nuevo turno</div>
+              </div>
+            </div>
+            <div class="mock-cal">
+              <div class="mock-cal-head">
+                <div></div>
+                <div>LUN 20</div><div>MAR 21</div><div>MIÉ 22</div><div>JUE 23</div><div>VIE 24</div>
+              </div>
+              <div class="mock-cal-row">
+                <div class="mock-cal-time">09:00</div>
+                <div class="mock-turno confirmed">Rocky — Control anual<div class="mock-turno-tag">Confirmado</div></div>
+                <div></div><div></div>
+                <div class="mock-turno pending">Thor — Vacunación<div class="mock-turno-tag">Pendiente</div></div>
+                <div></div>
+              </div>
+              <div class="mock-cal-row">
+                <div class="mock-cal-time">10:00</div>
+                <div></div>
+                <div class="mock-turno confirmed">Luna — Consulta<div class="mock-turno-tag">Confirmado</div></div>
+                <div></div><div></div>
+                <div class="mock-turno confirmed">Mochi — Control<div class="mock-turno-tag">Confirmado</div></div>
+              </div>
+              <div class="mock-cal-row">
+                <div class="mock-cal-time">11:00</div>
+                <div></div><div></div>
+                <div class="mock-turno done">Coco — Castración<div class="mock-turno-tag">Finalizado</div></div>
+                <div></div><div></div>
+              </div>
+              <div class="mock-cal-row">
+                <div class="mock-cal-time">14:00</div>
+                <div class="mock-turno pending">Max — Dientes<div class="mock-turno-tag">Pendiente</div></div>
+                <div></div><div></div><div></div>
+                <div class="mock-turno confirmed">Nala — Piel<div class="mock-turno-tag">Confirmado</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VACUNAS -->
+        <div id="m-vacunas" class="mock-screen" style="display:none;">
+          <div class="mock-topbar">
+            <span class="mock-logo">VETSOFT</span>
+            <div class="mock-nav">
+              <span class="mock-nav-item active">Pacientes</span>
+              <span class="mock-nav-item">Agenda</span>
+              <span class="mock-nav-item">Inventario</span>
+              <span class="mock-nav-item">Cobros</span>
+            </div>
+          </div>
+          <div class="mock-body" style="display:block;padding:20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <div>
+                <div style="font-weight:700;font-size:16px;color:#1A3C5E;">Vacunas — Rocky 🐕</div>
+                <div style="font-size:12px;color:#6B7A8D;">Perro · Labrador · 4 años</div>
+              </div>
+              <div class="mock-btn">+ Registrar vacuna</div>
+            </div>
+            <div class="mock-vac-list">
+              <div class="mock-vac-item ok">
+                <div class="mock-vac-name">Séxtuple canina</div>
+                <div class="mock-vac-dates">Aplicada: 15 ene 2026 &nbsp;·&nbsp; Vence: <strong>15 ene 2027</strong></div>
+                <div class="mock-vac-status ok">✓ Al día</div>
+              </div>
+              <div class="mock-vac-item warn">
+                <div class="mock-vac-name">Antirrábica</div>
+                <div class="mock-vac-dates">Aplicada: 20 ago 2025 &nbsp;·&nbsp; Vence: <strong>20 ago 2026</strong></div>
+                <div class="mock-vac-status warn">⚠ Vence en 31 días — Recordatorio enviado</div>
+              </div>
+              <div class="mock-vac-item expired">
+                <div class="mock-vac-name">Bordetella</div>
+                <div class="mock-vac-dates">Aplicada: 10 jul 2025 &nbsp;·&nbsp; Vence: <strong>10 jul 2026</strong></div>
+                <div class="mock-vac-status expired">✗ Vencida — Requiere re-aplicación</div>
+              </div>
+            </div>
+            <div style="background:#F0FAF4;border:1px solid #B2DFC3;border-radius:8px;padding:14px;margin-top:16px;font-size:13px;">
+              💬 <strong>Último recordatorio enviado:</strong> 13 jul 2026 · WhatsApp a Carlos Méndez (+54 9 11 2345-6789) · "Hola Carlos, te recordamos que la vacuna antirrábica de Rocky vence el 20 de agosto. ¡Pedí turno para renovarla!"
+            </div>
+          </div>
+        </div>
+
+        <!-- INVENTARIO -->
+        <div id="m-inventario" class="mock-screen" style="display:none;">
+          <div class="mock-topbar">
+            <span class="mock-logo">VETSOFT</span>
+            <div class="mock-nav">
+              <span class="mock-nav-item">Pacientes</span>
+              <span class="mock-nav-item">Agenda</span>
+              <span class="mock-nav-item active">Inventario</span>
+              <span class="mock-nav-item">Cobros</span>
+            </div>
+          </div>
+          <div class="mock-body" style="display:block;padding:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div style="display:flex;gap:8px;">
+                <div class="mock-search" style="width:200px;">🔍 Buscar producto...</div>
+                <div class="mock-btn outline">Categoría ▾</div>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <div class="mock-btn outline">↑ Entrada de stock</div>
+                <div class="mock-btn">+ Nuevo producto</div>
+              </div>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead>
+                <tr style="background:#1A3C5E;color:#fff;">
+                  <th style="padding:9px 12px;text-align:left;">Producto</th>
+                  <th style="padding:9px 12px;text-align:left;">Categoría</th>
+                  <th style="padding:9px 12px;text-align:center;">Stock</th>
+                  <th style="padding:9px 12px;text-align:center;">Mínimo</th>
+                  <th style="padding:9px 12px;text-align:right;">Precio</th>
+                  <th style="padding:9px 12px;text-align:center;">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="background:#fff;">
+                  <td style="padding:9px 12px;font-weight:600;">Frontline Plus (pipeta)</td>
+                  <td style="padding:9px 12px;color:#6B7A8D;">Antiparasitarios</td>
+                  <td style="padding:9px 12px;text-align:center;">24</td>
+                  <td style="padding:9px 12px;text-align:center;">10</td>
+                  <td style="padding:9px 12px;text-align:right;">$4.200</td>
+                  <td style="padding:9px 12px;text-align:center;"><span class="mock-badge green">OK</span></td>
+                </tr>
+                <tr style="background:#F5FAFE;">
+                  <td style="padding:9px 12px;font-weight:600;">Meloxicam 2mg (comp.)</td>
+                  <td style="padding:9px 12px;color:#6B7A8D;">Medicamentos</td>
+                  <td style="padding:9px 12px;text-align:center;">7</td>
+                  <td style="padding:9px 12px;text-align:center;">10</td>
+                  <td style="padding:9px 12px;text-align:right;">$890</td>
+                  <td style="padding:9px 12px;text-align:center;"><span class="mock-badge orange">Stock bajo</span></td>
+                </tr>
+                <tr style="background:#fff;">
+                  <td style="padding:9px 12px;font-weight:600;">Royal Canin Medium 15kg</td>
+                  <td style="padding:9px 12px;color:#6B7A8D;">Alimentos</td>
+                  <td style="padding:9px 12px;text-align:center;">3</td>
+                  <td style="padding:9px 12px;text-align:center;">5</td>
+                  <td style="padding:9px 12px;text-align:right;">$42.000</td>
+                  <td style="padding:9px 12px;text-align:center;"><span class="mock-badge orange">Stock bajo</span></td>
+                </tr>
+                <tr style="background:#F5FAFE;">
+                  <td style="padding:9px 12px;font-weight:600;">Jeringa 5ml (caja x50)</td>
+                  <td style="padding:9px 12px;color:#6B7A8D;">Insumos</td>
+                  <td style="padding:9px 12px;text-align:center;">18</td>
+                  <td style="padding:9px 12px;text-align:center;">5</td>
+                  <td style="padding:9px 12px;text-align:right;">$3.500</td>
+                  <td style="padding:9px 12px;text-align:center;"><span class="mock-badge green">OK</span></td>
+                </tr>
+                <tr style="background:#fff;">
+                  <td style="padding:9px 12px;font-weight:600;">Collar antipulgas talla M</td>
+                  <td style="padding:9px 12px;color:#6B7A8D;">Accesorios</td>
+                  <td style="padding:9px 12px;text-align:center;">0</td>
+                  <td style="padding:9px 12px;text-align:center;">3</td>
+                  <td style="padding:9px 12px;text-align:right;">$7.800</td>
+                  <td style="padding:9px 12px;text-align:center;"><span class="mock-badge red">Sin stock</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- COBRO -->
+        <div id="m-cobro" class="mock-screen" style="display:none;">
+          <div class="mock-topbar">
+            <span class="mock-logo">VETSOFT</span>
+            <div class="mock-nav">
+              <span class="mock-nav-item">Pacientes</span>
+              <span class="mock-nav-item">Agenda</span>
+              <span class="mock-nav-item">Inventario</span>
+              <span class="mock-nav-item active">Cobros</span>
+            </div>
+          </div>
+          <div class="mock-body" style="display:block;padding:20px;">
+            <div style="font-weight:700;font-size:16px;color:#1A3C5E;margin-bottom:16px;">Nuevo cobro — Rocky · Carlos Méndez</div>
+            <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;">
+              <div>
+                <div class="mock-form-field">
+                  <label>Agregar ítem</label>
+                  <div style="display:flex;gap:8px;">
+                    <div class="mock-search" style="flex:1;">🔍 Buscar producto o servicio...</div>
+                    <div class="mock-btn">Agregar</div>
+                  </div>
+                </div>
+                <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px;">
+                  <thead>
+                    <tr style="background:#1A3C5E;color:#fff;">
+                      <th style="padding:8px 12px;text-align:left;">Ítem</th>
+                      <th style="padding:8px 12px;text-align:center;">Tipo</th>
+                      <th style="padding:8px 12px;text-align:center;">Cant.</th>
+                      <th style="padding:8px 12px;text-align:right;">Precio unit.</th>
+                      <th style="padding:8px 12px;text-align:right;">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="background:#fff;">
+                      <td style="padding:8px 12px;font-weight:600;">Consulta médica</td>
+                      <td style="padding:8px 12px;text-align:center;"><span class="mock-badge" style="background:#EBF4F9;color:#2E86AB;border:1px solid #D0E4F0;">Servicio</span></td>
+                      <td style="padding:8px 12px;text-align:center;">1</td>
+                      <td style="padding:8px 12px;text-align:right;">$8.500</td>
+                      <td style="padding:8px 12px;text-align:right;font-weight:600;">$8.500</td>
+                    </tr>
+                    <tr style="background:#F5FAFE;">
+                      <td style="padding:8px 12px;font-weight:600;">Meloxicam 2mg (comp.)</td>
+                      <td style="padding:8px 12px;text-align:center;"><span class="mock-badge" style="background:#F0FAF4;color:#27AE60;border:1px solid #B2DFC3;">Producto</span></td>
+                      <td style="padding:8px 12px;text-align:center;">10</td>
+                      <td style="padding:8px 12px;text-align:right;">$890</td>
+                      <td style="padding:8px 12px;text-align:right;font-weight:600;">$8.900</td>
+                    </tr>
+                    <tr style="background:#fff;">
+                      <td style="padding:8px 12px;font-weight:600;">Frontline Plus (pipeta)</td>
+                      <td style="padding:8px 12px;text-align:center;"><span class="mock-badge" style="background:#F0FAF4;color:#27AE60;border:1px solid #B2DFC3;">Producto</span></td>
+                      <td style="padding:8px 12px;text-align:center;">1</td>
+                      <td style="padding:8px 12px;text-align:right;">$4.200</td>
+                      <td style="padding:8px 12px;text-align:right;font-weight:600;">$4.200</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="background:#F5FAFE;border:1px solid var(--border);border-radius:8px;padding:18px;display:flex;flex-direction:column;gap:12px;">
+                <div style="font-weight:700;color:#1A3C5E;font-size:14px;">Resumen del cobro</div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;"><span>Subtotal</span><span>$21.600</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;color:#27AE60;"><span>Descuento (0%)</span><span>—</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:#1A3C5E;border-top:1px solid var(--border);padding-top:10px;"><span>Total</span><span>$21.600</span></div>
+                <div class="mock-form-field" style="margin:0;">
+                  <label>Tipo de comprobante</label>
+                  <select style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+                    <option>Factura B</option>
+                    <option>Factura A</option>
+                    <option>Factura C</option>
+                    <option>Remito (sin validez fiscal)</option>
+                  </select>
+                </div>
+                <div class="mock-form-field" style="margin:0;">
+                  <label>Método de pago</label>
+                  <select style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+                    <option>Efectivo</option>
+                    <option>Transferencia</option>
+                    <option>Tarjeta</option>
+                  </select>
+                </div>
+                <div class="mock-btn" style="text-align:center;padding:12px;">Confirmar y emitir comprobante</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /mock-container -->
+    </div>
+  </div>
+
+  <style>
+    /* TABS */
+    .mtab {
+      padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--white); color: var(--muted); cursor: pointer;
+      font-size: 13px; font-family: inherit; font-weight: 600;
+      transition: all .15s;
+    }
+    .mtab:hover { background: var(--light); color: var(--primary); }
+    .mtab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* MOCK COMMON */
+    .mock-screen { background: #fff; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+    .mock-topbar {
+      background: var(--primary); padding: 10px 16px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .mock-logo { color: #fff; font-weight: 800; font-size: 15px; letter-spacing: 1px; }
+    .mock-nav { display: flex; gap: 4px; }
+    .mock-nav-item { color: rgba(255,255,255,0.55); font-size: 12.5px; padding: 5px 12px; border-radius: 5px; cursor: pointer; }
+    .mock-nav-item.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; }
+
+    .mock-body { display: flex; min-height: 380px; }
+
+    /* SIDEBAR */
+    .mock-sidebar { width: 220px; border-right: 1px solid var(--border); padding: 12px; flex-shrink: 0; background: #FAFCFE; }
+    .mock-search { background: var(--light); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 12px; color: var(--muted); }
+    .mock-patient-list { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+    .mock-patient { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+    .mock-patient.active { background: var(--light); border: 1px solid var(--border); }
+    .mock-avatar { font-size: 20px; }
+    .mpn { font-size: 13px; font-weight: 600; color: var(--primary); }
+    .mpo { font-size: 11px; color: var(--muted); }
+
+    /* FICHA MAIN */
+    .mock-main { flex: 1; padding: 16px; overflow: auto; }
+    .mock-ficha-header { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+    .mock-tabs-inner { display: flex; gap: 0; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+    .mti { padding: 8px 16px; font-size: 13px; cursor: pointer; color: var(--muted); }
+    .mti.active { color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent); }
+    .mock-hc-list { display: flex; flex-direction: column; gap: 10px; }
+    .mock-hc-item { background: var(--row-alt); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .mock-hc-fecha { font-size: 12px; font-weight: 700; color: var(--accent); }
+    .mock-hc-dr { font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+    .mock-hc-nota { font-size: 13px; color: var(--text); line-height: 1.55; }
+
+    /* BUTTONS */
+    .mock-btn { background: var(--accent); color: #fff; border-radius: 6px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; display: inline-block; }
+    .mock-btn.outline { background: #fff; color: var(--primary); border: 1px solid var(--border); }
+
+    /* BADGES */
+    .mock-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .mock-badge.green { background: #E8F8EF; color: #27AE60; }
+    .mock-badge.orange { background: #FEF3E2; color: #E67E22; }
+    .mock-badge.red { background: #FDECEA; color: #C0392B; }
+
+    /* FORM */
+    .mock-form { display: flex; flex-direction: column; gap: 14px; }
+    .mock-form-field { display: flex; flex-direction: column; gap: 5px; }
+    .mock-form-field label { font-size: 12px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .5px; }
+    .mock-form-field textarea, .mock-form-field input, .mock-form-field select {
+      border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px;
+      font-size: 13px; font-family: inherit; color: var(--text); resize: vertical;
+      background: var(--white);
+    }
+    .mock-dropzone { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; font-size: 13px; color: var(--muted); background: var(--row-alt); }
+
+    /* CALENDARIO */
+    .mock-cal { display: flex; flex-direction: column; gap: 1px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .mock-cal-head { display: grid; grid-template-columns: 60px repeat(5, 1fr); background: var(--light); }
+    .mock-cal-head > div { padding: 8px; font-size: 12px; font-weight: 700; text-align: center; color: var(--primary); border-left: 1px solid var(--border); }
+    .mock-cal-row { display: grid; grid-template-columns: 60px repeat(5, 1fr); background: #fff; border-top: 1px solid var(--border); min-height: 60px; }
+    .mock-cal-row > div { border-left: 1px solid var(--border); padding: 4px; }
+    .mock-cal-time { font-size: 11px; color: var(--muted); padding: 8px 6px; text-align: right; border-left: none !important; }
+    .mock-turno { border-radius: 5px; padding: 6px 8px; font-size: 11.5px; font-weight: 600; cursor: pointer; line-height: 1.3; }
+    .mock-turno.confirmed { background: #EBF4F9; color: #1A3C5E; border-left: 3px solid #2E86AB; }
+    .mock-turno.pending { background: #FEF9EC; color: #7D4E00; border-left: 3px solid #E67E22; }
+    .mock-turno.done { background: #F0F0F0; color: #6B7A8D; border-left: 3px solid #B0BEC5; }
+    .mock-turno-tag { font-size: 10px; font-weight: 400; margin-top: 2px; opacity: .8; }
+
+    /* VACUNAS */
+    .mock-vac-list { display: flex; flex-direction: column; gap: 10px; }
+    .mock-vac-item { border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; border: 1px solid; }
+    .mock-vac-item.ok { background: #F0FAF4; border-color: #B2DFC3; }
+    .mock-vac-item.warn { background: #FEF9EC; border-color: #F5CBA7; }
+    .mock-vac-item.expired { background: #FDECEA; border-color: #F1948A; }
+    .mock-vac-name { font-weight: 700; font-size: 14px; flex: 1; }
+    .mock-vac-dates { font-size: 12px; color: var(--muted); }
+    .mock-vac-status { font-size: 12px; font-weight: 600; }
+    .mock-vac-status.ok { color: #27AE60; }
+    .mock-vac-status.warn { color: #E67E22; }
+    .mock-vac-status.expired { color: #C0392B; }
+  </style>
+
+  <div id="footer">
+    <p>APSOL · apsol-consultora.com.ar · Documento en construcción · Julio 2026</p>
+  </div>
+
+  <script>
+    function showMock(id) {
+      document.querySelectorAll('.mock-screen').forEach(s => s.style.display = 'none');
+      document.getElementById(id).style.display = 'block';
+      document.querySelectorAll('.mtab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+  </script>
+
+</div>
+</body>
+</html>
