@@ -13,6 +13,7 @@ interface AgendaViewProps {
   groomingAppointments: GroomingAppointment[];
   groomingServices: GroomingService[];
   onAddGroomingAppointment: (appointment: Omit<GroomingAppointment, 'id'>) => void;
+  onNavigateToBilling?: (patientId: string, serviceName: string, amount: number) => void;
   fixedMode?: 'medica' | 'peluqueria';
 }
 
@@ -23,6 +24,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   groomingAppointments,
   groomingServices,
   onAddGroomingAppointment,
+  onNavigateToBilling,
   fixedMode
 }) => {
   const [agendaMode, setAgendaMode] = useState<'medica' | 'peluqueria'>(fixedMode || 'medica');
@@ -186,6 +188,14 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                           </div>
                           <span className="text-[11px] text-on-surface-variant truncate">{matchingApp.species} ({matchingApp.breed})</span>
                           <span className="text-[10px] text-primary font-medium truncate">Dr. {matchingApp.vetName}</span>
+                          <button
+                            type="button"
+                            onClick={() => onNavigateToBilling?.(matchingApp.patientId, 'Consulta Médica', 15000)}
+                            className="mt-1 bg-primary text-on-primary hover:bg-primary-container px-2 py-0.5 rounded text-[10px] font-bold flex items-center justify-center gap-0.5 shadow-sm transition-all cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
+                            Cobrar Turno
+                          </button>
                         </div>
                       )}
                     </div>
@@ -203,6 +213,14 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                           </div>
                           <span className="text-[11px] text-on-surface-variant truncate">{matchingGroom.serviceName}</span>
                           <span className="text-[10px] text-on-surface-variant truncate">Propietario: {matchingGroom.ownerName}</span>
+                          <button
+                            type="button"
+                            onClick={() => onNavigateToBilling?.(matchingGroom.patientId, matchingGroom.serviceName, matchingGroom.price || 12000)}
+                            className="mt-1 bg-secondary text-on-secondary hover:bg-secondary-container px-2 py-0.5 rounded text-[10px] font-bold flex items-center justify-center gap-0.5 shadow-sm transition-all cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
+                            Cobrar Turno
+                          </button>
                         </div>
                       )}
                     </div>

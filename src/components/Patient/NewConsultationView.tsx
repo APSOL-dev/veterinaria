@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Patient } from '../../domain/types';
+import { formatAttachmentFileList } from '../../domain/services/patientService';
+import { AppNotificationModal } from '../Common/AppNotificationModal';
 
 interface NewConsultationViewProps {
   patients: Patient[];
@@ -26,6 +28,9 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
   const [showPrescription, setShowPrescription] = useState(false);
   const [prescriptionText, setPrescriptionText] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentPatient = patients.find(p => p.id === targetPatientId) || selectedPatient;
   const currentDateFormatted = new Date().toLocaleDateString('es-ES', {
@@ -34,14 +39,55 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
     year: 'numeric'
   });
 
-  const handleFileSimulate = () => {
-    const fileName = `estudio_${Date.now().toString().slice(-4)}.pdf`;
-    setAttachedFiles(prev => [...prev, fileName]);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files);
+      const fileNames = formatAttachmentFileList(newFiles);
+      setAttachedFiles(prev => [...prev, ...fileNames]);
+    }
   };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const newFiles = Array.from(e.dataTransfer.files);
+      const fileNames = formatAttachmentFileList(newFiles);
+      setAttachedFiles(prev => [...prev, ...fileNames]);
+    }
+  };
+
+  const handleFileBoxClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const [modalNotif, setModalNotif] = useState<{ isOpen: boolean; message: string; type: 'success' | 'warning' | 'error' }>({
+    isOpen: false,
+    message: '',
+    type: 'success'
+  });
 
   const handleSave = (generatePrescription: boolean = false) => {
     if (!notes.trim()) {
-      alert('Por favor ingrese las notas clínicas de la consulta.');
+      setModalNotif({
+        isOpen: true,
+        message: 'Por favor ingrese las notas clínicas de la consulta.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -53,7 +99,15 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
       attachments: attachedFiles.length > 0 ? attachedFiles : undefined
     });
 
-    alert(`¡Consulta registrada exitosamente en la ficha del paciente ${currentPatient.name}!`);
+    setModalNotif({
+      isOpen: true,
+      message: `¡Consulta registrada exitosamente en la ficha del paciente ${currentPatient.name}!`,
+      type: 'success'
+    });
+  };
+
+  const handleCloseNotif = () => {
+    setModalNotif({ isOpen: false, message: '', type: 'success' });
   };
 
   return (
@@ -146,15 +200,31 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
           </div>
         )}
 
-        {/* Drag & Drop File Upload Zone (Flex-1, Expands to fill available vertical space!) */}
+        {/* Drag & Drop File Upload Zone */}
         <div className="flex-1 flex flex-col min-h-0 gap-xs">
           <label className="shrink-0 font-label-md text-on-surface-variant uppercase text-[11px]">
             Archivos Adjuntos (Estudios, Radiografías, Análisis de Laboratorio)
           </label>
           
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            multiple
+            accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+          />
+
           <div
-            onClick={handleFileSimulate}
-            className="flex-1 min-h-0 w-full bg-surface-container-low hover:bg-surface-container p-md rounded-2xl flex flex-col items-center justify-center gap-xs cursor-pointer transition-colors border-2 border-dashed border-outline-variant/60 shadow-inner"
+            onClick={handleFileBoxClick}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`flex-1 min-h-0 w-full p-md rounded-2xl flex flex-col items-center justify-center gap-xs cursor-pointer transition-all border-2 border-dashed shadow-inner ${
+              isDragging
+                ? 'bg-primary-container/20 border-primary scale-[0.99]'
+                : 'bg-surface-container-low hover:bg-surface-container border-outline-variant/60'
+            }`}
           >
             <div className="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm">
               <span className="material-symbols-outlined text-[28px]">cloud_upload</span>
@@ -163,14 +233,25 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
               Subir o Arrastrar Archivos o Imágenes
             </span>
             <span className="font-body-md text-xs text-on-surface-variant text-center max-w-sm">
-              Arrastra tus estudios aquí o haz clic para simular subida (.JPG, .PNG, .PDF).
+              Arrastra tus estudios aquí o haz clic para seleccionar del equipo (.JPG, .PNG, .PDF, .DOC).
             </span>
 
             {attachedFiles.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-xs mt-sm">
+              <div className="flex flex-wrap justify-center gap-xs mt-sm" onClick={(e) => e.stopPropagation()}>
                 {attachedFiles.map((file, idx) => (
-                  <span key={idx} className="bg-surface-container-high text-primary px-3 py-1 rounded-full text-xs flex items-center gap-1 font-medium shadow-sm">
+                  <span key={idx} className="bg-surface-container-high text-primary px-3 py-1 rounded-full text-xs flex items-center gap-1 font-medium shadow-sm border border-outline-variant/40">
                     <span className="material-symbols-outlined text-[14px]">description</span> {file}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAttachedFiles(prev => prev.filter((_, i) => i !== idx));
+                      }}
+                      className="ml-1 text-on-surface-variant hover:text-error transition-colors"
+                      title="Eliminar archivo"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
                   </span>
                 ))}
               </div>
@@ -211,13 +292,20 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
           <button
             type="button"
             onClick={() => handleSave(true)}
-            className="px-lg py-2 rounded-lg bg-[#27AE60] text-white hover:bg-[#1E8449] transition-all font-label-md text-xs shadow-sm flex items-center justify-center gap-1.5"
+            className="px-lg py-2 rounded-lg bg-[#27AE60] text-white hover:bg-[#1E8449] transition-all font-label-md text-xs shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">check_circle</span>
             Guardar y Generar Receta
           </button>
         </div>
       </div>
+
+      <AppNotificationModal
+        isOpen={modalNotif.isOpen}
+        message={modalNotif.message}
+        type={modalNotif.type}
+        onClose={handleCloseNotif}
+      />
     </div>
   );
 };

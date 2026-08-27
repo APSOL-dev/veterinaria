@@ -3,7 +3,8 @@ import { Patient } from '../types';
 import { 
   filterPatients, 
   createNewPatientRecord, 
-  calculateWeightTrend 
+  calculateWeightTrend,
+  formatAttachmentFileList 
 } from './patientService';
 
 const mockPatients: Patient[] = [
@@ -65,6 +66,30 @@ describe('patientService', () => {
     const result = filterPatients(mockPatients, '', 'Con Alertas');
     expect(result).toHaveLength(1);
     expect(result[0].alerts).toContain('Alérgico a Penicilina');
+  });
+
+  it('createNewPatientRecord should set safe default fallback values', () => {
+    const newPat = createNewPatientRecord({
+      name: 'Max',
+      species: 'Canino',
+      breed: 'Labrador',
+      sex: 'Macho',
+      birthDate: '2021-01-01',
+      ownerName: 'Ana Gomez'
+    });
+
+    expect(newPat.id).toBeDefined();
+    expect(newPat.name).toBe('Max');
+    expect(newPat.ownerPhone).toBe('+54 9 11 0000-0000');
+  });
+
+  it('formatAttachmentFileList should process File objects or names into clean attachment strings', () => {
+    const mockFiles = [
+      { name: 'radiografia_torax.png' } as File,
+      { name: 'analisis_sangre.pdf' } as File
+    ];
+    const formatted = formatAttachmentFileList(mockFiles);
+    expect(formatted).toEqual(['radiografia_torax.png', 'analisis_sangre.pdf']);
   });
 
   it('createNewPatientRecord should create a complete patient object', () => {

@@ -30,10 +30,12 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
   const [weightKg, setWeightKg] = useState(10);
   const [alertsInput, setAlertsInput] = useState('');
 
+  const [errorMessage, setErrorMessage] = useState<string>('');
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !ownerName.trim()) {
-      alert('Por favor complete el nombre de la mascota y del propietario.');
+      setErrorMessage('Por favor complete el nombre de la mascota y del propietario.');
       return;
     }
 
@@ -71,6 +73,12 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-xs text-xs">
+          {errorMessage && (
+            <div className="bg-[#32181C] border border-rose-500/50 text-rose-300 p-2 px-3 rounded-xl text-xs font-bold mb-xs flex items-center gap-xs">
+              <span className="material-symbols-outlined text-[16px]">warning</span>
+              {errorMessage}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-sm">
             <div>
               <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Nombre Mascota *</label>

@@ -28,3 +28,25 @@ export function resolveNavigationState(module: ActiveModule, requestedSubmodule?
   }
   return { module, submodule: getDefaultSubmoduleForModule(module) };
 }
+
+export function resolveShortcutNavigationTarget(target: string): {
+  module: ActiveModule;
+  submodule: string;
+} {
+  switch (target) {
+    case 'control-vacunas':
+    case 'vacunas':
+      return { module: 'pacientes', submodule: 'control-vacunas' };
+    case 'cobros':
+    case 'facturacion':
+    case 'registrar-cobro':
+    case 'cobrar-turno':
+      return { module: 'cobros', submodule: 'nueva-facturacion' };
+    case 'nueva-consulta':
+      return { module: 'clinica', submodule: 'fichas-medicas' };
+    case 'agenda':
+      return { module: 'clinica', submodule: 'calendario-clinica' };
+    default:
+      return { module: 'pacientes', submodule: 'ficha-pacientes' };
+  }
+}

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Patient } from '../../domain/types';
 import { getUniqueTutores, updateTutorAndPetInfo, TutorSummary } from '../../domain/services/tutorService';
+import { AppNotificationModal } from '../Common/AppNotificationModal';
 
 interface TutoresViewProps {
   patients: Patient[];
@@ -53,6 +54,8 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
     setShowEditModal(true);
   };
 
+  const [notifModal, setNotifModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeTutor || !editOwnerName.trim()) return;
@@ -66,7 +69,10 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
     onUpdatePatients(updated);
     setSelectedTutorName(editOwnerName.trim());
     setShowEditModal(false);
-    alert('¡Datos del tutor y sus mascotas actualizados correctamente!');
+    setNotifModal({
+      isOpen: true,
+      message: '¡Datos del tutor y sus mascotas actualizados correctamente!'
+    });
   };
 
   const cleanPhone = (phone?: string) => {
@@ -374,13 +380,13 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="px-md py-2 rounded-xl bg-surface-container text-on-surface text-xs font-semibold"
+                  className="px-md py-2 rounded-xl bg-surface-container text-on-surface text-xs font-semibold cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-md py-2 rounded-xl bg-primary text-on-primary hover:bg-primary-container text-xs font-bold shadow-sm"
+                  className="px-md py-2 rounded-xl bg-primary text-on-primary hover:bg-primary-container text-xs font-bold shadow-sm cursor-pointer"
                 >
                   Guardar Cambios
                 </button>
@@ -389,6 +395,13 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
           </div>
         </div>
       )}
+
+      <AppNotificationModal
+        isOpen={notifModal.isOpen}
+        message={notifModal.message}
+        type="success"
+        onClose={() => setNotifModal({ isOpen: false, message: '' })}
+      />
     </div>
   );
 };

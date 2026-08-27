@@ -12,6 +12,7 @@ import { TutoresView } from './components/Patient/TutoresView';
 import { CobrosView } from './components/Billing/CobrosView';
 import { LoginPage } from './components/Auth/LoginPage';
 import { UserSession } from './domain/services/authService';
+import { resolveShortcutNavigationTarget } from './domain/services/navigationService';
 
 import { 
   initialPatients, 
@@ -25,7 +26,9 @@ import {
   initialReceipts,
   initialSupplierBills,
   initialSupplierQuotes,
-  initialServicesCatalog
+  initialServicesCatalog,
+  initialMonthlyBudgets,
+  initialExpenses
 } from './data/mockData';
 
 import { 
@@ -42,18 +45,20 @@ import {
   BillItem,
   SupplierBill,
   SupplierQuote,
-  ServiceCatalogItem
+  ServiceCatalogItem,
+  ExpenseRecord
 } from './domain/types';
 
 import { createDosisRecord } from './domain/services/vaccineService';
-import { recordStockEntry, recordStockAdjustment } from './domain/services/inventoryService';
+import { getLowStockAlerts, recordStockEntry, recordStockAdjustment } from './domain/services/inventoryService';
 import { processCheckout } from './domain/services/billingService';
 import { createNewPatientRecord } from './domain/services/patientService';
 import { createSupplierBillRecord, createSupplierQuoteRecord } from './domain/services/supplierService';
+import { createExpenseRecord } from './domain/services/expenseService';
 import { resolveNavigationState } from './domain/services/navigationService';
 import { canAccessModule, getDefaultModuleForRole } from './domain/services/rbacService';
 
-import { getLowStockAlerts } from './domain/services/inventoryService';
+import { AppNotificationModal } from './components/Common/AppNotificationModal';
 import { LowStockAlertModal } from './components/Inventory/LowStockAlertModal';
 
 export const App: React.FC = () => {
@@ -82,6 +87,20 @@ export const App: React.FC = () => {
   const [servicesCatalog, setServicesCatalog] = useState<ServiceCatalogItem[]>(initialServicesCatalog);
   const [supplierBills, setSupplierBills] = useState<SupplierBill[]>(initialSupplierBills);
   const [supplierQuotes, setSupplierQuotes] = useState<SupplierQuote[]>(initialSupplierQuotes);
+  const [monthlyBudgets, setMonthlyBudgets] = useState<Record<string, number>>(initialMonthlyBudgets);
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>(initialExpenses);
+
+  React.useEffect(() => {
+    const preventDefaultDrop = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener('dragover', preventDefaultDrop);
+    window.addEventListener('drop', preventDefaultDrop);
+    return () => {
+      window.removeEventListener('dragover', preventDefaultDrop);
+      window.removeEventListener('drop', preventDefaultDrop);
+    };
+  }, []);
   const [receipts, setReceipts] = useState<BillReceipt[]>(initialReceipts);
 
   const handleLoginSuccess = useCallback((session: UserSession) => {
@@ -105,9 +124,11 @@ export const App: React.FC = () => {
     }
   };
 
+  const [rbacNotif, setRbacNotif] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+
   const handleSetActiveModule = useCallback((mod: ActiveModule) => {
     if (userSession && !canAccessModule(userSession.role, mod)) {
-      alert(`Su rol (${userSession.roleLabel}) no tiene permisos para acceder a este módulo.`);
+      setRbacNotif({ isOpen: true, message: `Su rol (${userSession.roleLabel}) no tiene permisos para acceder a este módulo.` });
       return;
     }
     const nav = resolveNavigationState(mod);
@@ -234,6 +255,51 @@ export const App: React.FC = () => {
     setSupplierQuotes([quote, ...supplierQuotes]);
   };
 
+  const handleUpdateMonthlyBudget = (monthKey: string, budgetAmount: number) => {
+    setMonthlyBudgets(prev => ({
+      ...prev,
+      [monthKey]: budgetAmount
+    }));
+  };
+
+  const handleAddExpense = (expenseData: Omit<ExpenseRecord, 'id'>) => {
+    const newExp = createExpenseRecord(expenseData);
+    setExpenses([newExp, ...expenses]);
+  };
+
+  const handleUpdateExpense = (id: string, updatedData: Omit<ExpenseRecord, 'id'>) => {
+    setExpenses(prev => prev.map(e => e.id === id ? { ...updatedData, id } : e));
+  };
+
+  const handleNavigateToBillingFromAppointment = useCallback((patientId: string, _serviceName: string, _amount: number) => {
+    const pat = patients.find(p => p.id === patientId);
+    if (pat) {
+      setSelectedPatient(pat);
+    }
+    setActiveModuleState('cobros');
+    setActiveSubmodule('nueva-facturacion');
+  }, [patients]);
+
+  const handleDeleteExpense = (id: string) => {
+    setExpenses(prev => prev.filter(e => e.id !== id));
+  };
+
+  const handleDuplicateExpense = (id: string) => {
+    const target = expenses.find(e => e.id === id);
+    if (!target) return;
+    const duplicated = createExpenseRecord({
+      date: target.date,
+      responsible: target.responsible,
+      category: target.category,
+      allocation: target.allocation,
+      paymentMethod: target.paymentMethod,
+      description: `${target.description} (Copia)`,
+      amount: target.amount,
+      note: target.note
+    });
+    setExpenses([duplicated, ...expenses]);
+  };
+
   const handleCheckout = (data: {
     patientId?: string;
     patientName?: string;
@@ -256,23 +322,16 @@ export const App: React.FC = () => {
     });
     setReceipts([result.receipt, ...receipts]);
     setProducts(result.updatedProducts);
-    alert(`¡Cobro emitido exitosamente!\nComprobante N° ${result.receipt.receiptNumber}\n${result.receipt.afipCae ? 'CAE AFIP: ' + result.receipt.afipCae : ''}`);
+    setRbacNotif({
+      isOpen: true,
+      message: `¡Cobro emitido exitosamente! Comprobante N° ${result.receipt.receiptNumber} ${result.receipt.afipCae ? ' (CAE AFIP: ' + result.receipt.afipCae + ')' : ''}`
+    });
   };
 
   const handleNavigateFromShortcut = (target: string) => {
-    if (target === 'nueva-consulta') {
-      setActiveModuleState('clinica');
-      setActiveSubmodule('fichas-medicas');
-    } else if (target === 'vacunas') {
-      setActiveModuleState('clinica');
-      setActiveSubmodule('vacunas');
-    } else if (target === 'agenda') {
-      setActiveModuleState('clinica');
-      setActiveSubmodule('calendario-clinica');
-    } else if (target === 'facturacion') {
-      setActiveModuleState('proveedores');
-      setActiveSubmodule('facturas');
-    }
+    const nav = resolveShortcutNavigationTarget(target);
+    setActiveModuleState(nav.module);
+    setActiveSubmodule(nav.submodule);
   };
 
   if (!userSession) {
@@ -316,9 +375,16 @@ export const App: React.FC = () => {
             <SuppliersView
               bills={supplierBills}
               quotes={supplierQuotes}
+              expenses={expenses}
+              monthlyBudgets={monthlyBudgets}
               activeSubModule={activeSubmodule === 'presupuestos' ? 'presupuestos' : 'facturas'}
               onAddBill={handleAddSupplierBill}
               onAddQuote={handleAddSupplierQuote}
+              onUpdateMonthlyBudget={handleUpdateMonthlyBudget}
+              onAddExpense={handleAddExpense}
+              onUpdateExpense={handleUpdateExpense}
+              onDeleteExpense={handleDeleteExpense}
+              onDuplicateExpense={handleDuplicateExpense}
             />
           )}
 
@@ -357,6 +423,7 @@ export const App: React.FC = () => {
                   groomingAppointments={groomingAppointments}
                   groomingServices={groomingServices}
                   onAddGroomingAppointment={handleAddGroomingAppointment}
+                  onNavigateToBilling={handleNavigateToBillingFromAppointment}
                   fixedMode="medica"
                 />
               )}
@@ -372,6 +439,7 @@ export const App: React.FC = () => {
               groomingAppointments={groomingAppointments}
               groomingServices={groomingServices}
               onAddGroomingAppointment={handleAddGroomingAppointment}
+              onNavigateToBilling={handleNavigateToBillingFromAppointment}
               fixedMode="peluqueria"
             />
           )}
@@ -453,6 +521,14 @@ export const App: React.FC = () => {
           onGoToInventory={handleGoToInventoryFromAlert}
         />
       )}
+
+      <AppNotificationModal
+        isOpen={rbacNotif.isOpen}
+        message={rbacNotif.message}
+        type="warning"
+        title="Acceso Restringido"
+        onClose={() => setRbacNotif({ isOpen: false, message: '' })}
+      />
     </div>
   );
 };

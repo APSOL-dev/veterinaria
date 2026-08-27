@@ -27,7 +27,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({
       case 'proveedores':
         return [
           { id: 'facturas', label: 'Registrar facturas', icon: 'receipt' },
-          { id: 'presupuestos', label: 'Gestionar presupuestos', icon: 'request_quote' },
+          { id: 'presupuestos', label: 'Registrar gastos', icon: 'payments' },
         ];
       case 'clinica':
         return [

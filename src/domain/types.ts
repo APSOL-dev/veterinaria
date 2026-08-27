@@ -146,8 +146,17 @@ export interface ServiceCatalogItem {
 export interface SupplierBill {
   id: string;
   supplierName: string;
+  cuit?: string;
+  razonSocial?: string;
+  lineaNegocio?: 'Línea 1' | 'Línea 2';
+  documentType?: string;
   invoiceNumber: string;
   date: string; // YYYY-MM-DD
+  paymentDate?: string; // YYYY-MM-DD
+  subtotal?: number;
+  taxAmount?: number;
+  perceptions?: number;
+  currency?: string;
   amount: number;
   itemsCount: number;
   status: 'paid' | 'pending';
@@ -160,6 +169,29 @@ export interface SupplierQuote {
   date: string; // YYYY-MM-DD
   amount: number;
   status: 'draft' | 'approved' | 'rejected';
+}
+
+export interface MonthlyExpenditureProjection {
+  monthKey: string; // YYYY-MM
+  dateLabel: string; // e.g. "mayo_2025"
+  totalAdeudado: number;
+  totalPagado: number;
+  total: number;
+  presupuestoTotal: number;
+  cumplimientoPercentage: number;
+  statusLevel: 'ok' | 'warning' | 'exceeded';
+}
+
+export interface ExpenseRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  responsible: string;
+  category: string; // Rubro
+  allocation: string; // Asignación
+  paymentMethod: string;
+  description: string;
+  amount: number;
+  note?: string;
 }
 
 export interface StockMovement {

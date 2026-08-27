@@ -8,6 +8,7 @@ import {
   Product 
 } from '../../domain/types';
 import { calculateBillSummary, calculateItemSubtotal } from '../../domain/services/billingService';
+import { AppNotificationModal } from '../Common/AppNotificationModal';
 
 interface StoreBillingViewProps {
   patients: Patient[];
@@ -161,9 +162,19 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
     setShowAddItemModal(false);
   };
 
+  const [notifModal, setNotifModal] = useState<{ isOpen: boolean; message: string; type: 'success' | 'warning' | 'error' }>({
+    isOpen: false,
+    message: '',
+    type: 'success'
+  });
+
   const handleConfirmCheckout = () => {
     if (cartItems.length === 0) {
-      alert('El carrito está vacío');
+      setNotifModal({
+        isOpen: true,
+        message: 'El carrito está vacío. Agregue al menos un producto o servicio para facturar.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -177,9 +188,17 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
         paymentMethod,
         items: cartItems
       });
-      alert(`¡Cobro emitido con éxito! Comprobante: ${documentType.toUpperCase()}`);
+      setNotifModal({
+        isOpen: true,
+        message: `¡Cobro registrado exitosamente! Comprobante: ${documentType.toUpperCase()}`,
+        type: 'success'
+      });
     } catch (err: any) {
-      alert(`Error al emitir cobro: ${err.message}`);
+      setNotifModal({
+        isOpen: true,
+        message: `Error al registrar cobro: ${err.message}`,
+        type: 'error'
+      });
     }
   };
 
@@ -472,13 +491,20 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                 className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
               />
 
-              <button type="submit" className="bg-primary text-on-primary py-2 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container">
+              <button type="submit" className="bg-primary text-on-primary py-2 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container cursor-pointer">
                 Agregar al Cobro
               </button>
             </form>
           </div>
         </div>
       )}
+
+      <AppNotificationModal
+        isOpen={notifModal.isOpen}
+        message={notifModal.message}
+        type={notifModal.type}
+        onClose={() => setNotifModal({ isOpen: false, message: '', type: 'success' })}
+      />
     </div>
   );
 };

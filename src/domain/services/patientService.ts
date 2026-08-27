@@ -82,3 +82,8 @@ export function calculateWeightTrend(weightHistory?: { date: string; weightKg: n
     return { diff: 0, direction: 'neutral', formatted: 'Estable' };
   }
 }
+
+export function formatAttachmentFileList(files: (File | string)[]): string[] {
+  if (!Array.isArray(files)) return [];
+  return files.map(f => typeof f === 'string' ? f : f.name).filter(Boolean);
+}

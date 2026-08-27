@@ -43,11 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   const modules = allModules.filter(m => allowedModuleIds.includes(m.id));
 
   const handleLogoutClick = () => {
-    if (onLogout) {
-      onLogout();
-    } else {
-      alert('Sesión cerrada correctamente.');
-    }
+    onLogout?.();
   };
 
   return (

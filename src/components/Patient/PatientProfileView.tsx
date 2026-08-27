@@ -256,11 +256,11 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                   <path
                     d="M 0,20 Q 25,18 50,12 T 100,4"
                     fill="none"
-                    stroke="#2E86AB"
+                    stroke="#9A7DB8"
                     strokeWidth="2.5"
                     strokeLinecap="round"
                   />
-                  <circle cx="100" cy="4" r="3" fill="#2E86AB" />
+                  <circle cx="100" cy="4" r="3" fill="#9A7DB8" />
                 </svg>
               </div>
             </div>
@@ -294,7 +294,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             </button>
 
             <button
-              onClick={() => onNavigateToTab('vacunas')}
+              onClick={() => onNavigateToTab('control-vacunas')}
               className="bg-primary text-on-primary hover:bg-primary-container px-3 py-1.5 rounded-lg font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold transition-all"
             >
               <span className="material-symbols-outlined text-[16px]">vaccines</span>
@@ -310,7 +310,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             </button>
 
             <button
-              onClick={() => onNavigateToTab('facturacion')}
+              onClick={() => onNavigateToTab('cobros')}
               className="bg-primary text-on-primary hover:bg-primary-container px-3 py-1.5 rounded-lg font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold transition-all"
             >
               <span className="material-symbols-outlined text-[16px]">receipt_long</span>

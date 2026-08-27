@@ -12,7 +12,8 @@ import {
   BillReceipt,
   SupplierBill,
   SupplierQuote,
-  ServiceCatalogItem 
+  ServiceCatalogItem,
+  ExpenseRecord
 } from '../domain/types';
 
 export const initialOwners: Owner[] = [
@@ -276,25 +277,48 @@ export const initialProducts: Product[] = [
 
 export const initialReceipts: BillReceipt[] = [];
 
+export const initialMonthlyBudgets: Record<string, number> = {
+  '2025-05': 1672203,
+  '2025-06': 2000000,
+  '2025-07': 1521000,
+  '2025-08': 2200000,
+  '2025-09': 2200000,
+  '2025-10': 4000000,
+  '2025-11': 4000000,
+  '2025-12': 4000000,
+  '2026-01': 4000000,
+  '2026-02': 4000000,
+  '2026-03': 4000000,
+  '2026-04': 2000000,
+  '2026-05': 4000000,
+  '2026-06': 4000000,
+  '2026-07': 4000000,
+  '2026-08': 2000000,
+  '2026-09': 2000000,
+  '2026-10': 2000000,
+  '2026-11': 2000000
+};
+
 export const initialSupplierBills: SupplierBill[] = [
-  {
-    id: 'sbill-1',
-    supplierName: 'Distribuidora FarmaVet SA',
-    invoiceNumber: 'FC-A-0001-0004521',
-    date: '2026-08-20',
-    amount: 245000,
-    itemsCount: 18,
-    status: 'paid'
-  },
-  {
-    id: 'sbill-2',
-    supplierName: 'Laboratorios Zoonosis SRL',
-    invoiceNumber: 'FC-A-0003-0001289',
-    date: '2026-08-24',
-    amount: 180000,
-    itemsCount: 12,
-    status: 'pending'
-  }
+  { id: 'sbill-2025-05', supplierName: 'FarmaVet SA', invoiceNumber: 'FC-A-0001-001', date: '2025-05-15', amount: 2175377, itemsCount: 15, status: 'paid' },
+  { id: 'sbill-2025-06', supplierName: 'Laboratorios Zoonosis', invoiceNumber: 'FC-A-0001-002', date: '2025-06-10', amount: 1519447, itemsCount: 10, status: 'paid' },
+  { id: 'sbill-2025-07', supplierName: 'Distribuidora del Plata', invoiceNumber: 'FC-A-0001-003', date: '2025-07-20', amount: 1808233, itemsCount: 12, status: 'paid' },
+  { id: 'sbill-2025-08', supplierName: 'FarmaVet SA', invoiceNumber: 'FC-A-0001-004', date: '2025-08-12', amount: 2069912, itemsCount: 14, status: 'paid' },
+  { id: 'sbill-2025-09', supplierName: 'Insumos Médicos Sur', invoiceNumber: 'FC-A-0001-005', date: '2025-09-05', amount: 1409984, itemsCount: 8, status: 'paid' },
+  { id: 'sbill-2025-10', supplierName: 'Distribuidora del Plata', invoiceNumber: 'FC-A-0001-006', date: '2025-10-18', amount: 2501139, itemsCount: 20, status: 'paid' },
+  { id: 'sbill-2025-11', supplierName: 'FarmaVet SA', invoiceNumber: 'FC-A-0001-007', date: '2025-11-22', amount: 2263435, itemsCount: 16, status: 'paid' },
+  { id: 'sbill-2025-12', supplierName: 'Laboratorios Zoonosis', invoiceNumber: 'FC-A-0001-008', date: '2025-12-14', amount: 2528477, itemsCount: 18, status: 'paid' },
+  { id: 'sbill-2026-01', supplierName: 'FarmaVet SA', invoiceNumber: 'FC-A-0002-001', date: '2026-01-10', amount: 2149826, itemsCount: 15, status: 'paid' },
+  { id: 'sbill-2026-02', supplierName: 'Insumos Médicos Sur', invoiceNumber: 'FC-A-0002-002', date: '2026-02-15', amount: 2824195, itemsCount: 22, status: 'paid' },
+  { id: 'sbill-2026-03', supplierName: 'Distribuidora del Plata', invoiceNumber: 'FC-A-0002-003', date: '2026-03-20', amount: 2653737, itemsCount: 19, status: 'paid' },
+  { id: 'sbill-2026-04', supplierName: 'FarmaVet SA', invoiceNumber: 'FC-A-0002-004', date: '2026-04-12', amount: 1516106, itemsCount: 11, status: 'paid' },
+  { id: 'sbill-2026-05', supplierName: 'Laboratorios Zoonosis', invoiceNumber: 'FC-A-0002-005', date: '2026-05-18', amount: 2874993, itemsCount: 21, status: 'paid' },
+  { id: 'sbill-2026-06', supplierName: 'Distribuidora del Plata', invoiceNumber: 'FC-A-0002-006', date: '2026-06-25', amount: 2352750, itemsCount: 17, status: 'paid' },
+  { id: 'sbill-2026-07', supplierName: 'FarmaVet SA', invoiceNumber: 'FC-A-0002-007', date: '2026-07-08', amount: 2264736, itemsCount: 16, status: 'paid' },
+  { id: 'sbill-2026-08-paid', supplierName: 'Distribuidora FarmaVet SA', invoiceNumber: 'FC-A-0001-0004521', date: '2026-08-05', amount: 1480531, itemsCount: 18, status: 'paid' },
+  { id: 'sbill-2026-08-pending', supplierName: 'Laboratorios Zoonosis SRL', invoiceNumber: 'FC-A-0003-0001289', date: '2026-08-24', amount: 487946, itemsCount: 12, status: 'pending' },
+  { id: 'sbill-2026-09', supplierName: 'Insumos Médicos del Plata', invoiceNumber: 'FC-A-0004-0000012', date: '2026-09-10', amount: 876240, itemsCount: 6, status: 'pending' },
+  { id: 'sbill-2026-10', supplierName: 'FarmaVet SA', invoiceNumber: 'FC-A-0004-0000045', date: '2026-10-05', amount: 191401, itemsCount: 3, status: 'pending' }
 ];
 
 export const initialSupplierQuotes: SupplierQuote[] = [
@@ -362,3 +386,6 @@ export const initialServicesCatalog: ServiceCatalogItem[] = [
     lastSoldAt: '2026-08-26'
   }
 ];
+
+export const initialExpenses: ExpenseRecord[] = [];
+

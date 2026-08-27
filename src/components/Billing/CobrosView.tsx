@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Patient, BillReceipt, DocumentType, PaymentMethod, BillItem } from '../../domain/types';
+import { AppNotificationModal } from '../Common/AppNotificationModal';
 
 interface CobrosViewProps {
   patients: Patient[];
@@ -98,9 +99,14 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
     setShowAddItemModal(false);
   };
 
+  const [notifModal, setNotifModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+
   const handleConfirmCheckout = () => {
     if (items.length === 0) {
-      alert('Debe agregar al menos un concepto para emitir el cobro.');
+      setNotifModal({
+        isOpen: true,
+        message: 'Debe agregar al menos un concepto para emitir el cobro.'
+      });
       return;
     }
 
@@ -505,13 +511,20 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                 className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-primary font-bold"
               />
 
-              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm">
+              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm cursor-pointer">
                 Agregar Concepto
               </button>
             </form>
           </div>
         </div>
       )}
+
+      <AppNotificationModal
+        isOpen={notifModal.isOpen}
+        message={notifModal.message}
+        type="warning"
+        onClose={() => setNotifModal({ isOpen: false, message: '' })}
+      />
     </div>
   );
 };

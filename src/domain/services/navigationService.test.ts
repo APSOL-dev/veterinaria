@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { 
   getDefaultSubmoduleForModule, 
   isValidSubmoduleForModule, 
-  resolveNavigationState 
+  resolveNavigationState,
+  resolveShortcutNavigationTarget 
 } from './navigationService';
 
 describe('navigationService', () => {
@@ -30,5 +31,15 @@ describe('navigationService', () => {
     const invalidNav = resolveNavigationState('clinica', 'invalid-submodule');
     expect(invalidNav.module).toBe('clinica');
     expect(invalidNav.submodule).toBe('fichas-medicas');
+  });
+
+  it('resolveShortcutNavigationTarget should map shortcut keys to correct module and submodule', () => {
+    expect(resolveShortcutNavigationTarget('vacunas')).toEqual({ module: 'pacientes', submodule: 'control-vacunas' });
+    expect(resolveShortcutNavigationTarget('control-vacunas')).toEqual({ module: 'pacientes', submodule: 'control-vacunas' });
+    expect(resolveShortcutNavigationTarget('cobros')).toEqual({ module: 'cobros', submodule: 'nueva-facturacion' });
+    expect(resolveShortcutNavigationTarget('cobrar-turno')).toEqual({ module: 'cobros', submodule: 'nueva-facturacion' });
+    expect(resolveShortcutNavigationTarget('facturacion')).toEqual({ module: 'cobros', submodule: 'nueva-facturacion' });
+    expect(resolveShortcutNavigationTarget('nueva-consulta')).toEqual({ module: 'clinica', submodule: 'fichas-medicas' });
+    expect(resolveShortcutNavigationTarget('agenda')).toEqual({ module: 'clinica', submodule: 'calendario-clinica' });
   });
 });
