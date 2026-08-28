@@ -3,6 +3,13 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Build arguments for Vite environment variables
+ARG VITE_SUPABASE_URL=https://cjqziapqtyjsxqxumgbx.supabase.co
+ARG VITE_SUPABASE_ANON_KEY=sb_publishable_Iaft7FBP4BW0vbXlYzaP-g_jtyFue87
+
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+
 # Copy dependency manifests
 COPY package*.json ./
 
