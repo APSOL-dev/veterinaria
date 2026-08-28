@@ -61,6 +61,24 @@ describe('billingService', () => {
       expect(summary.taxAmount).toBeCloseTo(9230 * 0.21, 2); // 1938.3
       expect(summary.total).toBeCloseTo(9230 + (9230 * 0.21), 2); // 11168.3
     });
+
+    it('calculates zero tax when applyTax is false', () => {
+      const items: BillItem[] = [
+        { id: '1', description: 'Consulta', quantity: 1, unitPrice: 1000, discountPercent: 0 }
+      ];
+      const summary = calculateBillSummary(items, false);
+      expect(summary.taxAmount).toBe(0);
+      expect(summary.total).toBe(1000);
+    });
+
+    it('calculates custom tax percentage (e.g. 10.5%) correctly', () => {
+      const items: BillItem[] = [
+        { id: '1', description: 'Consulta', quantity: 1, unitPrice: 1000, discountPercent: 0 }
+      ];
+      const summary = calculateBillSummary(items, true, 10.5);
+      expect(summary.taxAmount).toBe(105);
+      expect(summary.total).toBe(1105);
+    });
   });
 
   describe('processCheckout', () => {
@@ -141,6 +159,22 @@ describe('billingService', () => {
       // Remito ALSO deducts product stock!
       const updatedProd = result.updatedProducts.find(p => p.id === 'prod-1');
       expect(updatedProd?.currentStock).toBe(8);
+    });
+
+    it('emits Factura C with zero tax by default', () => {
+      const result = processCheckout({
+        patientId: 'p1',
+        patientName: 'Rocky',
+        ownerName: 'Carlos Mendoza',
+        documentType: 'factura-c',
+        emitAfip: true,
+        paymentMethod: 'efectivo',
+        items,
+        productsCatalog
+      });
+
+      expect(result.receipt.documentType).toBe('factura-c');
+      expect(result.receipt.taxAmount).toBe(0);
     });
 
     it('throws an error if any product item exceeds available stock', () => {

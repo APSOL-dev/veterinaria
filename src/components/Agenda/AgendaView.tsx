@@ -79,6 +79,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
       });
     }
 
+    setReason('Consulta General');
     setShowNewModal(false);
   };
 
@@ -87,6 +88,20 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
   return (
     <div className="flex flex-col w-full h-full gap-md font-body-md text-slate-800">
+      {/* Module Title Header */}
+      <div className="flex items-center justify-between mb-md">
+        <div>
+          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+            {activeMode === 'medica' ? 'Clínica — Agenda Médica' : 'Peluquería — Agenda de Estética'}
+          </h1>
+          <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
+            {activeMode === 'medica'
+              ? 'Gestión de turnos médicos en consultorio, cobranza directa e historia clínica'
+              : 'Gestión de turnos de peluquería, baño y estética canina/felina'}
+          </p>
+        </div>
+      </div>
+
       {/* Top Controls Bar */}
       <div className="flex flex-wrap items-center justify-between gap-md bg-white p-sm px-md rounded-2xl shadow-sm border border-slate-200">
         <div className="flex items-center gap-sm">

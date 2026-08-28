@@ -145,6 +145,18 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
 
       {/* Right Column: Tutor Details & Associated Pets */}
       <main className="flex flex-col flex-1 min-w-0 gap-md overflow-y-auto">
+        {/* Module Title Header */}
+        <div className="flex items-center justify-between mb-md">
+          <div>
+            <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+              Pacientes — Gestión de Tutores
+            </h1>
+            <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
+              Padrón de tutores registrados, información de contacto y mascotas vinculadas
+            </p>
+          </div>
+        </div>
+
         {/* Tutor Hero Card */}
         <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-md shrink-0">
           <div className="flex items-center gap-md">
@@ -153,7 +165,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-sm">
-                <h1 className="font-display-lg text-[22px] text-primary font-bold leading-tight">{activeTutor.ownerName}</h1>
+                <h1 className="font-display-lg text-[22px] text-slate-900 font-bold leading-tight">Pacientes — {activeTutor.ownerName}</h1>
                 <span className="bg-secondary-container text-on-secondary-container text-[10px] font-bold px-2 py-0.5 rounded-full">
                   Tutor Registrado
                 </span>

@@ -91,19 +91,14 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
     return (
       <div className="flex flex-col w-full gap-md font-body-md text-slate-800">
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md bg-white p-md rounded-2xl shadow-sm border border-slate-200">
-          <div className="flex items-center gap-md">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#5C3C7B] flex items-center justify-center shrink-0 shadow-sm border border-purple-100">
-              <span className="material-symbols-outlined text-[22px]">vaccines</span>
-            </div>
-            <div>
-              <h1 className="font-display-lg text-[20px] text-slate-900 font-bold leading-tight">
-                Gestión y Catálogo de Vacunas (Clínica)
-              </h1>
-              <p className="font-body-md text-xs text-slate-600 font-medium">
-                Configuración general de biológicos, definición de plazos de inmunización y parámetros institucionales
-              </p>
-            </div>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md mb-md">
+          <div>
+            <h1 className="font-display-lg text-[22px] text-slate-900 font-bold leading-tight">
+              Vacunas — Catálogo General (Clínica)
+            </h1>
+            <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
+              Configuración general de biológicos, definición de plazos de inmunización y parámetros institucionales
+            </p>
           </div>
 
           <button

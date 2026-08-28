@@ -14,7 +14,7 @@ export const AppNotificationModal: React.FC<AppNotificationModalProps> = ({
   title = 'Aviso de VetSoft',
   message,
   type = 'success',
-  autoDismissMs = 4500,
+  autoDismissMs = 3000,
   onClose
 }) => {
   useEffect(() => {

@@ -110,12 +110,12 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   return (
     <div className="flex flex-col w-full gap-md">
       {/* Top Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-md">
         <div className="flex flex-col">
-          <h1 className="font-display-lg text-[22px] text-on-surface leading-tight font-bold">
+          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
             {activeSubmodule === 'productos-fisicos' ? 'Inventario — Productos Físicos' : 'Inventario — Catálogo de Servicios'}
           </h1>
-          <p className="font-body-md text-xs text-on-surface-variant">
+          <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
             {activeSubmodule === 'productos-fisicos'
               ? 'Gestión de stock, insumos clínicos y reposición de mercadería'
               : 'Gestión de prestaciones médicas y servicios de peluquería (Precios y Estado)'}

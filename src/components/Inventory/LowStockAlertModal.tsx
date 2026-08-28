@@ -12,7 +12,7 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
   lowStockProducts,
   onClose,
   onGoToInventory,
-  autoHideDurationMs = 5000
+  autoHideDurationMs = 3000
 }) => {
   useEffect(() => {
     if (lowStockProducts.length === 0) return;

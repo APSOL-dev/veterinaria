@@ -99,11 +99,11 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
       attachments: attachedFiles.length > 0 ? attachedFiles : undefined
     });
 
-    setModalNotif({
-      isOpen: true,
-      message: `¡Consulta registrada exitosamente en la ficha del paciente ${currentPatient.name}!`,
-      type: 'success'
-    });
+    setNotes('');
+    setPrescriptionText('');
+    setShowPrescription(false);
+    setAttachedFiles([]);
+    onCancel();
   };
 
   const handleCloseNotif = () => {
@@ -112,24 +112,19 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
 
   return (
     <div className="flex flex-col w-full h-full flex-1 gap-md overflow-hidden">
-      {/* Top Header Card (Shrink-0) */}
-      <div className="shrink-0 bg-surface-container-lowest rounded-2xl p-md px-lg shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-md border border-outline-variant/30">
-        <div className="flex items-center gap-md">
-          <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm shrink-0">
-            <span className="material-symbols-outlined text-[24px]">stethoscope</span>
-          </div>
-          <div>
-            <h1 className="font-display-lg text-[20px] text-primary leading-tight">
-              Nueva Consulta — {currentPatient.name}
-            </h1>
-            <p className="font-body-md text-xs text-on-surface-variant flex flex-wrap items-center gap-2 mt-xs">
-              <span>{currentPatient.species} • {currentPatient.breed}</span>
-              <span className="w-1 h-1 bg-outline-variant rounded-full"></span>
-              <span>Propietario: <strong className="text-primary">{currentPatient.ownerName}</strong></span>
-              <span className="w-1 h-1 bg-outline-variant rounded-full"></span>
-              <span className="text-secondary font-medium">{currentDateFormatted}</span>
-            </p>
-          </div>
+      {/* Top Header */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md mb-md">
+        <div>
+          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+            Clínica — Nueva Consulta ({currentPatient.name})
+          </h1>
+          <p className="font-body-md text-xs text-slate-600 font-medium flex flex-wrap items-center gap-2 mt-0.5">
+            <span>{currentPatient.species} • {currentPatient.breed}</span>
+            <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+            <span>Propietario: <strong className="text-slate-900 font-bold">{currentPatient.ownerName}</strong></span>
+            <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+            <span className="text-[#5C3C7B] font-bold">{currentDateFormatted}</span>
+          </p>
         </div>
 
         <div className="flex items-center gap-sm bg-surface-container-low p-xs px-md rounded-xl border border-outline-variant/40 self-stretch md:self-auto justify-between">

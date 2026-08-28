@@ -14,7 +14,7 @@ export interface BillSummary {
   total: number;
 }
 
-export function calculateBillSummary(items: BillItem[], applyTax: boolean = true): BillSummary {
+export function calculateBillSummary(items: BillItem[], applyTax: boolean = true, taxRate: number = 21): BillSummary {
   let grossSubtotal = 0;
   let discountTotal = 0;
 
@@ -26,7 +26,7 @@ export function calculateBillSummary(items: BillItem[], applyTax: boolean = true
   }
 
   const netTotal = grossSubtotal - discountTotal;
-  const taxAmount = applyTax ? netTotal * 0.21 : 0;
+  const taxAmount = applyTax ? netTotal * (taxRate / 100) : 0;
   const total = netTotal + taxAmount;
 
   return {
@@ -59,6 +59,8 @@ export interface CheckoutParams {
   documentType: DocumentType;
   emitAfip: boolean;
   paymentMethod: PaymentMethod;
+  applyTax?: boolean;
+  taxRate?: number;
   items: BillItem[];
   productsCatalog: Product[];
 }
@@ -104,8 +106,10 @@ export function processCheckout(params: CheckoutParams): CheckoutResult {
   }
 
   // 2. Calculate summary totals
-  const applyTax = documentType !== 'remito';
-  const summary = calculateBillSummary(items, applyTax);
+  const defaultApplyTax = (documentType === 'factura-a' || documentType === 'factura-b');
+  const shouldApplyTax = params.applyTax !== undefined ? params.applyTax : defaultApplyTax;
+  const taxRate = params.taxRate !== undefined ? params.taxRate : 21;
+  const summary = calculateBillSummary(items, shouldApplyTax, taxRate);
 
   // 3. AFIP integration if requested
   let afipCae: string | undefined;

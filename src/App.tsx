@@ -163,6 +163,9 @@ export const App: React.FC = () => {
       return;
     }
     const nav = resolveNavigationState(mod);
+    if (mod === 'cobros') {
+      setPendingBillingItems(undefined);
+    }
     setActiveModuleState(nav.module);
     setActiveSubmodule(nav.submodule);
   }, [userSession]);
@@ -305,6 +308,8 @@ export const App: React.FC = () => {
     setPatients([newPat, ...patients]);
     setSelectedPatient(newPat);
     const res = await insertPatientToSupabase(newPat);
+    setActiveModuleState('pacientes');
+    setActiveSubmodule('ficha-pacientes');
     setNotifModal({
       isOpen: true,
       title: res.success ? '¡Paciente Guardado!' : 'Aviso de Almacenamiento',
@@ -386,11 +391,22 @@ export const App: React.FC = () => {
     setExpenses(prev => prev.map(e => e.id === id ? { ...updatedData, id } : e));
   };
 
-  const handleNavigateToBillingFromAppointment = useCallback((patientId: string, _serviceName: string, _amount: number) => {
+  const [pendingBillingItems, setPendingBillingItems] = useState<BillItem[] | undefined>(undefined);
+
+  const handleNavigateToBillingFromAppointment = useCallback((patientId: string, serviceName: string, amount: number) => {
     const pat = patients.find(p => p.id === patientId);
     if (pat) {
       setSelectedPatient(pat);
     }
+    const autoItem: BillItem = {
+      id: `appt-${Date.now()}`,
+      description: serviceName || 'Consulta / Servicio',
+      category: 'Servicio agendado',
+      quantity: 1,
+      unitPrice: amount || 15000,
+      discountPercent: 0
+    };
+    setPendingBillingItems([autoItem]);
     setActiveModuleState('cobros');
     setActiveSubmodule('nueva-facturacion');
   }, [patients]);
@@ -445,6 +461,7 @@ export const App: React.FC = () => {
       type: 'success',
       message: `¡Cobro emitido exitosamente! Comprobante N° ${result.receipt.receiptNumber}${result.receipt.afipCae ? ' (CAE AFIP: ' + result.receipt.afipCae + ')' : ''}`
     });
+    setActiveSubmodule('historial-cobros');
   };
 
   const handleNavigateFromShortcut = (target: string) => {
@@ -627,6 +644,7 @@ export const App: React.FC = () => {
               selectedPatient={selectedPatient}
               receipts={receipts}
               activeSubmodule={activeSubmodule}
+              initialItems={pendingBillingItems}
               onCheckout={handleCheckout}
               onNavigateToHistorial={() => setActiveSubmodule('historial-cobros')}
             />

@@ -1,14 +1,12 @@
-## Estándar Tipográfico y Jerarquía de Pesos (Global)
+## Estándar Estricto de Alineación y Eliminación de Íconos en Títulos
 
 **Qué hace:** 
-Este documento define la regla tipográfica unificada para todos los módulos y submódulos de VETSOFT.
+Este documento define la regla estricta de posicionamiento y alineación limpia de los encabezados principales en todos los módulos y submódulos de VETSOFT.
 
-**Reglas Tipográficas Enforzadas:**
-1. **Tipografía Unificada:** Todos los módulos utilizan la familia tipográfica institucional `Work Sans` (`font-body-md`, `font-headline-sm`, `font-display-lg`).
-2. **Nombres de Vacunas y Datos de Tablas:** Todos los nombres de vacunas, productos, proveedores y valores de celdas se renderizan en **color negro/pizarra oscuro (`text-slate-900` / `text-slate-800`)** y con **grosor de letra normal/fina (`font-medium` o `font-normal`)**, eliminado completamente el color lila y las negritas pesadas en los datos.
-3. **Uso Exclusivo de Negrita (`font-bold` / `font-semibold`):** Reservado únicamente para:
-   - Títulos de vistas y tarjetas (`<h1>`, `<h2>`, `<h3>`).
-   - Encabezados de tablas (`<th>`).
-   - Cifras totales o métricas principales (ej: `$150.000` en KPI Cards).
-   - Badges de estado (`PAGADO`, `PENDIENTE`, `Activa`, `Vencida`).
-   - Texto de botones principales de acción.
+**Reglas de Alineación e Íconos:**
+1. **Eliminación Total de Íconos en Encabezados:**
+   - Queda estrictamente prohibida la inclusión de cajas con íconos (ej: estetoscopios, jeringas, etc.) al lado de los títulos principales de módulo.
+   - El texto del título inicia exactamente sobre el margen izquierdo principal.
+2. **Alineación Impecable:**
+   - Todos los títulos principales de pantalla inician exactamente en la misma posición superior izquierda del área de contenido principal (`flex items-center justify-between mb-md`).
+   - Se removieron los envoltorios o cajas de tarjetas (`bg-white rounded-2xl p-md shadow-sm`) que desplazaban los títulos hacia adentro en vistas como *Nueva Consulta*, *Cobros* o *Vacunas*.

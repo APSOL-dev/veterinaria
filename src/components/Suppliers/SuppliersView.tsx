@@ -176,12 +176,12 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   return (
     <div className="flex flex-col w-full h-full gap-md font-body-md text-on-surface">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-md">
         <div>
-          <h1 className="font-display-lg text-[22px] text-primary leading-tight font-bold">
+          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
             {activeSubModule === 'facturas' ? 'Proveedores — Facturas de Compras' : 'Proveedores — Registrar Gastos'}
           </h1>
-          <p className="font-body-md text-xs text-on-surface-variant">
+          <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
             {activeSubModule === 'facturas' 
               ? 'Control de comprobantes de ingreso de mercadería, proyección de erogaciones y pagos'
               : 'Gestión y registro directo de gastos de operación y proveedores'}

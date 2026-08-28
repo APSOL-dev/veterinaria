@@ -185,6 +185,18 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* Right Column: Detailed Patient Profile */}
       <main className="flex flex-col flex-1 min-w-0 gap-sm overflow-hidden">
+        {/* Module Title Header */}
+        <div className="flex items-center justify-between mb-md shrink-0">
+          <div>
+            <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+              Pacientes — Ficha Médica ({selectedPatient.name})
+            </h1>
+            <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
+              Historia clínica consolidada, registro de consultas, vacunas y prescripciones
+            </p>
+          </div>
+        </div>
+
         {/* Pet Hero Card */}
         <header className="bg-white rounded-2xl shadow-sm p-md flex flex-col gap-sm border border-slate-200 shrink-0">
           <div className="flex flex-col md:flex-row gap-md items-start md:items-center justify-between">
@@ -208,9 +220,9 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               </div>
 
               <div>
-                <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+                <h2 className="font-headline-sm text-lg text-slate-900 leading-tight font-bold">
                   {selectedPatient.name}
-                </h1>
+                </h2>
                 <p className="font-body-md text-xs text-slate-600 font-medium flex flex-wrap items-center gap-1.5 mt-0.5">
                   <span>{selectedPatient.species} • {selectedPatient.breed}</span>
                   <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
