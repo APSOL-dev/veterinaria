@@ -45,6 +45,7 @@ import {
   BillItem,
   SupplierBill,
   SupplierQuote,
+  SupplierPayment,
   ServiceCatalogItem,
   ExpenseRecord
 } from './domain/types';
@@ -55,6 +56,7 @@ import { processCheckout } from './domain/services/billingService';
 import { createNewPatientRecord } from './domain/services/patientService';
 import { createSupplierBillRecord, createSupplierQuoteRecord } from './domain/services/supplierService';
 import { createExpenseRecord } from './domain/services/expenseService';
+import { createPaymentRecord } from './domain/services/paymentService';
 import { resolveNavigationState } from './domain/services/navigationService';
 import { canAccessModule, getDefaultModuleForRole } from './domain/services/rbacService';
 import { 
@@ -105,6 +107,7 @@ export const App: React.FC = () => {
   const [supplierQuotes, setSupplierQuotes] = useState<SupplierQuote[]>(initialSupplierQuotes);
   const [monthlyBudgets, setMonthlyBudgets] = useState<Record<string, number>>(initialMonthlyBudgets);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>(initialExpenses);
+  const [payments, setPayments] = useState<SupplierPayment[]>([]);
 
   React.useEffect(() => {
     const preventDefaultDrop = (e: DragEvent) => {
@@ -432,6 +435,17 @@ export const App: React.FC = () => {
     insertExpenseToSupabase(duplicated);
   };
 
+  const handleAddPayment = (paymentData: Omit<SupplierPayment, 'id'>) => {
+    const payment = createPaymentRecord(paymentData);
+    setPayments(prev => [payment, ...prev]);
+    setNotifModal({
+      isOpen: true,
+      title: '¡Pago Registrado!',
+      type: 'success',
+      message: `Pago de $${payment.amount.toLocaleString('es-AR')} registrado para la factura ${payment.billInvoiceNumber} de ${payment.supplierName}.`
+    });
+  };
+
   const handleCheckout = (data: {
     patientId?: string;
     patientName?: string;
@@ -512,8 +526,15 @@ export const App: React.FC = () => {
               bills={supplierBills}
               quotes={supplierQuotes}
               expenses={expenses}
+              payments={payments}
               monthlyBudgets={monthlyBudgets}
-              activeSubModule={activeSubmodule === 'presupuestos' ? 'presupuestos' : 'facturas'}
+              activeSubModule={
+                activeSubmodule === 'presupuestos'
+                  ? 'presupuestos'
+                  : activeSubmodule === 'pagos'
+                  ? 'pagos'
+                  : 'facturas'
+              }
               onAddBill={handleAddSupplierBill}
               onUpdateBill={handleUpdateSupplierBill}
               onDeleteBill={handleDeleteSupplierBill}
@@ -523,6 +544,7 @@ export const App: React.FC = () => {
               onUpdateExpense={handleUpdateExpense}
               onDeleteExpense={handleDeleteExpense}
               onDuplicateExpense={handleDuplicateExpense}
+              onAddPayment={handleAddPayment}
             />
           )}
 

@@ -222,6 +222,19 @@ export interface BillItem {
   subtotal?: number;
 }
 
+export type SupplierPaymentMethod = 'Efectivo' | 'Transferencia' | 'Cheque' | 'Tarjeta' | 'Otro';
+
+export interface SupplierPayment {
+  id: string;
+  billId: string;
+  billInvoiceNumber: string;
+  supplierName: string;
+  date: string; // YYYY-MM-DD
+  amount: number;
+  paymentMethod: SupplierPaymentMethod;
+  note?: string;
+}
+
 export interface BillReceipt {
   id: string;
   receiptNumber: string; // e.g. FC-B-0001-00004521

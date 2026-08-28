@@ -1,15 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { SupplierBill, SupplierQuote, ExpenseRecord } from '../../domain/types';
+import { SupplierBill, SupplierQuote, ExpenseRecord, SupplierPayment, SupplierPaymentMethod } from '../../domain/types';
 import { calculateSupplierTotals, calculateMonthlyExpenditureProjections } from '../../domain/services/supplierService';
 import { filterExpenseRecords, calculateExpenseTotals } from '../../domain/services/expenseService';
+import { getTotalPaidForBill, getRemainingBalance } from '../../domain/services/paymentService';
 import { NewInvoiceDrawer } from './NewInvoiceDrawer';
 
 interface SuppliersViewProps {
   bills: SupplierBill[];
   quotes: SupplierQuote[];
   expenses?: ExpenseRecord[];
+  payments?: SupplierPayment[];
   monthlyBudgets?: Record<string, number>;
-  activeSubModule: 'facturas' | 'presupuestos';
+  activeSubModule: 'facturas' | 'presupuestos' | 'pagos';
   onAddBill: (bill: Omit<SupplierBill, 'id'>) => void;
   onUpdateBill?: (id: string, bill: Omit<SupplierBill, 'id'>) => void;
   onDeleteBill?: (id: string) => void;
@@ -19,12 +21,14 @@ interface SuppliersViewProps {
   onUpdateExpense?: (id: string, expense: Omit<ExpenseRecord, 'id'>) => void;
   onDeleteExpense?: (id: string) => void;
   onDuplicateExpense?: (id: string) => void;
+  onAddPayment?: (payment: Omit<SupplierPayment, 'id'>) => void;
 }
 
 export const SuppliersView: React.FC<SuppliersViewProps> = ({
   bills,
   quotes,
   expenses = [],
+  payments = [],
   monthlyBudgets = {},
   activeSubModule,
   onAddBill,
@@ -35,7 +39,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   onAddExpense,
   onUpdateExpense,
   onDeleteExpense,
-  onDuplicateExpense
+  onDuplicateExpense,
+  onAddPayment
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [showInvoiceDrawer, setShowInvoiceDrawer] = useState(false);
@@ -46,6 +51,14 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   const [facturasTab, setFacturasTab] = useState<'resumen' | 'listado'>('resumen');
   const [editingBudgetMonth, setEditingBudgetMonth] = useState<string | null>(null);
   const [tempBudgetInput, setTempBudgetInput] = useState<string>('');
+
+  // Submodule: Pagos — modal de registro de pago
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentBillId, setPaymentBillId] = useState<string>('');
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [paymentMethod, setPaymentMethod] = useState<SupplierPaymentMethod>('Efectivo');
+  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [paymentNote, setPaymentNote] = useState<string>('');
 
   // Submodule: Registrar Gastos filter state
   const [filterResponsible, setFilterResponsible] = useState<string>('all');
@@ -173,28 +186,79 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
     setEditingBudgetMonth(null);
   };
 
+  const handleOpenPaymentModal = (bill?: SupplierBill) => {
+    if (bill) {
+      const remaining = getRemainingBalance(bill, payments);
+      setPaymentBillId(bill.id);
+      setPaymentAmount(remaining);
+    } else {
+      setPaymentBillId(bills.length > 0 ? bills[0].id : '');
+      setPaymentAmount(0);
+    }
+    setPaymentMethod('Efectivo');
+    setPaymentDate(new Date().toISOString().split('T')[0]);
+    setPaymentNote('');
+    setShowPaymentModal(true);
+  };
+
+  const handleSubmitPayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentBillId || paymentAmount <= 0) return;
+    const selectedBill = bills.find(b => b.id === paymentBillId);
+    if (!selectedBill) return;
+    if (onAddPayment) {
+      onAddPayment({
+        billId: paymentBillId,
+        billInvoiceNumber: selectedBill.invoiceNumber,
+        supplierName: selectedBill.supplierName,
+        date: paymentDate,
+        amount: paymentAmount,
+        paymentMethod,
+        note: paymentNote.trim() || undefined,
+      });
+    }
+    setShowPaymentModal(false);
+  };
+
   return (
     <div className="flex flex-col w-full h-full gap-md font-body-md text-on-surface">
       {/* Header */}
       <div className="flex items-center justify-between mb-md">
         <div>
           <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
-            {activeSubModule === 'facturas' ? 'Proveedores — Facturas de Compras' : 'Proveedores — Registrar Gastos'}
+            {activeSubModule === 'facturas'
+              ? 'Proveedores — Facturas de Compras'
+              : activeSubModule === 'pagos'
+              ? 'Proveedores — Pagos'
+              : 'Proveedores — Registrar Gastos'}
           </h1>
           <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
-            {activeSubModule === 'facturas' 
+            {activeSubModule === 'facturas'
               ? 'Control de comprobantes de ingreso de mercadería, proyección de erogaciones y pagos'
+              : activeSubModule === 'pagos'
+              ? 'Historial de pagos registrados a facturas de proveedores'
               : 'Gestión y registro directo de gastos de operación y proveedores'}
+
           </p>
         </div>
 
         <button
           type="button"
-          onClick={() => activeSubModule === 'facturas' ? handleOpenAddBill() : handleOpenAddExpenseModal()}
+          onClick={() =>
+            activeSubModule === 'facturas'
+              ? handleOpenAddBill()
+              : activeSubModule === 'pagos'
+              ? handleOpenPaymentModal()
+              : handleOpenAddExpenseModal()
+          }
           className="bg-primary text-on-primary hover:bg-primary-container px-md py-2 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-sm transition-all cursor-pointer"
         >
           <span className="material-symbols-outlined text-[16px]">add</span>
-          {activeSubModule === 'facturas' ? 'Registrar Factura' : 'Registrar Gasto'}
+          {activeSubModule === 'facturas'
+            ? 'Registrar Factura'
+            : activeSubModule === 'pagos'
+            ? 'Registrar pago'
+            : 'Registrar Gasto'}
         </button>
       </div>
 
@@ -336,65 +400,144 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   </table>
                 </div>
               ) : (
-                <table className="w-full text-left font-body-md text-xs">
-                  <thead className="bg-surface-container-low text-on-surface-variant font-label-md uppercase text-[10px]">
-                    <tr>
-                      <th className="p-sm px-md">Fecha Emisión</th>
-                      <th className="p-sm px-md">Fecha Pago</th>
-                      <th className="p-sm px-md">Proveedor</th>
-                      <th className="p-sm px-md">N° Factura</th>
-                      <th className="p-sm px-md text-center">Ítems</th>
-                      <th className="p-sm px-md text-right">Monto Total</th>
-                      <th className="p-sm px-md text-center">Estado</th>
-                      <th className="p-sm px-md text-center">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-on-surface">
-                    {bills.map((bill) => (
-                      <tr key={bill.id} className="border-b border-surface-container-low hover:bg-surface-container transition-colors">
-                        <td className="p-sm px-md font-normal text-slate-700">{bill.date}</td>
-                        <td className="p-sm px-md font-normal text-slate-700">{bill.paymentDate || bill.date}</td>
-                        <td className="p-sm px-md font-medium text-slate-900">{bill.supplierName}</td>
-                        <td className="p-sm px-md font-mono text-[11px]">{bill.invoiceNumber}</td>
-                        <td className="p-sm px-md text-center">{bill.itemsCount}</td>
-                        <td className="p-sm px-md text-right font-bold">${(bill.amount || 0).toLocaleString('es-AR')}</td>
-                        <td className="p-sm px-md text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            bill.status === 'paid' ? 'bg-[#E8F5E9] text-[#27AE60]' : 'bg-[#FDEDEC] text-[#C0392B]'
-                          }`}>
-                            {bill.status === 'paid' ? 'PAGADO' : 'PENDIENTE'}
-                          </span>
-                        </td>
-                        <td className="p-sm px-md text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              title="Editar factura"
-                              onClick={() => handleOpenEditBill(bill)}
-                              className="p-1 text-slate-400 hover:text-primary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">edit</span>
-                            </button>
-                            <button
-                              type="button"
-                              title="Eliminar factura"
-                              onClick={() => handleDeleteBillClick(bill)}
-                              className="p-1 text-slate-400 hover:text-error transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
-                          </div>
-                        </td>
+                  <table className="w-full text-left font-body-md text-xs">
+                    <thead className="bg-surface-container-low text-on-surface-variant font-label-md uppercase text-[10px]">
+                      <tr>
+                        <th className="p-sm px-md">Fecha Emisión</th>
+                        <th className="p-sm px-md">Fecha Pago</th>
+                        <th className="p-sm px-md">Proveedor</th>
+                        <th className="p-sm px-md">N° Factura</th>
+                        <th className="p-sm px-md text-center">Ítems</th>
+                        <th className="p-sm px-md text-right">Monto Total</th>
+                        <th className="p-sm px-md text-right">Saldo Restante</th>
+                        <th className="p-sm px-md text-center">Estado</th>
+                        <th className="p-sm px-md text-center">Acciones</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="text-on-surface">
+                      {bills.map((bill) => {
+                        const totalPaid = getTotalPaidForBill(payments, bill.id);
+                        const remaining = getRemainingBalance(bill, payments);
+                        const isPaid = remaining === 0;
+                        const isPartial = totalPaid > 0 && !isPaid;
+
+                        let badgeClass = 'bg-[#FDEDEC] text-[#C0392B]';
+                        let badgeLabel = 'PENDIENTE';
+                        if (isPaid) {
+                          badgeClass = 'bg-[#E8F5E9] text-[#27AE60]';
+                          badgeLabel = 'PAGADO';
+                        } else if (isPartial) {
+                          badgeClass = 'bg-[#FEF9E7] text-[#D35400]';
+                          badgeLabel = 'PAGO PARCIAL';
+                        }
+
+                        return (
+                          <tr key={bill.id} className="border-b border-surface-container-low hover:bg-surface-container transition-colors">
+                            <td className="p-sm px-md font-normal text-slate-700">{bill.date}</td>
+                            <td className="p-sm px-md font-normal text-slate-700">{bill.paymentDate || bill.date}</td>
+                            <td className="p-sm px-md font-medium text-slate-900">{bill.supplierName}</td>
+                            <td className="p-sm px-md font-mono text-[11px]">{bill.invoiceNumber}</td>
+                            <td className="p-sm px-md text-center">{bill.itemsCount}</td>
+                            <td className="p-sm px-md text-right font-bold">${(bill.amount || 0).toLocaleString('es-AR')}</td>
+                            <td className="p-sm px-md text-right font-bold text-error">
+                              {remaining > 0 ? `$${remaining.toLocaleString('es-AR')}` : <span className="text-[#27AE60]">$0</span>}
+                            </td>
+                            <td className="p-sm px-md text-center">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}`}>
+                                {badgeLabel}
+                              </span>
+                            </td>
+                            <td className="p-sm px-md text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  title="Registrar pago"
+                                  onClick={() => handleOpenPaymentModal(bill)}
+                                  className="p-1 text-slate-400 hover:text-[#27AE60] transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">price_check</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Editar factura"
+                                  onClick={() => handleOpenEditBill(bill)}
+                                  className="p-1 text-slate-400 hover:text-primary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Eliminar factura"
+                                  onClick={() => handleDeleteBillClick(bill)}
+                                  className="p-1 text-slate-400 hover:text-error transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
               )}
             </div>
           </div>
         </>
+      ) : activeSubModule === 'pagos' ? (
+        /* SUBMODULE: Pagos */
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/30 flex-1 overflow-hidden flex flex-col">
+          {payments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center flex-1 gap-sm text-on-surface-variant py-xl">
+              <span className="material-symbols-outlined text-[48px] opacity-30">price_check</span>
+              <p className="font-label-md text-sm font-medium">No hay pagos registrados aún.</p>
+              <button
+                type="button"
+                onClick={() => handleOpenPaymentModal()}
+                className="mt-sm bg-primary text-on-primary hover:bg-primary-container px-md py-2 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-sm transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                Registrar primer pago
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto flex-1">
+              <table className="w-full text-left font-body-md text-xs">
+                <thead className="bg-surface-container-low text-on-surface-variant font-label-md uppercase text-[10px]">
+                  <tr>
+                    <th className="p-sm px-md">Fecha</th>
+                    <th className="p-sm px-md">Proveedor</th>
+                    <th className="p-sm px-md">N° Factura</th>
+                    <th className="p-sm px-md">Método</th>
+                    <th className="p-sm px-md text-right">Monto Pagado</th>
+                    <th className="p-sm px-md">Nota</th>
+                  </tr>
+                </thead>
+                <tbody className="text-on-surface">
+                  {[...payments].sort((a, b) => b.date.localeCompare(a.date)).map((pay) => (
+                    <tr key={pay.id} className="border-b border-surface-container-low hover:bg-surface-container transition-colors">
+                      <td className="p-sm px-md font-normal text-slate-700">{pay.date}</td>
+                      <td className="p-sm px-md font-medium text-slate-900">{pay.supplierName}</td>
+                      <td className="p-sm px-md font-mono text-[11px]">{pay.billInvoiceNumber}</td>
+                      <td className="p-sm px-md">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-container text-on-surface-variant border border-outline-variant/40">
+                          {pay.paymentMethod}
+                        </span>
+                      </td>
+                      <td className="p-sm px-md text-right font-bold text-[#27AE60]">
+                        ${pay.amount.toLocaleString('es-AR')}
+                      </td>
+                      <td className="p-sm px-md text-slate-500 italic text-[11px]">{pay.note || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       ) : (
         /* SUBMODULE: Registrar Gastos */
+
         <div className="flex flex-col gap-md flex-1 overflow-hidden">
           {/* Filters Bar & KPI Card Container */}
           <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-md">
@@ -714,6 +857,122 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   className="px-md py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary-container text-on-primary shadow-sm transition-all cursor-pointer"
                 >
                   {editingExpenseId ? 'Guardar Cambios' : 'Registrar Gasto'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Registrar Pago */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-md" onClick={() => setShowPaymentModal(false)}>
+          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant/30 w-full max-w-md flex flex-col gap-md p-md" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center border-b border-slate-200 pb-xs">
+              <h3 className="font-headline-sm text-slate-900 text-sm font-bold flex items-center gap-xs">
+                <span className="material-symbols-outlined text-[#27AE60] text-[20px]">price_check</span>
+                Registrar Pago a Factura
+              </h3>
+              <button type="button" onClick={() => setShowPaymentModal(false)} className="text-slate-400 hover:text-error transition-colors cursor-pointer">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitPayment} className="flex flex-col gap-sm">
+              {/* Selector de factura */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase">Factura *</label>
+                <select
+                  value={paymentBillId}
+                  onChange={(e) => {
+                    setPaymentBillId(e.target.value);
+                    const b = bills.find(b => b.id === e.target.value);
+                    if (b) setPaymentAmount(getRemainingBalance(b, payments));
+                  }}
+                  required
+                  className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
+                >
+                  <option value="">Seleccionar factura...</option>
+                  {bills.map(b => {
+                    const rem = getRemainingBalance(b, payments);
+                    return (
+                      <option key={b.id} value={b.id}>
+                        {b.invoiceNumber} — {b.supplierName} (Saldo: ${rem.toLocaleString('es-AR')})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-sm">
+                {/* Monto */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Monto ($) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                    required
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-bold outline-none focus:border-primary"
+                  />
+                </div>
+
+                {/* Fecha */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Fecha *</label>
+                  <input
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    required
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Método de pago */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase">Método de Pago *</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as SupplierPaymentMethod)}
+                  className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
+                >
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Transferencia">Transferencia</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="Tarjeta">Tarjeta</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+
+              {/* Nota */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase">Nota (opcional)</label>
+                <input
+                  type="text"
+                  value={paymentNote}
+                  onChange={(e) => setPaymentNote(e.target.value)}
+                  placeholder="ej. Transferencia banco Nación ref. 12345"
+                  className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="flex justify-end gap-sm pt-sm border-t border-outline-variant/20">
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentModal(false)}
+                  className="px-md py-2 rounded-xl text-xs font-bold bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-md py-2 rounded-xl text-xs font-bold bg-[#27AE60] hover:bg-[#1e8449] text-white shadow-sm transition-all cursor-pointer"
+                >
+                  Registrar Pago
                 </button>
               </div>
             </form>
