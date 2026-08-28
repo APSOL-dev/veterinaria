@@ -1,22 +1,18 @@
-## Módulo de Gestión de Pacientes y Ficha Médica
+## Gestión y Edición de Datos de Pacientes (Ficha Médica)
 
 **Qué hace:** 
-Proporciona una vista centralizada para la búsqueda, filtrado, alta rápida y consulta detallada del expediente clínico de cada mascota atendida en la clínica veterinaria.
+Este documento define el flujo de visualización y edición directa de los datos clínicos de la mascota desde el módulo **Ficha de Pacientes**.
 
-**Escenarios cubiertos:**
-- **Ficha Médica Hero Card:**
-  - **Banner de Alertas Clínicas:** Despliega advertencias visuales de seguridad (alergias a fármacos, condiciones crónicas como diabetes, esterilización).
-  - **Acciones Rápidas de Contacto:** Enlaces directos a WhatsApp (`https://wa.me/...`) y llamadas telefónicas con el propietario.
-  - **Barra de Accesos Directos:** Navegación en un clic hacia `🩺 Nueva Consulta`, `💉 Registrar Vacuna`, `📅 Agendar Turno` y `📄 Exportar/Imprimir HC (PDF)`.
-- **Lista de Pacientes y Filtrado:**
-  - **Alta Rápida (`+ Nuevo Paciente`):** Modal de registro validado con datos de mascota, propietario y alertas clínicas.
-  - **Filtros por Especie y Estado:** Pestañas *pills* para filtrar por `Todos`, `🐶 Caninos`, `🐱 Felinos` y `⚠️ Con Alertas`.
-- **Evolución de Peso (Sparkline):**
-  - Gráfico dinámico de tendencia de peso a lo largo de las consultas históricas, mostrando el indicador neto de variación (`+1.4 kg` / `-0.5 kg`).
-
-**Casos borde conocidos:**
-- Mascotas sin teléfono de contacto: Se omite el acceso a WhatsApp sin romper la maquetación.
-- Pacientes sin historial previo de peso: Muestra indicador "Estable" por defecto.
-
-**Restricciones o supuestos:**
-- Todas las alertas médicas registradas se destacan tanto en la ficha técnica como con badges en la lista principal.
+**Edición de Datos de Mascota:**
+1. **Acceso al Formulario:**
+   - En la tarjeta principal del paciente (Pet Hero Card) de la **Ficha Médica**, se incluye el botón **"Editar Mascota"**.
+2. **Campos Editables:**
+   - Nombre de la mascota
+   - Especie (Canino, Felino, Ave, Roedor, Reptil, Otro)
+   - Raza
+   - Sexo (Macho, Hembra, Indeterminado)
+   - Fecha de Nacimiento
+   - Peso actual en kg (actualiza automáticamente el historial de evolución ponderal si cambia)
+   - Alertas médicas y alergias conocidas
+3. **Persistencia y Actualización:**
+   - La función `updatePatientRecord` en `patientService.ts` procesa la modificación y refresca la lista global de pacientes y el estado de la vista en tiempo real.

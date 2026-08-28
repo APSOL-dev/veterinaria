@@ -619,6 +619,7 @@ export const App: React.FC = () => {
                   vaccineDoses={vaccineDoses}
                   onNavigateToTab={handleNavigateFromShortcut}
                   onAddPatient={handleAddPatient}
+                  onUpdatePatients={setPatients}
                 />
               )}
             </>

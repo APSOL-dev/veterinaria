@@ -87,3 +87,29 @@ export function formatAttachmentFileList(files: (File | string)[]): string[] {
   if (!Array.isArray(files)) return [];
   return files.map(f => typeof f === 'string' ? f : f.name).filter(Boolean);
 }
+
+export function updatePatientRecord(
+  patients: Patient[],
+  patientId: string,
+  updates: Partial<Patient>
+): Patient[] {
+  const currentDateLabel = new Date().toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+
+  return patients.map(p => {
+    if (p.id !== patientId) return p;
+
+    const newWeight = updates.weightKg !== undefined ? Number(updates.weightKg) : p.weightKg;
+    let updatedHistory = p.weightHistory ? [...p.weightHistory] : [];
+
+    if (newWeight !== undefined && newWeight > 0 && newWeight !== p.weightKg) {
+      updatedHistory.push({ date: currentDateLabel, weightKg: newWeight });
+    }
+
+    return {
+      ...p,
+      ...updates,
+      weightKg: newWeight,
+      weightHistory: updatedHistory
+    };
+  });
+}

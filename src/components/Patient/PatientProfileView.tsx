@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Patient, ClinicalNote, VaccineDosis } from '../../domain/types';
-import { filterPatients, calculateWeightTrend } from '../../domain/services/patientService';
+import { Patient, ClinicalNote, VaccineDosis, Species, Sex } from '../../domain/types';
+import { filterPatients, calculateWeightTrend, updatePatientRecord } from '../../domain/services/patientService';
 import { NewPatientModal } from './NewPatientModal';
+import { AppNotificationModal } from '../Common/AppNotificationModal';
 
 interface PatientProfileViewProps {
   patients: Patient[];
@@ -12,6 +13,7 @@ interface PatientProfileViewProps {
   vaccineDoses: VaccineDosis[];
   onNavigateToTab: (tabName: string) => void;
   onAddPatient?: (patientData: any) => void;
+  onUpdatePatients?: (updatedPatients: Patient[]) => void;
 }
 
 export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
@@ -22,7 +24,8 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   onAddClinicalNote,
   vaccineDoses,
   onNavigateToTab,
-  onAddPatient
+  onAddPatient,
+  onUpdatePatients
 }) => {
   const [newNoteText, setNewNoteText] = useState('');
   const [newPrescriptionText, setNewPrescriptionText] = useState('');
@@ -30,6 +33,63 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   const [patientSearch, setPatientSearch] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('Todos');
   const [showNewPatientModal, setShowNewPatientModal] = useState(false);
+
+  // Edit Pet Modal state
+  const [showEditPetModal, setShowEditPetModal] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editSpecies, setEditSpecies] = useState<Species>('Canino');
+  const [editBreed, setEditBreed] = useState('');
+  const [editSex, setEditSex] = useState<Sex>('Macho');
+  const [editBirthDate, setEditBirthDate] = useState('');
+  const [editWeightKg, setEditWeightKg] = useState(0);
+  const [editAlertsStr, setEditAlertsStr] = useState('');
+  const [notifModal, setNotifModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+
+  const handleOpenEditPetModal = () => {
+    setEditName(selectedPatient.name);
+    setEditSpecies(selectedPatient.species);
+    setEditBreed(selectedPatient.breed);
+    setEditSex(selectedPatient.sex);
+    setEditBirthDate(selectedPatient.birthDate);
+    setEditWeightKg(selectedPatient.weightKg || 0);
+    setEditAlertsStr((selectedPatient.alerts || []).join(', '));
+    setShowEditPetModal(true);
+  };
+
+  const handleSavePetEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim()) return;
+
+    const parsedAlerts = editAlertsStr
+      .split(',')
+      .map(a => a.trim())
+      .filter(Boolean);
+
+    const updatedList = updatePatientRecord(patients, selectedPatient.id, {
+      name: editName.trim(),
+      species: editSpecies,
+      breed: editBreed.trim(),
+      sex: editSex,
+      birthDate: editBirthDate,
+      weightKg: Number(editWeightKg),
+      alerts: parsedAlerts
+    });
+
+    if (onUpdatePatients) {
+      onUpdatePatients(updatedList);
+    }
+
+    const updatedPet = updatedList.find(p => p.id === selectedPatient.id);
+    if (updatedPet) {
+      onSelectPatient(updatedPet);
+    }
+
+    setShowEditPetModal(false);
+    setNotifModal({
+      isOpen: true,
+      message: '¡Datos de la mascota actualizados correctamente!'
+    });
+  };
 
   const filteredPatients = useMemo(
     () => filterPatients(patients, patientSearch, selectedCategoryFilter),
@@ -246,6 +306,15 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                       WhatsApp
                     </a>
                   )}
+
+                  <button
+                    onClick={handleOpenEditPetModal}
+                    className="bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-2.5 py-0.5 rounded-full font-label-sm text-[10px] font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer ml-xs"
+                    title="Editar datos clínicos del paciente"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">edit</span>
+                    Editar datos del paciente
+                  </button>
                 </div>
               </div>
             </div>
@@ -474,6 +543,141 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
           }}
         />
       )}
+
+      {/* Edit Pet Modal */}
+      {showEditPetModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-md shadow-2xl flex flex-col gap-md border border-slate-200">
+            <div className="flex justify-between items-center border-b border-slate-200 pb-xs">
+              <h3 className="font-headline-sm text-slate-900 text-sm font-bold flex items-center gap-xs">
+                <span className="material-symbols-outlined text-[#9A7DB8] text-[20px]">edit_note</span>
+                Editar Datos del Paciente ({selectedPatient.name})
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowEditPetModal(false)}
+                className="text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePetEditSubmit} className="flex flex-col gap-sm text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-sm">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Nombre de la Mascota</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    required
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-bold outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Especie</label>
+                  <select
+                    value={editSpecies}
+                    onChange={(e) => setEditSpecies(e.target.value as Species)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-bold outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                  >
+                    <option value="Canino">Canino</option>
+                    <option value="Felino">Felino</option>
+                    <option value="Ave">Ave</option>
+                    <option value="Roedor">Roedor</option>
+                    <option value="Reptil">Reptil</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Raza</label>
+                  <input
+                    type="text"
+                    value={editBreed}
+                    onChange={(e) => setEditBreed(e.target.value)}
+                    required
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-medium outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Sexo</label>
+                  <select
+                    value={editSex}
+                    onChange={(e) => setEditSex(e.target.value as Sex)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-bold outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                  >
+                    <option value="Macho">Macho</option>
+                    <option value="Hembra">Hembra</option>
+                    <option value="Indeterminado">Indeterminado</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Fecha de Nacimiento</label>
+                  <input
+                    type="date"
+                    value={editBirthDate}
+                    onChange={(e) => setEditBirthDate(e.target.value)}
+                    required
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-medium outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Peso Actual (kg)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={editWeightKg}
+                    onChange={(e) => setEditWeightKg(Number(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-bold outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Alertas Médicas / Alergias (separadas por comas)
+                </label>
+                <input
+                  type="text"
+                  value={editAlertsStr}
+                  onChange={(e) => setEditAlertsStr(e.target.value)}
+                  placeholder="Ej: Alérgico a Penicilina, Diabético, Sensibilidad digestiva"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-medium outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-sm pt-xs border-t border-slate-200 mt-xs">
+                <button
+                  type="button"
+                  onClick={() => setShowEditPetModal(false)}
+                  className="px-md py-1.5 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-md py-1.5 rounded-xl bg-[#9A7DB8] hover:bg-[#8362A5] text-white font-bold transition-all shadow-sm cursor-pointer"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <AppNotificationModal
+        isOpen={notifModal.isOpen}
+        message={notifModal.message}
+        type="success"
+        onClose={() => setNotifModal({ isOpen: false, message: '' })}
+      />
     </div>
   );
 };

@@ -4,7 +4,8 @@ import {
   filterPatients, 
   createNewPatientRecord, 
   calculateWeightTrend,
-  formatAttachmentFileList 
+  formatAttachmentFileList,
+  updatePatientRecord
 } from './patientService';
 
 const mockPatients: Patient[] = [
@@ -122,5 +123,19 @@ describe('patientService', () => {
     expect(trend.diff).toBeCloseTo(1.4);
     expect(trend.direction).toBe('up');
     expect(trend.formatted).toBe('+1.4 kg');
+  });
+
+  it('updatePatientRecord should update target pet fields correctly', () => {
+    const updatedList = updatePatientRecord(mockPatients, 'pat-2', {
+      name: 'Muna Editada',
+      weightKg: 4.8,
+      breed: 'Siamés Mestizo'
+    });
+
+    const muna = updatedList.find(p => p.id === 'pat-2');
+    expect(muna?.name).toBe('Muna Editada');
+    expect(muna?.weightKg).toBe(4.8);
+    expect(muna?.breed).toBe('Siamés Mestizo');
+    expect(muna?.weightHistory).toContainEqual(expect.objectContaining({ weightKg: 4.8 }));
   });
 });
