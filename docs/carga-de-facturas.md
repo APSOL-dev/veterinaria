@@ -1,9 +1,12 @@
-## Carga de Facturas de Proveedores (Eliminación de Placeholders e Inclusión de Fecha de Pago)
+## Carga, Edición y Eliminación de Facturas de Proveedores
 
 **Qué hace:** 
-Este panel lateral deslizante derecho ("Cargar Nueva Factura") en el submódulo **Facturas de compras** elimina el texto de sugerencia/ejemplo en las cajas de entrada y añade la fecha de pago estimada o efectiva.
+Este panel lateral deslizante derecho ("Cargar Nueva Factura" / "Editar Factura de Proveedor") en el submódulo **Facturas de compras** permite cargar nuevos comprobantes manualmente o vía procesamiento automático n8n, así como editar o eliminar facturas ya adjuntadas con sincronización directa en Supabase.
 
-**Cambios en el Formulario:**
-- **Eliminación de Textos de Ejemplo (`placeholder`):** Se removieron todos los valores simulados o de ejemplo (`Ej. FEDERAL EXPRESS CORP.`, `Ej. 30594494187`, `Ej. 0001-00045612`, `0.00`, `Ej. 150.000`) de los campos de texto y número.
-- **Sin Asignaciones Ficticias de Respaldo:** En caso de fallas o respuestas vacías en el procesamiento, los campos permanecen limpios sin precargar datos genéricos no reales.
-- **Campo `Fecha de pago`:** Incorporado un nuevo selector de fecha (`<input type="date">`) ubicado junto a `Fecha factura *`. Mapea automáticamente la clave `fecha_vencimiento` o `fecha_pago` devuelta por la extracción de comprobantes.
+**Escenarios cubiertos:**
+- **Carga de Factura:** Formulario limpio sin placeholders ficticios, con selección de archivo PDF/imagen, desglose de impuestos (subtotal, IVA, percepciones, moneda), fecha de factura y fecha de pago.
+- **Edición de Facturas:** Abrir una factura existente en el drawer precargando sus valores actuales, permitiendo modificar datos, montos, fecha de pago o estado y actualizarlos en la tabla `vetsoft_facturas_proveedores`.
+- **Eliminación de Facturas:** Botón de eliminación en la tabla de facturas con modal de confirmación antes de remover el registro en la interfaz y en Supabase.
+
+**Casos borde conocidos:**
+- **Fecha de pago no especificada:** Si no se especifica fecha de pago, toma por omisión la fecha de emisión de la factura para mantener consistencia en la proyección.

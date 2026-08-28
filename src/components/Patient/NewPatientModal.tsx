@@ -60,43 +60,46 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-md">
-      <div className="bg-surface-container-lowest rounded-2xl max-w-lg w-full p-lg shadow-xl flex flex-col gap-md">
-        <div className="flex justify-between items-center border-b border-surface-variant pb-sm">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
+        {/* Header */}
+        <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
           <div className="flex items-center gap-xs">
-            <span className="material-symbols-outlined text-primary text-[22px]">pets</span>
-            <h3 className="font-headline-sm text-base text-primary font-bold">Alta de Nuevo Paciente</h3>
+            <span className="material-symbols-outlined text-[#9A7DB8] text-[24px]">pets</span>
+            <h3 className="font-headline-sm text-base text-slate-900 font-bold">Alta de Nuevo Paciente</h3>
           </div>
-          <button onClick={onClose} className="text-on-surface-variant hover:text-error">
-            <span className="material-symbols-outlined">close</span>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer">
+            <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-xs text-xs">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-md text-xs">
           {errorMessage && (
-            <div className="bg-[#32181C] border border-rose-500/50 text-rose-300 p-2 px-3 rounded-xl text-xs font-bold mb-xs flex items-center gap-xs">
+            <div className="bg-red-50 border border-red-200 text-red-700 p-2.5 px-3 rounded-xl text-xs font-bold flex items-center gap-xs">
               <span className="material-symbols-outlined text-[16px]">warning</span>
               {errorMessage}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-sm">
+
+          <div className="grid grid-cols-2 gap-md">
             <div>
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Nombre Mascota *</label>
+              <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Nombre Mascota *</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ej. Max, Luna..."
                 required
-                className="w-full bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs"
               />
             </div>
             <div>
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Especie</label>
+              <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Especie</label>
               <select
                 value={species}
                 onChange={(e) => setSpecies(e.target.value as Species)}
-                className="w-full bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
               >
                 <option value="Canino">Canino</option>
                 <option value="Felino">Felino</option>
@@ -108,23 +111,23 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-sm">
+          <div className="grid grid-cols-2 gap-md">
             <div>
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Raza</label>
+              <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Raza</label>
               <input
                 type="text"
                 value={breed}
                 onChange={(e) => setBreed(e.target.value)}
                 placeholder="Ej. Labrador, Mestizo..."
-                className="w-full bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs"
               />
             </div>
             <div>
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Sexo</label>
+              <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Sexo</label>
               <select
                 value={sex}
                 onChange={(e) => setSex(e.target.value as Sex)}
-                className="w-full bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
               >
                 <option value="Macho">Macho</option>
                 <option value="Hembra">Hembra</option>
@@ -132,69 +135,82 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-sm">
+          <div className="grid grid-cols-2 gap-md">
             <div>
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Fecha de Nacimiento</label>
+              <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Fecha de Nacimiento</label>
               <input
                 type="date"
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
-                className="w-full bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
               />
             </div>
             <div>
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Peso Inicial (kg)</label>
+              <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Peso Inicial (kg)</label>
               <input
                 type="number"
                 value={weightKg}
                 onChange={(e) => setWeightKg(Number(e.target.value))}
                 min={0}
                 step={0.1}
-                className="w-full bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs"
               />
             </div>
           </div>
 
-          <hr className="my-xs border-surface-variant/50" />
+          <hr className="my-xs border-slate-200" />
 
-          <div className="grid grid-cols-2 gap-sm">
+          <div className="grid grid-cols-2 gap-md">
             <div>
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Nombre Dueño *</label>
+              <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Nombre Dueño *</label>
               <input
                 type="text"
                 value={ownerName}
                 onChange={(e) => setOwnerName(e.target.value)}
                 placeholder="Ej. Ana Gómez..."
                 required
-                className="w-full bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs"
               />
             </div>
             <div>
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Teléfono / WhatsApp</label>
+              <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Teléfono / WhatsApp</label>
               <input
                 type="text"
                 value={ownerPhone}
                 onChange={(e) => setOwnerPhone(e.target.value)}
                 placeholder="Ej. +54 9 11 1234-5678"
-                className="w-full bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs"
               />
             </div>
           </div>
 
           <div>
-            <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Alertas Médicas (Separadas por comas)</label>
+            <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Alertas Médicas (Separadas por comas)</label>
             <input
               type="text"
               value={alertsInput}
               onChange={(e) => setAlertsInput(e.target.value)}
-              placeholder="Ej. ⚠️ Alérgico a Penicilina, Diabético, Esterilizado"
-              className="w-full bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+              placeholder="Ej. Alérgico a Penicilina, Diabético, Esterilizado"
+              className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs"
             />
           </div>
 
-          <button type="submit" className="bg-primary text-on-primary py-2 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm">
-            Guardar Paciente
-          </button>
+          <div className="flex items-center justify-end gap-sm pt-sm mt-xs border-t border-slate-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-md py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-lg py-2.5 rounded-xl font-label-md text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-xs"
+            >
+              <span className="material-symbols-outlined text-[18px]">save</span>
+              Guardar Paciente
+            </button>
+          </div>
         </form>
       </div>
     </div>

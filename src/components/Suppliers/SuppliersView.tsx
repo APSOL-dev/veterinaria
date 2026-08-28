@@ -11,6 +11,8 @@ interface SuppliersViewProps {
   monthlyBudgets?: Record<string, number>;
   activeSubModule: 'facturas' | 'presupuestos';
   onAddBill: (bill: Omit<SupplierBill, 'id'>) => void;
+  onUpdateBill?: (id: string, bill: Omit<SupplierBill, 'id'>) => void;
+  onDeleteBill?: (id: string) => void;
   onAddQuote: (quote: Omit<SupplierQuote, 'id'>) => void;
   onUpdateMonthlyBudget?: (monthKey: string, amount: number) => void;
   onAddExpense?: (expense: Omit<ExpenseRecord, 'id'>) => void;
@@ -26,6 +28,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   monthlyBudgets = {},
   activeSubModule,
   onAddBill,
+  onUpdateBill,
+  onDeleteBill,
   onAddQuote,
   onUpdateMonthlyBudget,
   onAddExpense,
@@ -35,6 +39,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [showInvoiceDrawer, setShowInvoiceDrawer] = useState(false);
+  const [editingBill, setEditingBill] = useState<SupplierBill | null>(null);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
   // Submodule: Facturas state
@@ -58,14 +63,6 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   const [expDescription, setExpDescription] = useState<string>('');
   const [expAmount, setExpAmount] = useState<number>(1000);
   const [expNote, setExpNote] = useState<string>('');
-
-  // New Bill state
-  const [supplierName, setSupplierName] = useState('');
-  const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [amount, setAmount] = useState(50000);
-  const [itemsCount, setItemsCount] = useState(5);
-  const [billStatus, setBillStatus] = useState<'paid' | 'pending'>('pending');
 
   const totals = calculateSupplierTotals(bills, quotes);
   const projections = calculateMonthlyExpenditureProjections(bills, monthlyBudgets);
@@ -94,6 +91,22 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
     setFilterCategory('all');
     setFilterAllocation('all');
     setFilterPaymentMethod('all');
+  };
+
+  const handleOpenAddBill = () => {
+    setEditingBill(null);
+    setShowInvoiceDrawer(true);
+  };
+
+  const handleOpenEditBill = (bill: SupplierBill) => {
+    setEditingBill(bill);
+    setShowInvoiceDrawer(true);
+  };
+
+  const handleDeleteBillClick = (bill: SupplierBill) => {
+    if (window.confirm(`¿Estás seguro de que deseas eliminar la factura N° ${bill.invoiceNumber} de ${bill.supplierName}?`)) {
+      if (onDeleteBill) onDeleteBill(bill.id);
+    }
   };
 
   const handleOpenAddExpenseModal = () => {
@@ -152,22 +165,6 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
     setShowModal(false);
   };
 
-  const handleSubmitBill = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!supplierName.trim() || !invoiceNumber.trim()) return;
-    onAddBill({
-      supplierName: supplierName.trim(),
-      invoiceNumber: invoiceNumber.trim(),
-      date,
-      amount: Number(amount),
-      itemsCount: Number(itemsCount),
-      status: billStatus
-    });
-    setSupplierName('');
-    setInvoiceNumber('');
-    setShowModal(false);
-  };
-
   const handleSaveBudget = (monthKey: string) => {
     const parsed = parseFloat(tempBudgetInput);
     if (!isNaN(parsed) && parsed >= 0 && onUpdateMonthlyBudget) {
@@ -193,7 +190,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
         <button
           type="button"
-          onClick={() => activeSubModule === 'facturas' ? setShowInvoiceDrawer(true) : handleOpenAddExpenseModal()}
+          onClick={() => activeSubModule === 'facturas' ? handleOpenAddBill() : handleOpenAddExpenseModal()}
           className="bg-primary text-on-primary hover:bg-primary-container px-md py-2 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-sm transition-all cursor-pointer"
         >
           <span className="material-symbols-outlined text-[16px]">add</span>
@@ -250,11 +247,11 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
             <div className="overflow-x-auto flex-1">
               {facturasTab === 'resumen' ? (
                 <div>
-                  <h2 className="font-headline-sm text-base font-bold text-primary mb-md">Resumen</h2>
+                  <h2 className="font-headline-sm text-base font-bold text-primary mb-md">Resumen de Proyección (por Fecha de Pago)</h2>
                   <table className="w-full text-left font-body-md text-xs">
                     <thead className="bg-surface-container-low text-on-surface-variant font-label-md uppercase text-[10px]">
                       <tr>
-                        <th className="p-sm px-md">Fecha</th>
+                        <th className="p-sm px-md">Fecha Pago</th>
                         <th className="p-sm px-md text-right">Total adeudado</th>
                         <th className="p-sm px-md text-right">Total pagado</th>
                         <th className="p-sm px-md text-right">Total</th>
@@ -342,19 +339,22 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                 <table className="w-full text-left font-body-md text-xs">
                   <thead className="bg-surface-container-low text-on-surface-variant font-label-md uppercase text-[10px]">
                     <tr>
-                      <th className="p-sm px-md">Fecha</th>
+                      <th className="p-sm px-md">Fecha Emisión</th>
+                      <th className="p-sm px-md">Fecha Pago</th>
                       <th className="p-sm px-md">Proveedor</th>
                       <th className="p-sm px-md">N° Factura</th>
                       <th className="p-sm px-md text-center">Ítems</th>
                       <th className="p-sm px-md text-right">Monto Total</th>
                       <th className="p-sm px-md text-center">Estado</th>
+                      <th className="p-sm px-md text-center">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="text-on-surface">
                     {bills.map((bill) => (
                       <tr key={bill.id} className="border-b border-surface-container-low hover:bg-surface-container transition-colors">
-                        <td className="p-sm px-md">{bill.date}</td>
-                        <td className="p-sm px-md font-bold text-primary">{bill.supplierName}</td>
+                        <td className="p-sm px-md font-normal text-slate-700">{bill.date}</td>
+                        <td className="p-sm px-md font-normal text-slate-700">{bill.paymentDate || bill.date}</td>
+                        <td className="p-sm px-md font-medium text-slate-900">{bill.supplierName}</td>
                         <td className="p-sm px-md font-mono text-[11px]">{bill.invoiceNumber}</td>
                         <td className="p-sm px-md text-center">{bill.itemsCount}</td>
                         <td className="p-sm px-md text-right font-bold">${(bill.amount || 0).toLocaleString('es-AR')}</td>
@@ -365,6 +365,26 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             {bill.status === 'paid' ? 'PAGADO' : 'PENDIENTE'}
                           </span>
                         </td>
+                        <td className="p-sm px-md text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              title="Editar factura"
+                              onClick={() => handleOpenEditBill(bill)}
+                              className="p-1 text-slate-400 hover:text-primary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              title="Eliminar factura"
+                              onClick={() => handleDeleteBillClick(bill)}
+                              className="p-1 text-slate-400 hover:text-error transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -374,116 +394,101 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           </div>
         </>
       ) : (
-        /* SUBMODULE: Registrar Gastos (Layout matching reference screenshot) */
+        /* SUBMODULE: Registrar Gastos */
         <div className="flex flex-col gap-md flex-1 overflow-hidden">
           {/* Filters Bar & KPI Card Container */}
           <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-md">
-            <div className="flex-1 flex flex-col gap-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-xs text-primary font-bold text-xs uppercase font-label-md">
-                  <span className="material-symbols-outlined text-[16px]">tune</span>
-                  Filtros de Búsqueda
-                </div>
-                <button
-                  onClick={handleClearFilters}
-                  className="text-xs text-[#C0392B] hover:underline font-medium flex items-center gap-0.5"
+            {/* Filters grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-xs flex-1">
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase">Responsable</label>
+                <select
+                  value={filterResponsible}
+                  onChange={(e) => setFilterResponsible(e.target.value)}
+                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary"
                 >
-                  Limpiar todos los filtros
-                </button>
+                  <option value="all">Todos</option>
+                  {uniqueResponsibles.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
               </div>
 
-              {/* 5 Filter Select Dropdowns */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-sm text-xs">
-                {/* Responsable */}
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Responsable</label>
-                  <select
-                    value={filterResponsible}
-                    onChange={(e) => setFilterResponsible(e.target.value)}
-                    className="w-full bg-surface-container border-none rounded-xl p-2 text-xs text-on-surface outline-none focus:ring-2 focus:ring-secondary font-medium"
-                  >
-                    <option value="all">Todos los responsables</option>
-                    {uniqueResponsibles.map(r => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase">Período</label>
+                <select
+                  value={filterPeriod}
+                  onChange={(e) => setFilterPeriod(e.target.value)}
+                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary"
+                >
+                  <option value="all">Todos</option>
+                  <option value="current_month">Mes Actual</option>
+                  <option value="last_month">Mes Anterior</option>
+                  <option value="year_2026">Año 2026</option>
+                </select>
+              </div>
 
-                {/* Mes / período */}
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Mes / período</label>
-                  <select
-                    value={filterPeriod}
-                    onChange={(e) => setFilterPeriod(e.target.value)}
-                    className="w-full bg-surface-container border-none rounded-xl p-2 text-xs text-on-surface outline-none focus:ring-2 focus:ring-secondary font-medium"
-                  >
-                    <option value="all">Todos los períodos</option>
-                    <option value="2026-08">Agosto 2026</option>
-                    <option value="2026-07">Julio 2026</option>
-                    <option value="2026-06">Junio 2026</option>
-                  </select>
-                </div>
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase">Rubro</label>
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary"
+                >
+                  <option value="all">Todos</option>
+                  {uniqueCategories.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
 
-                {/* Rubro */}
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Rubro</label>
-                  <select
-                    value={filterCategory}
-                    onChange={(e) => setFilterCategory(e.target.value)}
-                    className="w-full bg-surface-container border-none rounded-xl p-2 text-xs text-on-surface outline-none focus:ring-2 focus:ring-secondary font-medium"
-                  >
-                    <option value="all">Todos los rubros</option>
-                    {uniqueCategories.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase">Asignación</label>
+                <select
+                  value={filterAllocation}
+                  onChange={(e) => setFilterAllocation(e.target.value)}
+                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary"
+                >
+                  <option value="all">Todas</option>
+                  {uniqueAllocations.map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
 
-                {/* Asignación */}
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Asignación</label>
-                  <select
-                    value={filterAllocation}
-                    onChange={(e) => setFilterAllocation(e.target.value)}
-                    className="w-full bg-surface-container border-none rounded-xl p-2 text-xs text-on-surface outline-none focus:ring-2 focus:ring-secondary font-medium"
-                  >
-                    <option value="all">Todas las asignaciones</option>
-                    {uniqueAllocations.map(a => (
-                      <option key={a} value={a}>{a}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Medio de pago */}
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Medio de pago</label>
-                  <select
-                    value={filterPaymentMethod}
-                    onChange={(e) => setFilterPaymentMethod(e.target.value)}
-                    className="w-full bg-surface-container border-none rounded-xl p-2 text-xs text-on-surface outline-none focus:ring-2 focus:ring-secondary font-medium"
-                  >
-                    <option value="all">Todos los medios</option>
-                    {uniquePaymentMethods.map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase">Método Pago</label>
+                <select
+                  value={filterPaymentMethod}
+                  onChange={(e) => setFilterPaymentMethod(e.target.value)}
+                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary"
+                >
+                  <option value="all">Todos</option>
+                  {uniquePaymentMethods.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {/* Dark KPI Card: Gastos filtrados */}
-            <div className="bg-[#2B1D3A] text-white p-md rounded-2xl flex flex-col justify-center min-w-[220px] shadow-md border border-white/10">
-              <span className="text-[11px] text-[#E7D7F0] uppercase font-bold tracking-wider">Gastos filtrados</span>
-              <span className="text-2xl font-bold font-display-lg text-white mt-0.5">
-                ${expenseTotals.totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-              <span className="text-[10px] text-[#CBB5E2] mt-1 font-medium">
-                {expenseTotals.count} comprobantes
-              </span>
+            <div className="flex items-center gap-md border-t md:border-t-0 md:border-l border-outline-variant/30 pt-xs md:pt-0 md:pl-md">
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="text-on-surface-variant hover:text-primary text-xs font-bold transition-colors flex items-center gap-xs"
+              >
+                <span className="material-symbols-outlined text-[14px]">filter_alt_off</span>
+                Limpiar
+              </button>
+
+              <div className="bg-primary/10 border border-primary/30 p-xs px-md rounded-xl flex flex-col items-end shrink-0">
+                <span className="text-[9px] font-bold text-primary uppercase">Total Filtrado ({expenseTotals.count})</span>
+                <span className="font-display-lg text-lg font-bold text-primary">${expenseTotals.totalAmount.toLocaleString('es-AR')}</span>
+              </div>
             </div>
           </div>
 
-          {/* Expenses Table Container (9 columns) */}
+          {/* Expenses Table */}
           <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex-1 overflow-hidden flex flex-col">
             <div className="overflow-x-auto flex-1">
               <table className="w-full text-left font-body-md text-xs">
@@ -493,10 +498,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     <th className="p-sm px-md">Responsable</th>
                     <th className="p-sm px-md">Rubro</th>
                     <th className="p-sm px-md">Asignación</th>
-                    <th className="p-sm px-md">Medio pago</th>
+                    <th className="p-sm px-md">Método Pago</th>
                     <th className="p-sm px-md">Descripción</th>
-                    <th className="p-sm px-md text-right">Monto</th>
-                    <th className="p-sm px-md">Nota</th>
+                    <th className="p-sm px-md text-right">Monto ($)</th>
                     <th className="p-sm px-md text-center">Acciones</th>
                   </tr>
                 </thead>
@@ -504,56 +508,46 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   {filteredExpenses.map((exp) => (
                     <tr key={exp.id} className="border-b border-surface-container-low hover:bg-surface-container/60 transition-colors">
                       <td className="p-sm px-md font-mono text-[11px]">{exp.date}</td>
-                      <td className="p-sm px-md">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#F5EFF9] text-[#79529B] uppercase border border-[#E5D5F0]">
-                          <span className="w-4 h-4 rounded-full bg-[#9A7DB8] text-white flex items-center justify-center text-[9px]">
-                            {exp.responsible.charAt(0).toUpperCase()}
-                          </span>
-                          {exp.responsible}
-                        </span>
-                      </td>
-                      <td className="p-sm px-md font-bold text-on-surface">{exp.category}</td>
-                      <td className="p-sm px-md italic text-on-surface-variant">{exp.allocation}</td>
-                      <td className="p-sm px-md text-on-surface-variant">{exp.paymentMethod}</td>
-                      <td className="p-sm px-md font-mono font-bold text-xs uppercase text-primary">{exp.description}</td>
-                      <td className="p-sm px-md text-right font-bold text-on-surface text-sm">
-                        ${exp.amount.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
-                      </td>
-                      <td className="p-sm px-md text-on-surface-variant text-[11px]">{exp.note || '-'}</td>
+                      <td className="p-sm px-md font-bold text-primary capitalize">{exp.responsible}</td>
+                      <td className="p-sm px-md">{exp.category}</td>
+                      <td className="p-sm px-md">{exp.allocation}</td>
+                      <td className="p-sm px-md">{exp.paymentMethod}</td>
+                      <td className="p-sm px-md font-medium">{exp.description}</td>
+                      <td className="p-sm px-md text-right font-bold text-on-surface">${exp.amount.toLocaleString('es-AR')}</td>
                       <td className="p-sm px-md text-center">
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={() => onDuplicateExpense && onDuplicateExpense(exp.id)}
-                            title="Duplicar gasto"
-                            className="p-1 rounded-lg hover:bg-surface-container text-[#8362A5] hover:text-[#5C3C7B] transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">content_copy</span>
-                          </button>
-                          <button
-                            onClick={() => handleOpenEditExpenseModal(exp)}
+                            type="button"
                             title="Editar gasto"
-                            className="p-1 rounded-lg hover:bg-surface-container text-amber-600 hover:text-amber-800 transition-colors"
+                            onClick={() => handleOpenEditExpenseModal(exp)}
+                            className="p-1 text-slate-400 hover:text-primary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
                           >
                             <span className="material-symbols-outlined text-[16px]">edit</span>
                           </button>
-                          <button
-                            onClick={() => onDeleteExpense && onDeleteExpense(exp.id)}
-                            title="Eliminar gasto"
-                            className="p-1 rounded-lg hover:bg-surface-container text-red-600 hover:text-red-800 transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                          </button>
+                          {onDuplicateExpense && (
+                            <button
+                              type="button"
+                              title="Duplicar gasto"
+                              onClick={() => onDuplicateExpense(exp.id)}
+                              className="p-1 text-slate-400 hover:text-secondary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                            </button>
+                          )}
+                          {onDeleteExpense && (
+                            <button
+                              type="button"
+                              title="Eliminar gasto"
+                              onClick={() => onDeleteExpense(exp.id)}
+                              className="p-1 text-slate-400 hover:text-error transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
                   ))}
-                  {filteredExpenses.length === 0 && (
-                    <tr>
-                      <td colSpan={9} className="text-center p-xl text-on-surface-variant">
-                        No se encontraron gastos registrados con los filtros seleccionados.
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -561,183 +555,171 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
         </div>
       )}
 
-      {/* Modal: Registrar / Editar Gasto o Registrar Factura */}
+      {/* New Invoice Drawer */}
+      <NewInvoiceDrawer
+        isOpen={showInvoiceDrawer}
+        onClose={() => {
+          setShowInvoiceDrawer(false);
+          setEditingBill(null);
+        }}
+        onSaveBill={onAddBill}
+        onUpdateBill={onUpdateBill}
+        editingBill={editingBill}
+      />
+
+      {/* Register / Edit Expense Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
-          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
-            <div className="flex justify-between items-center border-b border-surface-variant pb-sm">
-              <h3 className="font-headline-sm text-primary text-base font-bold">
-                {activeSubModule === 'facturas' 
-                  ? 'Registrar Factura de Proveedor' 
-                  : (editingExpenseId ? 'Editar Gasto Registrado' : 'Registrar Nuevo Gasto')}
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-md">
+          <div className="bg-surface-container-lowest text-on-surface rounded-2xl max-w-lg w-full p-lg shadow-2xl border border-outline-variant/30 animate-fade-in flex flex-col gap-md">
+            <div className="flex items-center justify-between border-b border-outline-variant/20 pb-sm">
+              <h3 className="font-display-lg text-base font-bold text-primary">
+                {editingExpenseId ? 'Editar Gasto Registrado' : 'Registrar Nuevo Gasto'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="text-on-surface-variant hover:text-error">
-                <span className="material-symbols-outlined">close</span>
+              <button onClick={() => setShowModal(false)} className="text-on-surface-variant hover:text-on-surface">
+                <span className="material-symbols-outlined text-lg">close</span>
               </button>
             </div>
 
-            {activeSubModule === 'facturas' ? (
-              <form onSubmit={handleSubmitBill} className="flex flex-col gap-xs text-xs">
-                <label className="font-label-md text-on-surface-variant uppercase text-[11px]">Proveedor *</label>
-                <input
-                  type="text"
-                  value={supplierName}
-                  onChange={(e) => setSupplierName(e.target.value)}
-                  placeholder="Ej. Distribuidora FarmaVet SA"
-                  required
-                  className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
-                />
-
-                <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">N° Comprobante / Factura *</label>
-                <input
-                  type="text"
-                  value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
-                  placeholder="Ej. FC-A-0001-0004521"
-                  required
-                  className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
-                />
-
-                <div className="grid grid-cols-2 gap-sm mt-xs">
-                  <div>
-                    <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Monto Total ($)</label>
-                    <input
-                      type="number"
-                      value={amount}
-                      onChange={(e) => setAmount(Number(e.target.value))}
-                      required
-                      className="w-full bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Estado Pago</label>
-                    <select
-                      value={billStatus}
-                      onChange={(e) => setBillStatus(e.target.value as any)}
-                      className="w-full bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
-                    >
-                      <option value="pending">PENDIENTE</option>
-                      <option value="paid">PAGADO</option>
-                    </select>
-                  </div>
+            <form onSubmit={handleSubmitExpense} className="flex flex-col gap-md">
+              <div className="grid grid-cols-2 gap-md">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Fecha *</label>
+                  <input
+                    type="date"
+                    value={expDate}
+                    onChange={(e) => setExpDate(e.target.value)}
+                    required
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
+                  />
                 </div>
 
-                <button type="submit" className="bg-primary text-on-primary py-2 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm">
-                  Guardar Registro
-                </button>
-              </form>
-            ) : (
-              /* Expense Form */
-              <form onSubmit={handleSubmitExpense} className="flex flex-col gap-xs text-xs">
-                <div className="grid grid-cols-2 gap-sm">
-                  <div>
-                    <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Fecha *</label>
-                    <input
-                      type="date"
-                      value={expDate}
-                      onChange={(e) => setExpDate(e.target.value)}
-                      required
-                      className="w-full bg-surface-container border-none rounded-xl p-2 outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Responsable *</label>
-                    <input
-                      type="text"
-                      value={expResponsible}
-                      onChange={(e) => setExpResponsible(e.target.value)}
-                      placeholder="Ej. Alberto"
-                      required
-                      className="w-full bg-surface-container border-none rounded-xl p-2 outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
-                    />
-                  </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Responsable *</label>
+                  <input
+                    type="text"
+                    list="exp-responsibles"
+                    value={expResponsible}
+                    onChange={(e) => setExpResponsible(e.target.value)}
+                    required
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary capitalize"
+                  />
+                  <datalist id="exp-responsibles">
+                    <option value="alberto" />
+                    <option value="sele" />
+                  </datalist>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-md">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Rubro / Categoría *</label>
+                  <input
+                    type="text"
+                    list="exp-categories"
+                    value={expCategory}
+                    onChange={(e) => setExpCategory(e.target.value)}
+                    required
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
+                  />
+                  <datalist id="exp-categories">
+                    {uniqueCategories.map(c => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
                 </div>
 
-                <div className="grid grid-cols-2 gap-sm mt-xs">
-                  <div>
-                    <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Rubro *</label>
-                    <input
-                      type="text"
-                      value={expCategory}
-                      onChange={(e) => setExpCategory(e.target.value)}
-                      placeholder="Ej. Combustible, Fletes, Viáticos"
-                      required
-                      className="w-full bg-surface-container border-none rounded-xl p-2 outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Asignación *</label>
-                    <input
-                      type="text"
-                      value={expAllocation}
-                      onChange={(e) => setExpAllocation(e.target.value)}
-                      placeholder="Ej. Local Chaco mayorista"
-                      required
-                      className="w-full bg-surface-container border-none rounded-xl p-2 outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
-                    />
-                  </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Asignación *</label>
+                  <input
+                    type="text"
+                    list="exp-allocations"
+                    value={expAllocation}
+                    onChange={(e) => setExpAllocation(e.target.value)}
+                    required
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
+                  />
+                  <datalist id="exp-allocations">
+                    {uniqueAllocations.map(a => (
+                      <option key={a} value={a} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-md">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Forma de Pago *</label>
+                  <input
+                    type="text"
+                    list="exp-payments"
+                    value={expPaymentMethod}
+                    onChange={(e) => setExpPaymentMethod(e.target.value)}
+                    required
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
+                  />
+                  <datalist id="exp-payments">
+                    {uniquePaymentMethods.map(p => (
+                      <option key={p} value={p} />
+                    ))}
+                  </datalist>
                 </div>
 
-                <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Medio de pago *</label>
-                <input
-                  type="text"
-                  value={expPaymentMethod}
-                  onChange={(e) => setExpPaymentMethod(e.target.value)}
-                  placeholder="Ej. Efectivo, Caja chica / Mercado Pago"
-                  required
-                  className="bg-surface-container border-none rounded-xl p-2 outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
-                />
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Monto ($) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    value={expAmount}
+                    onChange={(e) => setExpAmount(Number(e.target.value))}
+                    required
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-bold outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
 
-                <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Descripción / Concepto *</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase">Descripción / Detalle *</label>
                 <input
                   type="text"
                   value={expDescription}
                   onChange={(e) => setExpDescription(e.target.value)}
-                  placeholder="Ej. COMPRA REJILLA GRANDE"
+                  placeholder="ej. Carga Nafta Super Móvil 1"
                   required
-                  className="bg-surface-container border-none rounded-xl p-2 outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-mono"
+                  className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
                 />
+              </div>
 
-                <div className="grid grid-cols-2 gap-sm mt-xs">
-                  <div>
-                    <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Monto ($) *</label>
-                    <input
-                      type="number"
-                      value={expAmount}
-                      onChange={(e) => setExpAmount(Number(e.target.value))}
-                      required
-                      min={1}
-                      className="w-full bg-surface-container border-none rounded-xl p-2 outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-label-md text-on-surface-variant uppercase text-[11px] block mb-1">Nota (opcional)</label>
-                    <input
-                      type="text"
-                      value={expNote}
-                      onChange={(e) => setExpNote(e.target.value)}
-                      placeholder="Ej. Transf 00142"
-                      className="w-full bg-surface-container border-none rounded-xl p-2 outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
-                    />
-                  </div>
-                </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase">Nota / Comprobante (opcional)</label>
+                <input
+                  type="text"
+                  value={expNote}
+                  onChange={(e) => setExpNote(e.target.value)}
+                  placeholder="ej. Ticket 0001-4451"
+                  className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
+                />
+              </div>
 
-                <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm">
-                  {editingExpenseId ? 'Guardar Cambios' : 'Guardar Gasto'}
+              <div className="flex justify-end gap-sm pt-sm border-t border-outline-variant/20">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-md py-2 rounded-xl text-xs font-bold bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-all cursor-pointer"
+                >
+                  Cancelar
                 </button>
-              </form>
-            )}
+                <button
+                  type="submit"
+                  className="px-md py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary-container text-on-primary shadow-sm transition-all cursor-pointer"
+                >
+                  {editingExpenseId ? 'Guardar Cambios' : 'Registrar Gasto'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
-
-      {/* New Invoice Right Drawer Panel */}
-      <NewInvoiceDrawer
-        isOpen={showInvoiceDrawer}
-        onClose={() => setShowInvoiceDrawer(false)}
-        onSaveBill={onAddBill}
-      />
     </div>
   );
 };
-

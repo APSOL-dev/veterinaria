@@ -44,7 +44,7 @@ Actualmente los componentes y `App.tsx` leen directamente de `initialMockData`. 
 Cuando decidas conectar la base de datos:
 
 1. **Creación del Esquema Relacional:**
-   - Tablas principales: `owners`, `patients`, `clinical_notes`, `vaccine_catalog`, `vaccine_doses`, `appointments`, `products`, `services`, `supplier_bills`, `receipts`.
+   - Tablas principales: `tutores`, `pacientes`, `consultas_clinicas`, `catalogo_vacunas`, `dosis_vacunas`, `turnos_clinica`, `turnos_peluqueria`, `productos`, `catalogo_servicios`, `facturas_proveedores`, `presupuestos_proveedores`, `recibos`, `detalle_recibos`, `gastos`.
    - Claves foráneas (FK) e índices para búsquedas por `patient_id`, `owner_id`, `cuit`.
 
 2. **Reemplazo Transparente del Repositorio:**

@@ -57,6 +57,22 @@ import { createSupplierBillRecord, createSupplierQuoteRecord } from './domain/se
 import { createExpenseRecord } from './domain/services/expenseService';
 import { resolveNavigationState } from './domain/services/navigationService';
 import { canAccessModule, getDefaultModuleForRole } from './domain/services/rbacService';
+import { 
+  fetchPatientsFromSupabase,
+  fetchSupplierBillsFromSupabase,
+  fetchExpensesFromSupabase,
+  fetchProductsFromSupabase,
+  insertPatientToSupabase,
+  insertClinicalNoteToSupabase,
+  insertMedicalAppointmentToSupabase,
+  insertGroomingAppointmentToSupabase,
+  insertProductToSupabase,
+  insertSupplierBillToSupabase,
+  updateSupplierBillInSupabase,
+  deleteSupplierBillFromSupabase,
+  insertExpenseToSupabase,
+  insertReceiptToSupabase 
+} from './domain/services/supabaseService';
 
 import { AppNotificationModal } from './components/Common/AppNotificationModal';
 import { LowStockAlertModal } from './components/Inventory/LowStockAlertModal';
@@ -124,11 +140,26 @@ export const App: React.FC = () => {
     }
   };
 
-  const [rbacNotif, setRbacNotif] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+  const [notifModal, setNotifModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'warning' | 'error' | 'info';
+  }>({
+    isOpen: false,
+    title: 'Aviso de VetSoft',
+    message: '',
+    type: 'success'
+  });
 
   const handleSetActiveModule = useCallback((mod: ActiveModule) => {
     if (userSession && !canAccessModule(userSession.role, mod)) {
-      setRbacNotif({ isOpen: true, message: `Su rol (${userSession.roleLabel}) no tiene permisos para acceder a este módulo.` });
+      setNotifModal({
+        isOpen: true,
+        title: 'Acceso Restringido',
+        type: 'warning',
+        message: `Su rol (${userSession.roleLabel}) no tiene permisos para acceder a este módulo.`
+      });
       return;
     }
     const nav = resolveNavigationState(mod);
@@ -138,6 +169,31 @@ export const App: React.FC = () => {
 
   const handleToggleSidebar = useCallback(() => {
     setIsSidebarCollapsed(prev => !prev);
+  }, []);
+
+  React.useEffect(() => {
+    async function loadDataFromSupabase() {
+      const [dbPatients, dbBills, dbExpenses, dbProducts] = await Promise.all([
+        fetchPatientsFromSupabase(),
+        fetchSupplierBillsFromSupabase(),
+        fetchExpensesFromSupabase(),
+        fetchProductsFromSupabase()
+      ]);
+      if (dbPatients && dbPatients.length > 0) {
+        setPatients(dbPatients);
+        setSelectedPatient(dbPatients[0]);
+      }
+      if (dbBills && dbBills.length > 0) {
+        setSupplierBills(dbBills);
+      }
+      if (dbExpenses && dbExpenses.length > 0) {
+        setExpenses(dbExpenses);
+      }
+      if (dbProducts && dbProducts.length > 0) {
+        setProducts(dbProducts);
+      }
+    }
+    loadDataFromSupabase();
   }, []);
 
   // Handlers
@@ -151,6 +207,7 @@ export const App: React.FC = () => {
       prescription: data.prescription
     };
     setClinicalNotes([newNote, ...clinicalNotes]);
+    insertClinicalNoteToSupabase(newNote);
   };
 
   const handleSaveFullConsultation = (data: {
@@ -170,6 +227,7 @@ export const App: React.FC = () => {
       attachments: data.attachments
     };
     setClinicalNotes([newNote, ...clinicalNotes]);
+    insertClinicalNoteToSupabase(newNote);
     setActiveModuleState('clinica');
     setActiveSubmodule('fichas-medicas');
   };
@@ -197,6 +255,7 @@ export const App: React.FC = () => {
       id: 'app-' + Date.now()
     };
     setMedicalAppointments([...medicalAppointments, newApp]);
+    insertMedicalAppointmentToSupabase(newApp);
   };
 
   const handleAddGroomingAppointment = (app: Omit<GroomingAppointment, 'id'>) => {
@@ -205,6 +264,7 @@ export const App: React.FC = () => {
       id: 'groom-' + Date.now()
     };
     setGroomingAppointments([...groomingAppointments, newApp]);
+    insertGroomingAppointmentToSupabase(newApp);
   };
 
   const handleAddStockEntry = (productId: string, quantity: number, provider?: string) => {
@@ -220,6 +280,7 @@ export const App: React.FC = () => {
       id: 'prod-' + Date.now()
     };
     setProducts([...products, product]);
+    insertProductToSupabase(product);
   };
 
   const handleAdjustStock = (productId: string, newStock: number, reason: string) => {
@@ -229,7 +290,7 @@ export const App: React.FC = () => {
     setProducts(products.map(p => p.id === productId ? updatedProduct : p));
   };
 
-  const handleAddPatient = (patientData: {
+  const handleAddPatient = async (patientData: {
     name: string;
     species: any;
     breed: string;
@@ -243,11 +304,56 @@ export const App: React.FC = () => {
     const newPat = createNewPatientRecord(patientData);
     setPatients([newPat, ...patients]);
     setSelectedPatient(newPat);
+    const res = await insertPatientToSupabase(newPat);
+    setNotifModal({
+      isOpen: true,
+      title: res.success ? '¡Paciente Guardado!' : 'Aviso de Almacenamiento',
+      type: res.success ? 'success' : 'warning',
+      message: res.success
+        ? `¡Paciente ${newPat.name} guardado exitosamente en Supabase!`
+        : `Paciente agregado localmente. (Nota Supabase: ${res.error || 'Verifique permisos en la tabla'})`
+    });
   };
 
-  const handleAddSupplierBill = (billData: Omit<SupplierBill, 'id'>) => {
+  const handleAddSupplierBill = async (billData: Omit<SupplierBill, 'id'>) => {
     const bill = createSupplierBillRecord(billData);
     setSupplierBills([bill, ...supplierBills]);
+    const res = await insertSupplierBillToSupabase(bill);
+    setNotifModal({
+      isOpen: true,
+      title: res.success ? '¡Factura Guardada!' : 'Aviso de Almacenamiento',
+      type: res.success ? 'success' : 'warning',
+      message: res.success
+        ? `¡Factura N° ${bill.invoiceNumber} de ${bill.supplierName} guardada exitosamente en Supabase!`
+        : `Factura agregada localmente. (Nota Supabase: ${res.error || 'Verifique permisos en la tabla'})`
+    });
+  };
+
+  const handleUpdateSupplierBill = async (id: string, billData: Omit<SupplierBill, 'id'>) => {
+    setSupplierBills(prev => prev.map(b => b.id === id ? { ...billData, id } : b));
+    const res = await updateSupplierBillInSupabase(id, billData);
+    setNotifModal({
+      isOpen: true,
+      title: res.success ? '¡Factura Actualizada!' : 'Aviso de Almacenamiento',
+      type: res.success ? 'success' : 'warning',
+      message: res.success
+        ? `¡Factura N° ${billData.invoiceNumber} de ${billData.supplierName} actualizada exitosamente en Supabase!`
+        : `Factura actualizada localmente. (Nota Supabase: ${res.error || 'Verifique permisos en la tabla'})`
+    });
+  };
+
+  const handleDeleteSupplierBill = async (id: string) => {
+    const target = supplierBills.find(b => b.id === id);
+    setSupplierBills(prev => prev.filter(b => b.id !== id));
+    const res = await deleteSupplierBillFromSupabase(id);
+    setNotifModal({
+      isOpen: true,
+      title: res.success ? 'Factura Eliminada' : 'Aviso de Almacenamiento',
+      type: res.success ? 'success' : 'warning',
+      message: res.success
+        ? `Factura ${target ? 'N° ' + target.invoiceNumber : ''} eliminada exitosamente.`
+        : `Factura eliminada localmente. (Nota Supabase: ${res.error || 'Verifique permisos en la tabla'})`
+    });
   };
 
   const handleAddSupplierQuote = (quoteData: Omit<SupplierQuote, 'id'>) => {
@@ -262,9 +368,18 @@ export const App: React.FC = () => {
     }));
   };
 
-  const handleAddExpense = (expenseData: Omit<ExpenseRecord, 'id'>) => {
+  const handleAddExpense = async (expenseData: Omit<ExpenseRecord, 'id'>) => {
     const newExp = createExpenseRecord(expenseData);
     setExpenses([newExp, ...expenses]);
+    const res = await insertExpenseToSupabase(newExp);
+    setNotifModal({
+      isOpen: true,
+      title: res.success ? '¡Gasto Registrado!' : 'Aviso de Almacenamiento',
+      type: res.success ? 'success' : 'warning',
+      message: res.success
+        ? `¡Gasto de $${newExp.amount} registrado exitosamente en Supabase!`
+        : `Gasto registrado localmente. (Nota Supabase: ${res.error || 'Verifique permisos en la tabla'})`
+    });
   };
 
   const handleUpdateExpense = (id: string, updatedData: Omit<ExpenseRecord, 'id'>) => {
@@ -298,6 +413,7 @@ export const App: React.FC = () => {
       note: target.note
     });
     setExpenses([duplicated, ...expenses]);
+    insertExpenseToSupabase(duplicated);
   };
 
   const handleCheckout = (data: {
@@ -322,9 +438,12 @@ export const App: React.FC = () => {
     });
     setReceipts([result.receipt, ...receipts]);
     setProducts(result.updatedProducts);
-    setRbacNotif({
+    insertReceiptToSupabase(result.receipt);
+    setNotifModal({
       isOpen: true,
-      message: `¡Cobro emitido exitosamente! Comprobante N° ${result.receipt.receiptNumber} ${result.receipt.afipCae ? ' (CAE AFIP: ' + result.receipt.afipCae + ')' : ''}`
+      title: '¡Cobro Emitido!',
+      type: 'success',
+      message: `¡Cobro emitido exitosamente! Comprobante N° ${result.receipt.receiptNumber}${result.receipt.afipCae ? ' (CAE AFIP: ' + result.receipt.afipCae + ')' : ''}`
     });
   };
 
@@ -379,6 +498,8 @@ export const App: React.FC = () => {
               monthlyBudgets={monthlyBudgets}
               activeSubModule={activeSubmodule === 'presupuestos' ? 'presupuestos' : 'facturas'}
               onAddBill={handleAddSupplierBill}
+              onUpdateBill={handleUpdateSupplierBill}
+              onDeleteBill={handleDeleteSupplierBill}
               onAddQuote={handleAddSupplierQuote}
               onUpdateMonthlyBudget={handleUpdateMonthlyBudget}
               onAddExpense={handleAddExpense}
@@ -523,11 +644,11 @@ export const App: React.FC = () => {
       )}
 
       <AppNotificationModal
-        isOpen={rbacNotif.isOpen}
-        message={rbacNotif.message}
-        type="warning"
-        title="Acceso Restringido"
-        onClose={() => setRbacNotif({ isOpen: false, message: '' })}
+        isOpen={notifModal.isOpen}
+        title={notifModal.title}
+        type={notifModal.type}
+        message={notifModal.message}
+        onClose={() => setNotifModal(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

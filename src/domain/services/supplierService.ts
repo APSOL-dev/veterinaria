@@ -145,10 +145,11 @@ export function calculateMonthlyExpenditureProjections(
 ): MonthlyExpenditureProjection[] {
   const aggregated: Record<string, { totalAdeudado: number; totalPagado: number }> = {};
 
-  // Aggregate bills by YYYY-MM
+  // Aggregate bills by YYYY-MM using paymentDate (fecha de pago), fallback to invoice date
   bills.forEach(bill => {
-    if (!bill.date) return;
-    const monthKey = bill.date.slice(0, 7); // e.g. "2025-05"
+    const relevantDate = (bill.paymentDate && bill.paymentDate.trim()) || bill.date;
+    if (!relevantDate) return;
+    const monthKey = relevantDate.slice(0, 7); // e.g. "2025-05"
     if (!aggregated[monthKey]) {
       aggregated[monthKey] = { totalAdeudado: 0, totalPagado: 0 };
     }

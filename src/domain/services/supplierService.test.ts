@@ -182,5 +182,31 @@ describe('supplierService', () => {
       expect(agosto2026?.cumplimientoPercentage).toBe(98);
       expect(agosto2026?.statusLevel).toBe('warning');
     });
+
+    it('should group bills by paymentDate (fecha de pago) instead of invoice date when paymentDate is provided', () => {
+      const bills: SupplierBill[] = [
+        {
+          id: 'b-sep',
+          supplierName: 'FarmaVet',
+          invoiceNumber: '001',
+          date: '2026-08-25', // Fecha de factura: Agosto
+          paymentDate: '2026-09-10', // Fecha de pago: Septiembre
+          amount: 80000,
+          itemsCount: 1,
+          status: 'pending'
+        }
+      ];
+
+      const projections = calculateMonthlyExpenditureProjections(bills, {});
+      
+      // Debe agruparse en Septiembre 2026 por su paymentDate
+      const sept2026 = projections.find(p => p.monthKey === '2026-09');
+      expect(sept2026).toBeDefined();
+      expect(sept2026?.totalAdeudado).toBe(80000);
+
+      // No debe figurar adeudado en Agosto 2026
+      const agos2026 = projections.find(p => p.monthKey === '2026-08');
+      expect(agos2026).toBeUndefined();
+    });
   });
 });

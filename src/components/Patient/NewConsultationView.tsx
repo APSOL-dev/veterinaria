@@ -164,7 +164,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
               type="text"
               value={vetName}
               onChange={(e) => setVetName(e.target.value)}
-              className="bg-surface-container border-none rounded-lg py-1 px-3 text-on-surface font-semibold text-xs outline-none focus:ring-2 focus:ring-secondary"
+              className="bg-surface-container border border-outline-variant/80 rounded-lg py-1 px-3 text-on-surface font-semibold text-xs outline-none focus:ring-2 focus:ring-secondary shadow-xs"
             />
           </div>
         </div>
@@ -179,13 +179,13 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
             onChange={(e) => setNotes(e.target.value)}
             rows={4}
             placeholder="Ingrese motivo de consulta, auscultación, constantes vitales, examen físico, diagnóstico presuntivo e indicaciones médicas..."
-            className="w-full bg-surface-container text-on-surface font-body-md text-sm p-md rounded-xl outline-none transition-all focus:bg-surface focus:ring-2 focus:ring-secondary placeholder:text-outline h-32 resize-none"
+            className="w-full bg-surface-container border border-outline-variant/80 text-on-surface font-body-md text-sm p-md rounded-xl outline-none transition-all focus:bg-surface focus:ring-2 focus:ring-secondary placeholder:text-on-surface-variant/70 h-32 resize-none shadow-xs"
           />
         </div>
 
         {/* Prescription section (Optional toggle) */}
         {showPrescription && (
-          <div className="shrink-0 flex flex-col gap-1 bg-surface-container-low p-md rounded-xl border border-secondary-container">
+          <div className="shrink-0 flex flex-col gap-1 bg-surface-container-low p-md rounded-xl border border-secondary/50 shadow-xs">
             <label className="font-label-md text-secondary font-bold uppercase text-[11px] flex items-center gap-xs">
               <span className="material-symbols-outlined text-[16px]">prescriptions</span>
               Indicaciones de Receta Médica
@@ -220,10 +220,10 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`flex-1 min-h-0 w-full p-md rounded-2xl flex flex-col items-center justify-center gap-xs cursor-pointer transition-all border-2 border-dashed shadow-inner ${
+            className={`flex-1 min-h-0 w-full p-md rounded-2xl flex flex-col items-center justify-center gap-xs cursor-pointer transition-all border-2 border-dashed shadow-xs ${
               isDragging
                 ? 'bg-primary-container/20 border-primary scale-[0.99]'
-                : 'bg-surface-container-low hover:bg-surface-container border-outline-variant/60'
+                : 'bg-surface-container-low hover:bg-surface-container border-secondary/50'
             }`}
           >
             <div className="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SupplierBill } from '../../domain/types';
 import { sendInvoiceWebhook, parseN8nInvoiceResponse } from '../../domain/services/webhookService';
 import { resetInvoiceDrawerState, shouldShowResetButton } from '../../domain/services/supplierService';
@@ -7,6 +7,8 @@ interface NewInvoiceDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onSaveBill: (bill: Omit<SupplierBill, 'id'>) => void;
+  onUpdateBill?: (id: string, bill: Omit<SupplierBill, 'id'>) => void;
+  editingBill?: SupplierBill | null;
   registeredSuppliers?: string[];
 }
 
@@ -14,6 +16,8 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
   isOpen,
   onClose,
   onSaveBill,
+  onUpdateBill,
+  editingBill,
   registeredSuppliers = ['Distribuidora FarmaVet SA', 'Laboratorios Zoonosis SRL', 'Insumos Médicos del Plata', 'Distribuidora Veterinaria Sur']
 }) => {
   const [loadMode, setLoadMode] = useState<'automatic' | 'manual'>('automatic');
@@ -60,6 +64,28 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
     setIsProcessing(fresh.isProcessing);
     setIsProcessed(fresh.isProcessed);
   };
+
+  useEffect(() => {
+    if (editingBill) {
+      setLoadMode('manual');
+      setSupplierName(editingBill.supplierName || '');
+      setCuit(editingBill.cuit || '');
+      setRazonSocial(editingBill.razonSocial || '');
+      setInvoiceDate(editingBill.date || new Date().toISOString().split('T')[0]);
+      setPaymentDate(editingBill.paymentDate || '');
+      setDocumentType(editingBill.documentType || 'Factura A');
+      setInvoiceNumber(editingBill.invoiceNumber || '');
+      setSubtotal(editingBill.subtotal !== undefined ? editingBill.subtotal : '');
+      setTaxAmount(editingBill.taxAmount !== undefined ? editingBill.taxAmount : '');
+      setPerceptions(editingBill.perceptions !== undefined ? editingBill.perceptions : '');
+      setCurrency(editingBill.currency || 'AR$ (Pesos)');
+      setTotalAmount(editingBill.amount !== undefined ? editingBill.amount : '');
+      setBillStatus(editingBill.status || 'pending');
+      setIsProcessed(true);
+    } else {
+      handleResetForm();
+    }
+  }, [editingBill, isOpen]);
 
   if (!isOpen) return null;
 
@@ -156,15 +182,21 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
     setIsSubmittingWebhook(true);
 
     try {
-      await sendInvoiceWebhook({
-        bill: newBillData,
-        file: selectedFile
-      });
+      if (!editingBill) {
+        await sendInvoiceWebhook({
+          bill: newBillData,
+          file: selectedFile
+        });
+      }
     } catch (err) {
       console.error('Error enviando webhook:', err);
     } finally {
       setIsSubmittingWebhook(false);
-      onSaveBill(newBillData);
+      if (editingBill && onUpdateBill) {
+        onUpdateBill(editingBill.id, newBillData);
+      } else {
+        onSaveBill(newBillData);
+      }
       onClose();
     }
   };
@@ -175,8 +207,10 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
         {/* Header */}
         <div className="flex justify-between items-center px-lg py-md border-b border-purple-900/40 bg-[#2B1D3A]">
           <div className="flex items-center gap-xs font-bold text-sm text-white">
-            <span className="material-symbols-outlined text-[#CBB5E2] text-[20px]">receipt_long</span>
-            Cargar Nueva Factura
+            <span className="material-symbols-outlined text-[#CBB5E2] text-[20px]">
+              {editingBill ? 'edit' : 'receipt_long'}
+            </span>
+            {editingBill ? 'Editar Factura de Proveedor' : 'Cargar Nueva Factura'}
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1">
             <span className="material-symbols-outlined text-[20px]">close</span>
@@ -186,61 +220,65 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
         {/* Content Scroll */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-lg flex flex-col gap-md">
           {/* Mode Switcher Tabs */}
-          <div className="bg-[#160E1E] p-1 rounded-xl flex items-center gap-1 border border-purple-900/40">
-            <button
-              type="button"
-              onClick={() => setLoadMode('automatic')}
-              className={`flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-xs transition-all ${
-                loadMode === 'automatic'
-                  ? 'bg-[#9A7DB8] text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200 font-medium'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
-              Carga Automática
-            </button>
-            <button
-              type="button"
-              onClick={() => setLoadMode('manual')}
-              className={`flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-xs transition-all ${
-                loadMode === 'manual'
-                  ? 'bg-[#9A7DB8] text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200 font-medium'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">edit_note</span>
-              Carga Manual
-            </button>
-          </div>
+          {!editingBill && (
+            <div className="bg-[#160E1E] p-1 rounded-xl flex items-center gap-1 border border-purple-900/40">
+              <button
+                type="button"
+                onClick={() => setLoadMode('automatic')}
+                className={`flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-xs transition-all ${
+                  loadMode === 'automatic'
+                    ? 'bg-[#9A7DB8] text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200 font-medium'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+                Carga Automática
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoadMode('manual')}
+                className={`flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-xs transition-all ${
+                  loadMode === 'manual'
+                    ? 'bg-[#9A7DB8] text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200 font-medium'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                Carga Manual
+              </button>
+            </div>
+          )}
 
           {/* Archivo de factura * Dropzone (Ubicado ARRIBA del proveedor) */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-bold text-slate-300">Archivo de factura *</label>
-            <label
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              className="border-2 border-dashed border-purple-900/60 hover:border-[#9A7DB8] bg-[#160E1E]/80 rounded-2xl p-lg flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
-            >
-              <input
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <div className="w-12 h-12 rounded-2xl bg-[#9A7DB8]/20 text-[#CBB5E2] group-hover:scale-110 flex items-center justify-center mb-xs transition-transform">
-                <span className="material-symbols-outlined text-2xl">description</span>
-              </div>
-              <span className="font-bold text-xs text-white mb-0.5">
-                {selectedFile ? selectedFile.name : 'Seleccionar o arrastrar factura'}
-              </span>
-              <span className="text-[10px] text-slate-400">
-                Haz clic o arrastra un PDF o imagen desde tu equipo
-              </span>
-            </label>
-          </div>
+          {!editingBill && (
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-bold text-slate-300">Archivo de factura *</label>
+              <label
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                className="border-2 border-dashed border-purple-900/60 hover:border-[#9A7DB8] bg-[#160E1E]/80 rounded-2xl p-lg flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
+              >
+                <input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <div className="w-12 h-12 rounded-2xl bg-[#9A7DB8]/20 text-[#CBB5E2] group-hover:scale-110 flex items-center justify-center mb-xs transition-transform">
+                  <span className="material-symbols-outlined text-2xl">description</span>
+                </div>
+                <span className="font-bold text-xs text-white mb-0.5">
+                  {selectedFile ? selectedFile.name : 'Seleccionar o arrastrar factura'}
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  Haz clic o arrastra un PDF o imagen desde tu equipo
+                </span>
+              </label>
+            </div>
+          )}
 
           {/* Process Invoice Button / Loading State in Automatic Mode */}
-          {loadMode === 'automatic' && !isProcessed && (
+          {!editingBill && loadMode === 'automatic' && !isProcessed && (
             <div className="flex flex-col gap-sm">
               {isProcessing ? (
                 <div className="flex flex-col items-center justify-center p-xl gap-sm bg-[#160E1E] border border-purple-900/60 rounded-2xl text-center animate-pulse">
@@ -261,10 +299,10 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
             </div>
           )}
 
-          {/* Form Fields: Only visible in Manual mode OR after data returns */}
-          {(loadMode === 'manual' || isProcessed) && (
+          {/* Form Fields: Only visible in Manual mode OR after data returns OR when editing */}
+          {(loadMode === 'manual' || isProcessed || editingBill) && (
             <div className="flex flex-col gap-md pt-sm border-t border-purple-900/40 animate-fade-in">
-              {loadMode === 'automatic' && (
+              {!editingBill && loadMode === 'automatic' && (
                 <div className="bg-[#1D2B20] border border-emerald-500/40 text-emerald-300 px-md py-2 rounded-xl text-[11px] font-bold flex items-center gap-xs">
                   <span className="material-symbols-outlined text-[16px]">check_circle</span>
                   Datos extraídos automáticamente (revisar antes de guardar)
@@ -435,7 +473,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
 
           {/* Footer Actions */}
           <div className="flex flex-col gap-sm pt-md mt-auto">
-            {shouldShowResetButton(loadMode, isProcessed) && (
+            {(editingBill || shouldShowResetButton(loadMode, isProcessed)) && (
               <button
                 type="submit"
                 disabled={isSubmittingWebhook}
@@ -444,12 +482,12 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                 <span className="material-symbols-outlined text-[18px]">
                   {isSubmittingWebhook ? 'sync' : 'save'}
                 </span>
-                {isSubmittingWebhook ? 'Guardando Factura...' : 'Guardar Factura'}
+                {isSubmittingWebhook ? 'Guardando...' : editingBill ? 'Actualizar Factura' : 'Guardar Factura'}
               </button>
             )}
 
             <div className="flex items-center gap-md">
-              {shouldShowResetButton(loadMode, isProcessed) && (
+              {!editingBill && shouldShowResetButton(loadMode, isProcessed) && (
                 <button
                   type="button"
                   onClick={handleResetForm}
@@ -463,7 +501,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className={`${shouldShowResetButton(loadMode, isProcessed) ? 'flex-1' : 'w-full'} bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl font-bold text-xs transition-all text-center cursor-pointer`}
+                className={`${!editingBill && shouldShowResetButton(loadMode, isProcessed) ? 'flex-1' : 'w-full'} bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl font-bold text-xs transition-all text-center cursor-pointer`}
               >
                 Cancelar
               </button>
