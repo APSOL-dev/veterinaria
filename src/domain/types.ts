@@ -160,6 +160,8 @@ export interface SupplierBill {
   amount: number;
   itemsCount: number;
   status: 'paid' | 'pending';
+  voucherName?: string;
+  voucherUrl?: string;
 }
 
 export interface SupplierQuote {
@@ -233,6 +235,8 @@ export interface SupplierPayment {
   amount: number;
   paymentMethod: SupplierPaymentMethod;
   note?: string;
+  voucherName?: string;
+  voucherUrl?: string;
 }
 
 export interface BillReceipt {

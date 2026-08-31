@@ -8,6 +8,8 @@ export type CreatePaymentData = {
   amount: number;
   paymentMethod: SupplierPaymentMethod;
   note?: string;
+  voucherName?: string;
+  voucherUrl?: string;
 };
 
 /**
@@ -23,6 +25,8 @@ export function createPaymentRecord(data: CreatePaymentData): SupplierPayment {
     amount: data.amount,
     paymentMethod: data.paymentMethod,
     note: data.note,
+    voucherName: data.voucherName,
+    voucherUrl: data.voucherUrl,
   };
 }
 

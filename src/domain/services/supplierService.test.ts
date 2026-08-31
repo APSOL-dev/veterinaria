@@ -7,7 +7,11 @@ import {
   calculateMonthlyExpenditureProjections,
   validateSupplierBillInput,
   resetInvoiceDrawerState,
-  shouldShowResetButton 
+  shouldShowResetButton,
+  formatInvoiceFullNumber,
+  filterBillsByDateRange,
+  filterPaymentsByDateRange,
+  getDefaultDateRange
 } from './supplierService';
 
 describe('supplierService', () => {
@@ -117,18 +121,20 @@ describe('supplierService', () => {
     expect(quote.status).toBe('draft');
   });
 
-  it('calculateSupplierTotals should calculate totals correctly', () => {
+  it('calculateSupplierTotals should calculate totals correctly including purchasedThisMonth and committed30Days', () => {
     const bills: SupplierBill[] = [
-      { id: 'b1', supplierName: 'Sup A', invoiceNumber: '001', date: '2026-08-01', amount: 100, itemsCount: 2, status: 'pending' },
-      { id: 'b2', supplierName: 'Sup B', invoiceNumber: '002', date: '2026-08-02', amount: 200, itemsCount: 5, status: 'paid' }
+      { id: 'b1', supplierName: 'Sup A', invoiceNumber: '001', date: '2026-08-01', paymentDate: '2026-08-15', amount: 100, itemsCount: 2, status: 'pending' },
+      { id: 'b2', supplierName: 'Sup B', invoiceNumber: '002', date: '2026-08-02', paymentDate: '2026-08-20', amount: 200, itemsCount: 5, status: 'paid' }
     ];
     const quotes: SupplierQuote[] = [
       { id: 'q1', supplierName: 'Sup A', title: 'Q1', date: '2026-08-01', amount: 300, status: 'approved' }
     ];
 
-    const totals = calculateSupplierTotals(bills, quotes);
+    const totals = calculateSupplierTotals(bills, quotes, [], '2026-08-01');
+    expect(totals.purchasedThisMonthTotal).toBe(300);
     expect(totals.pendingBillsTotal).toBe(100);
     expect(totals.paidBillsTotal).toBe(200);
+    expect(totals.committed30DaysTotal).toBe(100);
     expect(totals.approvedQuotesTotal).toBe(300);
   });
 
@@ -207,6 +213,100 @@ describe('supplierService', () => {
       // No debe figurar adeudado en Agosto 2026
       const agos2026 = projections.find(p => p.monthKey === '2026-08');
       expect(agos2026).toBeUndefined();
+    });
+
+    it('should calculate totalPagado from payments array and update totalAdeudado with remaining balance', () => {
+      const bills: SupplierBill[] = [
+        {
+          id: 'b-sep-1',
+          supplierName: 'Laboratorios Zoonosis SRL',
+          invoiceNumber: '0002-00001500',
+          date: '2026-08-15',
+          paymentDate: '2026-09-10',
+          amount: 1211885.04,
+          itemsCount: 1,
+          status: 'pending'
+        }
+      ];
+
+      const payments = [
+        {
+          id: 'pay-1',
+          billId: 'b-sep-1',
+          billInvoiceNumber: '0002-00001500',
+          supplierName: 'Laboratorios Zoonosis SRL',
+          date: '2026-08-31',
+          amount: 1210000,
+          paymentMethod: 'Efectivo' as const
+        }
+      ];
+
+      const projections = calculateMonthlyExpenditureProjections(bills, {}, payments);
+
+      // En Agosto 2026 debe sumar el pago realizado en su fecha (2026-08-31)
+      const agos2026 = projections.find(p => p.monthKey === '2026-08');
+      expect(agos2026).toBeDefined();
+      expect(agos2026?.totalPagado).toBe(1210000);
+      expect(agos2026?.totalAdeudado).toBe(0);
+
+      // En Septiembre 2026 debe quedar únicamente el saldo restante adeudado ($1.885,04)
+      const sept2026 = projections.find(p => p.monthKey === '2026-09');
+      expect(sept2026).toBeDefined();
+      expect(sept2026?.totalAdeudado).toBeCloseTo(1885.04, 2);
+      expect(sept2026?.totalPagado).toBe(0);
+    });
+
+    it('calculateSupplierTotals should compute paid totals from payments array and pending totals from remaining balances', () => {
+      const bills: SupplierBill[] = [
+        { id: 'b1', supplierName: 'Sup A', invoiceNumber: '001', date: '2026-08-01', amount: 1000, itemsCount: 2, status: 'pending' }
+      ];
+      const payments = [
+        { id: 'p1', billId: 'b1', billInvoiceNumber: '001', supplierName: 'Sup A', date: '2026-08-05', amount: 600, paymentMethod: 'Efectivo' as const }
+      ];
+
+      const totals = calculateSupplierTotals(bills, [], payments);
+      expect(totals.paidBillsTotal).toBe(600);
+      expect(totals.pendingBillsTotal).toBe(400);
+    });
+
+    it('formatInvoiceFullNumber should format invoice number with type prefix, punto de venta and numero de factura', () => {
+      expect(formatInvoiceFullNumber({ documentType: 'Factura A', invoiceNumber: '0002-00001503' })).toBe('A-0002-00001503');
+      expect(formatInvoiceFullNumber({ documentType: 'Factura B', invoiceNumber: '0001-00000045' })).toBe('B-0001-00000045');
+      expect(formatInvoiceFullNumber({ documentType: 'Factura C', invoiceNumber: '0003-00000100' })).toBe('C-0003-00000100');
+      expect(formatInvoiceFullNumber({ documentType: 'Remito', invoiceNumber: '0005-00000200' })).toBe('R-0005-00000200');
+      expect(formatInvoiceFullNumber({ documentType: 'Factura A', invoiceNumber: 'FC-A-0002-00001503' })).toBe('A-0002-00001503');
+      expect(formatInvoiceFullNumber({ documentType: 'Factura A', invoiceNumber: 'A-0002-00001503' })).toBe('A-0002-00001503');
+    });
+
+    it('filterBillsByDateRange should filter bills within start and end date range', () => {
+      const bills: SupplierBill[] = [
+        { id: 'b1', supplierName: 'Sup A', invoiceNumber: '001', date: '2026-05-10', amount: 100, itemsCount: 1, status: 'paid' },
+        { id: 'b2', supplierName: 'Sup B', invoiceNumber: '002', date: '2026-08-15', amount: 200, itemsCount: 1, status: 'pending' },
+        { id: 'b3', supplierName: 'Sup C', invoiceNumber: '003', date: '2026-11-20', amount: 300, itemsCount: 1, status: 'pending' }
+      ];
+
+      const filtered = filterBillsByDateRange(bills, '2026-06-01', '2026-09-30');
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].id).toBe('b2');
+    });
+
+    it('calculateMonthlyExpenditureProjections should generate all consecutive months within startDate and endDate range', () => {
+      const bills: SupplierBill[] = [
+        { id: 'b1', supplierName: 'Sup A', invoiceNumber: '001', date: '2026-09-10', amount: 100, itemsCount: 1, status: 'pending' }
+      ];
+
+      // Septiembre 2026 a Febrero 2027 (6 meses)
+      const projections = calculateMonthlyExpenditureProjections(bills, {}, [], '2026-09-01', '2027-02-28');
+      expect(projections.length).toBe(6);
+      expect(projections.map(p => p.monthKey)).toEqual([
+        '2026-09', '2026-10', '2026-11', '2026-12', '2027-01', '2027-02'
+      ]);
+    });
+
+    it('getDefaultDateRange should return current month start and 6 months ahead end date', () => {
+      const range = getDefaultDateRange('2026-08-31');
+      expect(range.startDate).toBe('2026-08-01');
+      expect(range.endDate).toBe('2027-02-28');
     });
   });
 });

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SupplierBill } from '../../domain/types';
 import { sendInvoiceWebhook, parseN8nInvoiceResponse } from '../../domain/services/webhookService';
 import { resetInvoiceDrawerState, shouldShowResetButton } from '../../domain/services/supplierService';
+import { uploadInvoiceVoucherToSupabase } from '../../domain/services/supabaseService';
 
 interface NewInvoiceDrawerProps {
   isOpen: boolean;
@@ -162,6 +163,19 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
     const finalInvoiceNumber = invoiceNumber.trim() || 'FC-0000-0000';
     const finalAmount = Number(totalAmount) || Number(subtotal) || 0;
 
+    let voucherName = editingBill?.voucherName;
+    let voucherUrl = editingBill?.voucherUrl;
+
+    if (selectedFile) {
+      const uploadRes = await uploadInvoiceVoucherToSupabase(selectedFile);
+      if (uploadRes) {
+        voucherName = uploadRes.voucherName;
+        voucherUrl = uploadRes.voucherUrl;
+      } else {
+        voucherName = selectedFile.name;
+      }
+    }
+
     const newBillData: Omit<SupplierBill, 'id'> = {
       supplierName: finalSupplier,
       cuit: cuit.trim(),
@@ -176,7 +190,9 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
       currency,
       amount: finalAmount,
       itemsCount: 1,
-      status: billStatus
+      status: billStatus,
+      voucherName,
+      voucherUrl
     };
 
     setIsSubmittingWebhook(true);

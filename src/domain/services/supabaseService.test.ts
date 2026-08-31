@@ -6,7 +6,8 @@ import {
   mapRowToSupplierBill, 
   mapRowToExpenseRecord,
   mapRowToMedicalAppointment,
-  mapRowToGroomingAppointment
+  mapRowToGroomingAppointment,
+  mapRowToSupplierPayment
 } from './supabaseService';
 
 describe('supabaseService row mappers', () => {
@@ -82,7 +83,9 @@ describe('supabaseService row mappers', () => {
       date: '2026-08-10',
       amount: 45000,
       itemsCount: 3,
-      status: 'pending'
+      status: 'pending',
+      voucherName: 'factura_001.pdf',
+      voucherUrl: 'https://cjqziapqtyjsxqxumgbx.supabase.co/storage/v1/object/public/veterinaria-archivos/factura_001.pdf'
     };
 
     const bill = mapRowToSupplierBill(rawRow);
@@ -91,6 +94,8 @@ describe('supabaseService row mappers', () => {
     expect(bill.supplierName).toBe('Distribuidora Pet');
     expect(bill.amount).toBe(45000);
     expect(bill.status).toBe('pending');
+    expect(bill.voucherName).toBe('factura_001.pdf');
+    expect(bill.voucherUrl).toBe('https://cjqziapqtyjsxqxumgbx.supabase.co/storage/v1/object/public/veterinaria-archivos/factura_001.pdf');
   });
 
   it('should map DB row to ExpenseRecord domain model', () => {
@@ -147,5 +152,31 @@ describe('supabaseService row mappers', () => {
     expect(groom.id).toBe('groom-1');
     expect(groom.serviceName).toBe('Baño y Corte');
     expect(groom.price).toBe(3500);
+  });
+
+  it('should map DB row to SupplierPayment domain model', () => {
+    const rawRow = {
+      id: 'pay-100',
+      billId: 'bill-50',
+      billInvoiceNumber: '0002-00001500',
+      supplierName: 'Laboratorios Zoonosis SRL',
+      date: '2026-08-31',
+      amount: 1210000,
+      paymentMethod: 'Efectivo',
+      note: 'Pago a cuenta',
+      voucherName: 'comprobante_001.pdf',
+      voucherUrl: 'https://cjqziapqtyjsxqxumgbx.supabase.co/storage/v1/object/public/comprobantes/comprobante_001.pdf'
+    };
+
+    const payment = mapRowToSupplierPayment(rawRow);
+
+    expect(payment.id).toBe('pay-100');
+    expect(payment.billId).toBe('bill-50');
+    expect(payment.billInvoiceNumber).toBe('0002-00001500');
+    expect(payment.supplierName).toBe('Laboratorios Zoonosis SRL');
+    expect(payment.amount).toBe(1210000);
+    expect(payment.paymentMethod).toBe('Efectivo');
+    expect(payment.voucherName).toBe('comprobante_001.pdf');
+    expect(payment.voucherUrl).toBe('https://cjqziapqtyjsxqxumgbx.supabase.co/storage/v1/object/public/comprobantes/comprobante_001.pdf');
   });
 });

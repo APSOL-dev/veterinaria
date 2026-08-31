@@ -73,7 +73,9 @@ import {
   updateSupplierBillInSupabase,
   deleteSupplierBillFromSupabase,
   insertExpenseToSupabase,
-  insertReceiptToSupabase 
+  insertReceiptToSupabase,
+  fetchSupplierPaymentsFromSupabase,
+  insertSupplierPaymentToSupabase
 } from './domain/services/supabaseService';
 
 import { AppNotificationModal } from './components/Common/AppNotificationModal';
@@ -179,11 +181,12 @@ export const App: React.FC = () => {
 
   React.useEffect(() => {
     async function loadDataFromSupabase() {
-      const [dbPatients, dbBills, dbExpenses, dbProducts] = await Promise.all([
+      const [dbPatients, dbBills, dbExpenses, dbProducts, dbPayments] = await Promise.all([
         fetchPatientsFromSupabase(),
         fetchSupplierBillsFromSupabase(),
         fetchExpensesFromSupabase(),
-        fetchProductsFromSupabase()
+        fetchProductsFromSupabase(),
+        fetchSupplierPaymentsFromSupabase()
       ]);
       if (dbPatients && dbPatients.length > 0) {
         setPatients(dbPatients);
@@ -197,6 +200,9 @@ export const App: React.FC = () => {
       }
       if (dbProducts && dbProducts.length > 0) {
         setProducts(dbProducts);
+      }
+      if (dbPayments && dbPayments.length > 0) {
+        setPayments(dbPayments);
       }
     }
     loadDataFromSupabase();
@@ -438,6 +444,7 @@ export const App: React.FC = () => {
   const handleAddPayment = (paymentData: Omit<SupplierPayment, 'id'>) => {
     const payment = createPaymentRecord(paymentData);
     setPayments(prev => [payment, ...prev]);
+    insertSupplierPaymentToSupabase(payment);
     setNotifModal({
       isOpen: true,
       title: '¡Pago Registrado!',

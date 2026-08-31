@@ -79,3 +79,16 @@ export function calculateExpenseTotals(expenses: ExpenseRecord[]): {
     count: expenses.length
   };
 }
+
+export function prepareExpenseForCopy(expense: ExpenseRecord): Omit<ExpenseRecord, 'id'> {
+  return {
+    date: expense.date,
+    responsible: expense.responsible,
+    category: expense.category,
+    allocation: expense.allocation,
+    paymentMethod: expense.paymentMethod,
+    description: expense.description,
+    amount: expense.amount,
+    note: expense.note
+  };
+}

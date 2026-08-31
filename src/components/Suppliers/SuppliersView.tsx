@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { SupplierBill, SupplierQuote, ExpenseRecord, SupplierPayment, SupplierPaymentMethod } from '../../domain/types';
-import { calculateSupplierTotals, calculateMonthlyExpenditureProjections } from '../../domain/services/supplierService';
+import { calculateSupplierTotals, calculateMonthlyExpenditureProjections, formatInvoiceFullNumber, filterBillsByDateRange, filterPaymentsByDateRange, getDefaultDateRange } from '../../domain/services/supplierService';
 import { filterExpenseRecords, calculateExpenseTotals } from '../../domain/services/expenseService';
 import { getTotalPaidForBill, getRemainingBalance } from '../../domain/services/paymentService';
 import { NewInvoiceDrawer } from './NewInvoiceDrawer';
+import { PaymentDrawer } from './PaymentDrawer';
+import { PowerBIDateRangeFilter } from './PowerBIDateRangeFilter';
 
 interface SuppliersViewProps {
   bills: SupplierBill[];
@@ -52,13 +54,37 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   const [editingBudgetMonth, setEditingBudgetMonth] = useState<string | null>(null);
   const [tempBudgetInput, setTempBudgetInput] = useState<string>('');
 
-  // Submodule: Pagos — modal de registro de pago
+  // Submodule: Facturas date range state (Estilo Power BI: mes actual a 6 meses adelante por defecto)
+  const default6MonthsRange = useMemo(() => getDefaultDateRange('2026-08-01'), []);
+
+  const defaultMinDate = useMemo(() => {
+    const dates = [...bills.map(b => b.paymentDate || b.date), ...payments.map(p => p.date)].filter(Boolean);
+    if (dates.length === 0) return '2025-01-01';
+    dates.sort();
+    return dates[0].slice(0, 7) + '-01';
+  }, [bills, payments]);
+
+  const defaultMaxDate = useMemo(() => {
+    const dates = [...bills.map(b => b.paymentDate || b.date), ...payments.map(p => p.date)].filter(Boolean);
+    if (dates.length === 0) return '2027-12-31';
+    dates.sort();
+    const last = dates[dates.length - 1];
+    const [y, m] = last.split('-');
+    return `${y}-${m}-31`;
+  }, [bills, payments]);
+
+  const [filterStartDate, setFilterStartDate] = useState<string>(default6MonthsRange.startDate);
+  const [filterEndDate, setFilterEndDate] = useState<string>(default6MonthsRange.endDate);
+
+  const filteredBills = useMemo(() => filterBillsByDateRange(bills, filterStartDate, filterEndDate), [bills, filterStartDate, filterEndDate]);
+  const filteredPayments = useMemo(() => filterPaymentsByDateRange(payments, filterStartDate, filterEndDate), [payments, filterStartDate, filterEndDate]);
+
+  const totals = useMemo(() => calculateSupplierTotals(filteredBills, quotes, filteredPayments, '2026-08-31'), [filteredBills, quotes, filteredPayments]);
+  const projections = useMemo(() => calculateMonthlyExpenditureProjections(bills, monthlyBudgets, payments, filterStartDate, filterEndDate), [bills, monthlyBudgets, payments, filterStartDate, filterEndDate]);
+
+  // Submodule: Pagos — drawer de registro de pago
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentBillId, setPaymentBillId] = useState<string>('');
-  const [paymentAmount, setPaymentAmount] = useState<number>(0);
-  const [paymentMethod, setPaymentMethod] = useState<SupplierPaymentMethod>('Efectivo');
-  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [paymentNote, setPaymentNote] = useState<string>('');
 
   // Submodule: Registrar Gastos filter state
   const [filterResponsible, setFilterResponsible] = useState<string>('all');
@@ -69,22 +95,45 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
   // Expense form state
   const [expDate, setExpDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [expResponsible, setExpResponsible] = useState<string>('alberto');
-  const [expCategory, setExpCategory] = useState<string>('Gastos varios');
-  const [expAllocation, setExpAllocation] = useState<string>('Local Chaco minorista');
-  const [expPaymentMethod, setExpPaymentMethod] = useState<string>('Efectivo, Caja chica');
+  const [expResponsible, setExpResponsible] = useState<string>('Administración');
+  const [expCategory, setExpCategory] = useState<string>('Gastos Varios / Caja Chica');
+  const [expAllocation, setExpAllocation] = useState<string>('Santo Tomé');
+  const [expPaymentMethod, setExpPaymentMethod] = useState<string>('Efectivo');
   const [expDescription, setExpDescription] = useState<string>('');
   const [expAmount, setExpAmount] = useState<number>(1000);
   const [expNote, setExpNote] = useState<string>('');
 
-  const totals = calculateSupplierTotals(bills, quotes);
-  const projections = calculateMonthlyExpenditureProjections(bills, monthlyBudgets);
-
   // Dynamic filter options derived from expense data with default presets
-  const uniqueResponsibles = useMemo(() => Array.from(new Set(['alberto', 'sele', ...expenses.map(e => e.responsible)])), [expenses]);
-  const uniqueCategories = useMemo(() => Array.from(new Set(['Gastos varios', 'Combustible', 'Fletes', 'Insumos oficina', 'Viáticos', 'Escoria', ...expenses.map(e => e.category)])), [expenses]);
-  const uniqueAllocations = useMemo(() => Array.from(new Set(['Local Chaco minorista', 'Local Chaco mayorista', 'Local Santa Fe mayorista', ...expenses.map(e => e.allocation)])), [expenses]);
-  const uniquePaymentMethods = useMemo(() => Array.from(new Set(['Efectivo, Caja chica', 'Caja administración, Mercado Pago', 'Caja chica, Efectivo', ...expenses.map(e => e.paymentMethod)])), [expenses]);
+  const uniqueResponsibles = useMemo(() => Array.from(new Set(['Administración', 'Clínica', 'Peluquería', ...expenses.map(e => e.responsible)])), [expenses]);
+  const uniqueCategories = useMemo(() => {
+    const OFFICIAL_EXPENSE_CATEGORIES = [
+      'Alimentos y Balanceados',
+      'Farmacología y Medicamentos',
+      'Accesorios y Juguetes',
+      'Higiene y Estética',
+      'Materiales Descartables y Quirúrgicos',
+      'Alquiler del Local',
+      'Servicios Públicos',
+      'Internet y Telefonía',
+      'Seguridad y Monitoreo',
+      'Tasas e Impuestos',
+      'Sueldos y Jornales',
+      'Honorarios Profesionales',
+      'Cargas Sociales y Sindicales',
+      'Mantenimiento de Equipos',
+      'Limpieza y Desinfección',
+      'Fletes y Logística',
+      'Gastos Bancarios y Comisiones',
+      'Software y Suscripciones',
+      'Gastos Varios / Caja Chica'
+    ];
+    const extraCategories = expenses
+      .map(e => e.category)
+      .filter(c => c && c.trim().toLowerCase() !== 'gastos varios' && !OFFICIAL_EXPENSE_CATEGORIES.includes(c));
+    return Array.from(new Set([...OFFICIAL_EXPENSE_CATEGORIES, ...extraCategories]));
+  }, [expenses]);
+  const uniqueAllocations = useMemo(() => Array.from(new Set(['Santo Tomé', ...expenses.map(e => e.allocation)])), [expenses]);
+  const uniquePaymentMethods = useMemo(() => Array.from(new Set(['Efectivo', 'Efectivo, Caja chica', 'Caja administración, Mercado Pago', 'Transferencia bancaria', 'Tarjeta de crédito/débito', 'Cheque', ...expenses.map(e => e.paymentMethod)])), [expenses]);
 
   const filteredExpenses = useMemo(() => {
     return filterExpenseRecords(expenses, {
@@ -125,10 +174,10 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   const handleOpenAddExpenseModal = () => {
     setEditingExpenseId(null);
     setExpDate(new Date().toISOString().split('T')[0]);
-    setExpResponsible('alberto');
-    setExpCategory('Gastos varios');
-    setExpAllocation('Local Chaco minorista');
-    setExpPaymentMethod('Efectivo, Caja chica');
+    setExpResponsible('Administración');
+    setExpCategory('Gastos Varios / Caja Chica');
+    setExpAllocation('Santo Tomé');
+    setExpPaymentMethod('Efectivo');
     setExpDescription('');
     setExpAmount(1000);
     setExpNote('');
@@ -138,6 +187,19 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   const handleOpenEditExpenseModal = (exp: ExpenseRecord) => {
     setEditingExpenseId(exp.id);
     setExpDate(exp.date);
+    setExpResponsible(exp.responsible);
+    setExpCategory(exp.category);
+    setExpAllocation(exp.allocation);
+    setExpPaymentMethod(exp.paymentMethod);
+    setExpDescription(exp.description);
+    setExpAmount(exp.amount);
+    setExpNote(exp.note || '');
+    setShowModal(true);
+  };
+
+  const handleOpenCopyExpenseModal = (exp: ExpenseRecord) => {
+    setEditingExpenseId(null);
+    setExpDate(exp.date || new Date().toISOString().split('T')[0]);
     setExpResponsible(exp.responsible);
     setExpCategory(exp.category);
     setExpAllocation(exp.allocation);
@@ -188,36 +250,11 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
   const handleOpenPaymentModal = (bill?: SupplierBill) => {
     if (bill) {
-      const remaining = getRemainingBalance(bill, payments);
       setPaymentBillId(bill.id);
-      setPaymentAmount(remaining);
     } else {
       setPaymentBillId(bills.length > 0 ? bills[0].id : '');
-      setPaymentAmount(0);
     }
-    setPaymentMethod('Efectivo');
-    setPaymentDate(new Date().toISOString().split('T')[0]);
-    setPaymentNote('');
     setShowPaymentModal(true);
-  };
-
-  const handleSubmitPayment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!paymentBillId || paymentAmount <= 0) return;
-    const selectedBill = bills.find(b => b.id === paymentBillId);
-    if (!selectedBill) return;
-    if (onAddPayment) {
-      onAddPayment({
-        billId: paymentBillId,
-        billInvoiceNumber: selectedBill.invoiceNumber,
-        supplierName: selectedBill.supplierName,
-        date: paymentDate,
-        amount: paymentAmount,
-        paymentMethod,
-        note: paymentNote.trim() || undefined,
-      });
-    }
-    setShowPaymentModal(false);
   };
 
   return (
@@ -242,41 +279,64 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            activeSubModule === 'facturas'
-              ? handleOpenAddBill()
+        <div className="flex items-center gap-sm flex-wrap">
+          {activeSubModule === 'facturas' && (
+            <PowerBIDateRangeFilter
+              minDate={default6MonthsRange.startDate}
+              maxDate={default6MonthsRange.endDate}
+              startDate={filterStartDate}
+              endDate={filterEndDate}
+              onChange={(s, e) => {
+                setFilterStartDate(s);
+                setFilterEndDate(e);
+              }}
+              onReset={() => {
+                setFilterStartDate(default6MonthsRange.startDate);
+                setFilterEndDate(default6MonthsRange.endDate);
+              }}
+            />
+          )}
+
+          <button
+            type="button"
+            onClick={() =>
+              activeSubModule === 'facturas'
+                ? handleOpenAddBill()
+                : activeSubModule === 'pagos'
+                ? handleOpenPaymentModal()
+                : handleOpenAddExpenseModal()
+            }
+            className="bg-primary text-on-primary hover:bg-primary-container px-md py-2 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
+          >
+            <span className="material-symbols-outlined text-[16px]">add</span>
+            {activeSubModule === 'facturas'
+              ? 'Registrar Factura'
               : activeSubModule === 'pagos'
-              ? handleOpenPaymentModal()
-              : handleOpenAddExpenseModal()
-          }
-          className="bg-primary text-on-primary hover:bg-primary-container px-md py-2 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-sm transition-all cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[16px]">add</span>
-          {activeSubModule === 'facturas'
-            ? 'Registrar Factura'
-            : activeSubModule === 'pagos'
-            ? 'Registrar pago'
-            : 'Registrar Gasto'}
-        </button>
+              ? 'Registrar pago'
+              : 'Registrar Gasto'}
+          </button>
+        </div>
       </div>
 
       {activeSubModule === 'facturas' ? (
         <>
           {/* KPI Cards Summary for Facturas */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-md">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-md">
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
-              <span className="font-label-md text-[11px] text-on-surface-variant uppercase font-bold">Pendiente de Pago</span>
-              <span className="font-display-lg text-2xl font-bold text-error mt-xs">${totals.pendingBillsTotal.toLocaleString('es-AR')}</span>
+              <span className="font-label-md text-[11px] text-on-surface-variant uppercase font-bold">Comprado este mes</span>
+              <span className="font-display-lg text-2xl font-bold text-primary mt-xs">${totals.purchasedThisMonthTotal.toLocaleString('es-AR')}</span>
             </div>
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
-              <span className="font-label-md text-[11px] text-on-surface-variant uppercase font-bold">Facturas Pagadas</span>
+              <span className="font-label-md text-[11px] text-on-surface-variant uppercase font-bold">Facturas pagadas</span>
               <span className="font-display-lg text-2xl font-bold text-[#27AE60] mt-xs">${totals.paidBillsTotal.toLocaleString('es-AR')}</span>
             </div>
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
-              <span className="font-label-md text-[11px] text-on-surface-variant uppercase font-bold">Presupuestos Aprobados</span>
-              <span className="font-display-lg text-2xl font-bold text-secondary mt-xs">${totals.approvedQuotesTotal.toLocaleString('es-AR')}</span>
+              <span className="font-label-md text-[11px] text-on-surface-variant uppercase font-bold">Pendiente de pago</span>
+              <span className="font-display-lg text-2xl font-bold text-error mt-xs">${totals.pendingBillsTotal.toLocaleString('es-AR')}</span>
+            </div>
+            <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
+              <span className="font-label-md text-[11px] text-on-surface-variant uppercase font-bold">Comprometido a 30 días</span>
+              <span className="font-display-lg text-2xl font-bold text-amber-600 mt-xs">${totals.committed30DaysTotal.toLocaleString('es-AR')}</span>
             </div>
           </div>
 
@@ -411,6 +471,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                         <th className="p-sm px-md text-right">Monto Total</th>
                         <th className="p-sm px-md text-right">Saldo Restante</th>
                         <th className="p-sm px-md text-center">Estado</th>
+                        <th className="p-sm px-md">Comprobante</th>
                         <th className="p-sm px-md text-center">Acciones</th>
                       </tr>
                     </thead>
@@ -436,7 +497,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             <td className="p-sm px-md font-normal text-slate-700">{bill.date}</td>
                             <td className="p-sm px-md font-normal text-slate-700">{bill.paymentDate || bill.date}</td>
                             <td className="p-sm px-md font-medium text-slate-900">{bill.supplierName}</td>
-                            <td className="p-sm px-md font-mono text-[11px]">{bill.invoiceNumber}</td>
+                            <td className="p-sm px-md font-mono text-[11px]">{formatInvoiceFullNumber(bill)}</td>
                             <td className="p-sm px-md text-center">{bill.itemsCount}</td>
                             <td className="p-sm px-md text-right font-bold">${(bill.amount || 0).toLocaleString('es-AR')}</td>
                             <td className="p-sm px-md text-right font-bold text-error">
@@ -447,6 +508,27 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                 {badgeLabel}
                               </span>
                             </td>
+                            <td className="p-sm px-md">
+                              {bill.voucherUrl ? (
+                                <a
+                                  href={bill.voucherUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E8F5E9] text-[#27AE60] hover:bg-[#C8E6C9] border border-[#27AE60]/30 transition-colors cursor-pointer"
+                                  title={`Ver/Descargar ${bill.voucherName || 'Comprobante'}`}
+                                >
+                                  <span className="material-symbols-outlined text-[12px]">download</span>
+                                  <span className="truncate max-w-[120px] font-bold">{bill.voucherName || 'Ver Comprobante'}</span>
+                                </a>
+                              ) : bill.voucherName ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E8F5E9] text-[#27AE60] border border-[#27AE60]/30" title={bill.voucherName}>
+                                  <span className="material-symbols-outlined text-[12px]">attach_file</span>
+                                  <span className="truncate max-w-[120px] font-bold">{bill.voucherName}</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-[11px]">—</span>
+                              )}
+                            </td>
                             <td className="p-sm px-md text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button
@@ -455,7 +537,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                   onClick={() => handleOpenPaymentModal(bill)}
                                   className="p-1 text-slate-400 hover:text-[#27AE60] transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
                                 >
-                                  <span className="material-symbols-outlined text-[18px]">price_check</span>
+                                  <span className="material-symbols-outlined text-[18px]">wallet</span>
                                 </button>
                                 <button
                                   type="button"
@@ -489,7 +571,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
         <div className="bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/30 flex-1 overflow-hidden flex flex-col">
           {payments.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 gap-sm text-on-surface-variant py-xl">
-              <span className="material-symbols-outlined text-[48px] opacity-30">price_check</span>
+              <span className="material-symbols-outlined text-[48px] opacity-30">wallet</span>
               <p className="font-label-md text-sm font-medium">No hay pagos registrados aún.</p>
               <button
                 type="button"
@@ -510,6 +592,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     <th className="p-sm px-md">N° Factura</th>
                     <th className="p-sm px-md">Método</th>
                     <th className="p-sm px-md text-right">Monto Pagado</th>
+                    <th className="p-sm px-md">Comprobante</th>
                     <th className="p-sm px-md">Nota</th>
                   </tr>
                 </thead>
@@ -526,6 +609,27 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                       </td>
                       <td className="p-sm px-md text-right font-bold text-[#27AE60]">
                         ${pay.amount.toLocaleString('es-AR')}
+                      </td>
+                      <td className="p-sm px-md">
+                        {pay.voucherUrl ? (
+                          <a
+                            href={pay.voucherUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E8F5E9] text-[#27AE60] hover:bg-[#C8E6C9] border border-[#27AE60]/30 transition-colors cursor-pointer"
+                            title={`Ver/Descargar ${pay.voucherName || 'Comprobante'}`}
+                          >
+                            <span className="material-symbols-outlined text-[12px]">download</span>
+                            <span className="truncate max-w-[120px] font-bold">{pay.voucherName || 'Ver Comprobante'}</span>
+                          </a>
+                        ) : pay.voucherName ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E8F5E9] text-[#27AE60] border border-[#27AE60]/30" title={pay.voucherName}>
+                            <span className="material-symbols-outlined text-[12px]">attach_file</span>
+                            <span className="truncate max-w-[120px] font-bold">{pay.voucherName}</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-[11px]">—</span>
+                        )}
                       </td>
                       <td className="p-sm px-md text-slate-500 italic text-[11px]">{pay.note || '—'}</td>
                     </tr>
@@ -667,16 +771,14 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                           >
                             <span className="material-symbols-outlined text-[16px]">edit</span>
                           </button>
-                          {onDuplicateExpense && (
                             <button
                               type="button"
-                              title="Duplicar gasto"
-                              onClick={() => onDuplicateExpense(exp.id)}
+                              title="Copiar gasto"
+                              onClick={() => handleOpenCopyExpenseModal(exp)}
                               className="p-1 text-slate-400 hover:text-secondary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-[16px]">content_copy</span>
                             </button>
-                          )}
                           {onDeleteExpense && (
                             <button
                               type="button"
@@ -738,73 +840,58 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-on-surface-variant uppercase">Responsable *</label>
-                  <input
-                    type="text"
-                    list="exp-responsibles"
+                  <select
                     value={expResponsible}
                     onChange={(e) => setExpResponsible(e.target.value)}
                     required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary capitalize"
-                  />
-                  <datalist id="exp-responsibles">
-                    <option value="alberto" />
-                    <option value="sele" />
-                  </datalist>
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                  >
+                    {uniqueResponsibles.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-md">
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-on-surface-variant uppercase">Rubro / Categoría *</label>
-                  <input
-                    type="text"
-                    list="exp-categories"
+                  <select
                     value={expCategory}
                     onChange={(e) => setExpCategory(e.target.value)}
                     required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
-                  />
-                  <datalist id="exp-categories">
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                  >
                     {uniqueCategories.map(c => (
-                      <option key={c} value={c} />
+                      <option key={c} value={c}>{c}</option>
                     ))}
-                  </datalist>
+                  </select>
                 </div>
 
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-on-surface-variant uppercase">Asignación *</label>
                   <input
                     type="text"
-                    list="exp-allocations"
-                    value={expAllocation}
-                    onChange={(e) => setExpAllocation(e.target.value)}
-                    required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
+                    value="Santo Tomé"
+                    readOnly
+                    className="bg-surface-container/60 p-2 rounded-xl border border-outline-variant/40 text-xs font-semibold text-on-surface-variant outline-none cursor-not-allowed"
                   />
-                  <datalist id="exp-allocations">
-                    {uniqueAllocations.map(a => (
-                      <option key={a} value={a} />
-                    ))}
-                  </datalist>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-md">
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-on-surface-variant uppercase">Forma de Pago *</label>
-                  <input
-                    type="text"
-                    list="exp-payments"
+                  <select
                     value={expPaymentMethod}
                     onChange={(e) => setExpPaymentMethod(e.target.value)}
                     required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
-                  />
-                  <datalist id="exp-payments">
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                  >
                     {uniquePaymentMethods.map(p => (
-                      <option key={p} value={p} />
+                      <option key={p} value={p}>{p}</option>
                     ))}
-                  </datalist>
+                  </select>
                 </div>
 
                 <div className="flex flex-col gap-1">
@@ -864,121 +951,19 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
         </div>
       )}
 
-      {/* Modal Registrar Pago */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-md" onClick={() => setShowPaymentModal(false)}>
-          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant/30 w-full max-w-md flex flex-col gap-md p-md" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center border-b border-slate-200 pb-xs">
-              <h3 className="font-headline-sm text-slate-900 text-sm font-bold flex items-center gap-xs">
-                <span className="material-symbols-outlined text-[#27AE60] text-[20px]">price_check</span>
-                Registrar Pago a Factura
-              </h3>
-              <button type="button" onClick={() => setShowPaymentModal(false)} className="text-slate-400 hover:text-error transition-colors cursor-pointer">
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitPayment} className="flex flex-col gap-sm">
-              {/* Selector de factura */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-on-surface-variant uppercase">Factura *</label>
-                <select
-                  value={paymentBillId}
-                  onChange={(e) => {
-                    setPaymentBillId(e.target.value);
-                    const b = bills.find(b => b.id === e.target.value);
-                    if (b) setPaymentAmount(getRemainingBalance(b, payments));
-                  }}
-                  required
-                  className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
-                >
-                  <option value="">Seleccionar factura...</option>
-                  {bills.map(b => {
-                    const rem = getRemainingBalance(b, payments);
-                    return (
-                      <option key={b.id} value={b.id}>
-                        {b.invoiceNumber} — {b.supplierName} (Saldo: ${rem.toLocaleString('es-AR')})
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-sm">
-                {/* Monto */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Monto ($) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                    required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-bold outline-none focus:border-primary"
-                  />
-                </div>
-
-                {/* Fecha */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Fecha *</label>
-                  <input
-                    type="date"
-                    value={paymentDate}
-                    onChange={(e) => setPaymentDate(e.target.value)}
-                    required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
-                  />
-                </div>
-              </div>
-
-              {/* Método de pago */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-on-surface-variant uppercase">Método de Pago *</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value as SupplierPaymentMethod)}
-                  className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
-                >
-                  <option value="Efectivo">Efectivo</option>
-                  <option value="Transferencia">Transferencia</option>
-                  <option value="Cheque">Cheque</option>
-                  <option value="Tarjeta">Tarjeta</option>
-                  <option value="Otro">Otro</option>
-                </select>
-              </div>
-
-              {/* Nota */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-on-surface-variant uppercase">Nota (opcional)</label>
-                <input
-                  type="text"
-                  value={paymentNote}
-                  onChange={(e) => setPaymentNote(e.target.value)}
-                  placeholder="ej. Transferencia banco Nación ref. 12345"
-                  className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
-                />
-              </div>
-
-              <div className="flex justify-end gap-sm pt-sm border-t border-outline-variant/20">
-                <button
-                  type="button"
-                  onClick={() => setShowPaymentModal(false)}
-                  className="px-md py-2 rounded-xl text-xs font-bold bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-all cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-md py-2 rounded-xl text-xs font-bold bg-[#27AE60] hover:bg-[#1e8449] text-white shadow-sm transition-all cursor-pointer"
-                >
-                  Registrar Pago
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Drawer Registrar Pago */}
+      <PaymentDrawer
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        bills={bills}
+        payments={payments}
+        preselectedBillId={paymentBillId}
+        onSavePayment={(paymentData) => {
+          if (onAddPayment) {
+            onAddPayment(paymentData);
+          }
+        }}
+      />
     </div>
   );
 };

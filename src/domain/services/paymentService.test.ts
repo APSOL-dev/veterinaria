@@ -73,6 +73,22 @@ describe('paymentService', () => {
       expect(payment.note).toBe('Pago parcial');
     });
 
+    it('debe registrar el nombre del comprobante (voucherName) cuando se adjunta un archivo', () => {
+      const data = {
+        billId: 'bill-1',
+        billInvoiceNumber: 'FAC-0001',
+        supplierName: 'Proveedor Ejemplo',
+        date: '2026-08-31',
+        amount: 5000,
+        paymentMethod: 'Transferencia' as const,
+        voucherName: 'comprobante_transf_1234.pdf',
+      };
+
+      const payment = createPaymentRecord(data);
+
+      expect(payment.voucherName).toBe('comprobante_transf_1234.pdf');
+    });
+
     it('dos pagos creados deben tener IDs distintos', () => {
       const data = {
         billId: 'bill-1',

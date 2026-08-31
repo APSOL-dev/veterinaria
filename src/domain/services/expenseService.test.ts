@@ -3,7 +3,8 @@ import { ExpenseRecord } from '../types';
 import { 
   createExpenseRecord, 
   filterExpenseRecords, 
-  calculateExpenseTotals 
+  calculateExpenseTotals,
+  prepareExpenseForCopy
 } from './expenseService';
 
 describe('expenseService', () => {
@@ -90,5 +91,32 @@ describe('expenseService', () => {
     const totals = calculateExpenseTotals(expenses);
     expect(totals.totalAmount).toBe(81000);
     expect(totals.count).toBe(2);
+  });
+
+  it('prepareExpenseForCopy should return expense data without id for pre-filling form modal', () => {
+    const original: ExpenseRecord = {
+      id: 'exp-123',
+      date: '2026-08-28',
+      responsible: 'Administración',
+      category: 'Gastos varios',
+      allocation: 'Operativo',
+      paymentMethod: 'Efectivo',
+      description: 'Supermercado',
+      amount: 1000,
+      note: 'Compra insumos'
+    };
+
+    const copiedData = prepareExpenseForCopy(original);
+
+    expect(copiedData).toEqual({
+      date: '2026-08-28',
+      responsible: 'Administración',
+      category: 'Gastos varios',
+      allocation: 'Operativo',
+      paymentMethod: 'Efectivo',
+      description: 'Supermercado',
+      amount: 1000,
+      note: 'Compra insumos'
+    });
   });
 });

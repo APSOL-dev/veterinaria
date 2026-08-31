@@ -15,11 +15,14 @@ El submódulo **Registrar gastos** (dentro del módulo de Proveedores) permite l
 - **Tabla de Registros (9 Columnas):**
   - Muestra Fecha, Responsable (badge con avatar), Rubro, Asignación, Medio pago, Descripción (en tipografía destacada font-mono), Monto, Nota y Acciones.
 - **Acciones por Fila:**
-  - **Duplicar gasto:** Crea una copia rápida del gasto seleccionado.
-  - **Editar gasto:** Abre el modal precompletado para modificar cualquier atributo.
+  - **Copiar gasto:** Abre el modal de alta con todos los campos precompletados con los mismos datos del gasto seleccionado (Fecha, Responsable, Rubro, Asignación, Método pago, Descripción, Monto y Nota) para que el usuario pueda revisarlos o modificarlos antes de guardar (sin duplicar de forma automática).
+  - **Editar gasto:** Abre el modal precompletado para modificar el registro existente.
   - **Eliminar gasto:** Elimina el registro del gasto.
 - **Modal de Alta / Edición de Gastos:**
-  - Permite ingresar todos los datos requeridos (Fecha, Responsable, Rubro, Asignación, Medio pago, Descripción, Monto y Nota opcional).
+  - `Asignación`: Campo fijo configurado en "Santo Tomé".
+  - `Responsable`: Opciones del desplegable: Administración, Clínica, Peluquería.
+  - `Rubro / Categoría`: 19 categorías oficiales (Alimentos y Balanceados, Farmacología y Medicamentos, Accesorios y Juguetes, Higiene y Estética, Materiales Descartables y Quirúrgicos, Alquiler del Local, Servicios Públicos, Internet y Telefonía, Seguridad y Monitoreo, Tasas e Impuestos, Sueldos y Jornales, Honorarios Profesionales, Cargas Sociales y Sindicales, Mantenimiento de Equipos, Limpieza y Desinfección, Fletes y Logística, Gastos Bancarios y Comisiones, Software y Suscripciones, Gastos Varios / Caja Chica).
+  - Permite ingresar Fecha, Monto, Descripción y Nota opcional.
 
 **Casos borde conocidos:**
 - **Sin resultados tras filtrar:** Muestra un mensaje informativo en la tabla indicando que no hay coincidencias con los criterios seleccionados.

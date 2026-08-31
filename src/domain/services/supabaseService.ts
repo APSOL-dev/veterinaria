@@ -11,7 +11,8 @@ import {
   BillReceipt, 
   SupplierBill, 
   SupplierQuote, 
-  ExpenseRecord 
+  ExpenseRecord,
+  SupplierPayment
 } from '../types';
 
 // =============================================================================
@@ -190,7 +191,9 @@ export function mapRowToSupplierBill(row: any): SupplierBill {
     currency: row.currency || 'ARS',
     amount: Number(row.amount ?? 0),
     itemsCount: Number(row.itemsCount ?? row.items_count ?? 1),
-    status: row.status || 'pending'
+    status: row.status || 'pending',
+    voucherName: row.voucherName || row.voucher_name || undefined,
+    voucherUrl: row.voucherUrl || row.voucher_url || undefined
   };
 }
 
@@ -216,6 +219,21 @@ export function mapRowToExpenseRecord(row: any): ExpenseRecord {
     description: String(row.description || ''),
     amount: Number(row.amount ?? 0),
     note: row.note || undefined
+  };
+}
+
+export function mapRowToSupplierPayment(row: any): SupplierPayment {
+  return {
+    id: String(row.id || ''),
+    billId: String(row.billId || row.bill_id || ''),
+    billInvoiceNumber: String(row.billInvoiceNumber || row.bill_invoice_number || ''),
+    supplierName: String(row.supplierName || row.supplier_name || ''),
+    date: String(row.date || ''),
+    amount: Number(row.amount ?? 0),
+    paymentMethod: row.paymentMethod || row.payment_method || 'Efectivo',
+    note: row.note || undefined,
+    voucherName: row.voucherName || row.voucher_name || undefined,
+    voucherUrl: row.voucherUrl || row.voucher_url || undefined
   };
 }
 
@@ -439,7 +457,9 @@ export async function insertSupplierBillToSupabase(bill: SupplierBill): Promise<
       currency: bill.currency || 'ARS',
       amount: bill.amount,
       items_count: bill.itemsCount,
-      status: bill.status
+      status: bill.status,
+      voucher_name: bill.voucherName || null,
+      voucher_url: bill.voucherUrl || null
     });
     if (error) console.error('Supabase error inserting supplier bill:', error);
     return { success: !error, error: extractErrorMessage(error) };
@@ -466,12 +486,46 @@ export async function updateSupplierBillInSupabase(id: string, bill: Partial<Sup
     if (bill.amount !== undefined) payload.amount = bill.amount;
     if (bill.itemsCount !== undefined) payload.items_count = bill.itemsCount;
     if (bill.status !== undefined) payload.status = bill.status;
+    if (bill.voucherName !== undefined) payload.voucher_name = bill.voucherName || null;
+    if (bill.voucherUrl !== undefined) payload.voucher_url = bill.voucherUrl || null;
 
     const { error } = await supabase.from('vetsoft_facturas_proveedores').update(payload).eq('id', id);
     if (error) console.error('Supabase error updating supplier bill:', error);
     return { success: !error, error: extractErrorMessage(error) };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function uploadInvoiceVoucherToSupabase(file: File): Promise<{ voucherName: string; voucherUrl: string } | null> {
+  try {
+    const fileExt = file.name.split('.').pop() || 'pdf';
+    const cleanFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+    const filePath = `facturas/${cleanFileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('veterinaria-archivos')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Error uploading invoice voucher to Supabase Storage:', error);
+      return null;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('veterinaria-archivos')
+      .getPublicUrl(data.path);
+
+    return {
+      voucherName: file.name,
+      voucherUrl: publicUrlData.publicUrl
+    };
+  } catch (err) {
+    console.error('Exception uploading invoice voucher to Supabase Storage:', err);
+    return null;
   }
 }
 
@@ -544,5 +598,77 @@ export async function insertReceiptToSupabase(receipt: BillReceipt): Promise<Syn
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function fetchSupplierPaymentsFromSupabase(): Promise<SupplierPayment[]> {
+  try {
+    const { data, error } = await supabase.from('vetsoft_vw_pagos_proveedores').select('*');
+    if (error) {
+      console.warn('Cannot fetch supplier payments from DB view, trying physical table:', error);
+      const { data: raw, error: rawErr } = await supabase.from('vetsoft_pagos_proveedores').select('*');
+      if (rawErr) {
+        console.error('Error fetching supplier payments:', rawErr);
+        return [];
+      }
+      return (raw || []).map(mapRowToSupplierPayment);
+    }
+    return (data || []).map(mapRowToSupplierPayment);
+  } catch (err) {
+    console.error('Exception fetching supplier payments:', err);
+    return [];
+  }
+}
+
+export async function insertSupplierPaymentToSupabase(payment: SupplierPayment): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_pagos_proveedores').insert({
+      id: payment.id,
+      bill_id: payment.billId,
+      bill_invoice_number: payment.billInvoiceNumber,
+      supplier_name: payment.supplierName,
+      date: sanitizeDateString(payment.date),
+      amount: payment.amount,
+      payment_method: payment.paymentMethod,
+      note: payment.note || null,
+      voucher_name: payment.voucherName || null,
+      voucher_url: payment.voucherUrl || null
+    });
+    if (error) console.error('Supabase error inserting supplier payment:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function uploadVoucherToSupabase(file: File): Promise<{ voucherName: string; voucherUrl: string } | null> {
+  try {
+    const fileExt = file.name.split('.').pop() || 'pdf';
+    const cleanFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+    const filePath = `comprobantes/${cleanFileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('veterinaria-archivos')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Error uploading voucher to Supabase Storage:', error);
+      return null;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('veterinaria-archivos')
+      .getPublicUrl(data.path);
+
+    return {
+      voucherName: file.name,
+      voucherUrl: publicUrlData.publicUrl
+    };
+  } catch (err) {
+    console.error('Exception uploading voucher to Supabase Storage:', err);
+    return null;
   }
 }

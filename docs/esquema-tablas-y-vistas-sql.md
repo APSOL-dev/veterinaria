@@ -30,6 +30,7 @@ DROP VIEW IF EXISTS public.vetsoft_vw_detalle_recibos CASCADE;
 DROP VIEW IF EXISTS public.vetsoft_vw_facturas_proveedores CASCADE;
 DROP VIEW IF EXISTS public.vetsoft_vw_presupuestos_proveedores CASCADE;
 DROP VIEW IF EXISTS public.vetsoft_vw_gastos CASCADE;
+DROP VIEW IF EXISTS public.vetsoft_vw_pagos_proveedores CASCADE;
 
 DROP VIEW IF EXISTS public.vw_tutores CASCADE;
 DROP VIEW IF EXISTS public.vw_pacientes CASCADE;
