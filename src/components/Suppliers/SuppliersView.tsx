@@ -6,6 +6,8 @@ import { getTotalPaidForBill, getRemainingBalance } from '../../domain/services/
 import { NewInvoiceDrawer } from './NewInvoiceDrawer';
 import { PaymentDrawer } from './PaymentDrawer';
 import { PowerBIDateRangeFilter } from './PowerBIDateRangeFilter';
+import { AppConfirmModal } from '../Common/AppConfirmModal';
+import { ExpenseCategoryModal } from './ExpenseCategoryModal';
 
 interface SuppliersViewProps {
   bills: SupplierBill[];
@@ -48,6 +50,12 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   const [showInvoiceDrawer, setShowInvoiceDrawer] = useState(false);
   const [editingBill, setEditingBill] = useState<SupplierBill | null>(null);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; type: 'bill' | 'expense'; id: string; name: string }>({
+    isOpen: false,
+    type: 'bill',
+    id: '',
+    name: ''
+  });
 
   // Submodule: Facturas state
   const [facturasTab, setFacturasTab] = useState<'resumen' | 'listado'>('resumen');
@@ -103,8 +111,87 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   const [expAmount, setExpAmount] = useState<number>(1000);
   const [expNote, setExpNote] = useState<string>('');
 
+  // Modal para crear nuevas asignaciones y categorías de gastos
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('vetsoft_custom_expense_categories');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [customAllocations, setCustomAllocations] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('vetsoft_custom_expense_allocations');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [customResponsibles, setCustomResponsibles] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('vetsoft_custom_expense_responsibles');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const handleAddCustomCategory = (newCat: string) => {
+    setCustomCategories(prev => {
+      if (prev.includes(newCat)) return prev;
+      const updated = [...prev, newCat];
+      localStorage.setItem('vetsoft_custom_expense_categories', JSON.stringify(updated));
+      return updated;
+    });
+    setExpCategory(newCat);
+  };
+
+  const handleRemoveCustomCategory = (catToRemove: string) => {
+    setCustomCategories(prev => {
+      const updated = prev.filter(c => c !== catToRemove);
+      localStorage.setItem('vetsoft_custom_expense_categories', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleAddCustomAllocation = (newAlloc: string) => {
+    setCustomAllocations(prev => {
+      if (prev.includes(newAlloc)) return prev;
+      const updated = [...prev, newAlloc];
+      localStorage.setItem('vetsoft_custom_expense_allocations', JSON.stringify(updated));
+      return updated;
+    });
+    setExpAllocation(newAlloc);
+  };
+
+  const handleRemoveCustomAllocation = (allocToRemove: string) => {
+    setCustomAllocations(prev => {
+      const updated = prev.filter(a => a !== allocToRemove);
+      localStorage.setItem('vetsoft_custom_expense_allocations', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleAddCustomResponsible = (newResp: string) => {
+    setCustomResponsibles(prev => {
+      if (prev.includes(newResp)) return prev;
+      const updated = [...prev, newResp];
+      localStorage.setItem('vetsoft_custom_expense_responsibles', JSON.stringify(updated));
+      return updated;
+    });
+    setExpResponsible(newResp);
+  };
+
+  const handleRemoveCustomResponsible = (respToRemove: string) => {
+    setCustomResponsibles(prev => {
+      const updated = prev.filter(r => r !== respToRemove);
+      localStorage.setItem('vetsoft_custom_expense_responsibles', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   // Dynamic filter options derived from expense data with default presets
-  const uniqueResponsibles = useMemo(() => Array.from(new Set(['Administración', 'Clínica', 'Peluquería', ...expenses.map(e => e.responsible)])), [expenses]);
+  const uniqueResponsibles = useMemo(() => {
+    const DEFAULT_RESPONSIBLES = ['Administración', 'Clínica', 'Peluquería'];
+    const extraResponsibles = expenses.map(e => e.responsible).filter(Boolean);
+    return Array.from(new Set([...DEFAULT_RESPONSIBLES, ...customResponsibles, ...extraResponsibles]));
+  }, [expenses, customResponsibles]);
   const uniqueCategories = useMemo(() => {
     const OFFICIAL_EXPENSE_CATEGORIES = [
       'Alimentos y Balanceados',
@@ -130,9 +217,14 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
     const extraCategories = expenses
       .map(e => e.category)
       .filter(c => c && c.trim().toLowerCase() !== 'gastos varios' && !OFFICIAL_EXPENSE_CATEGORIES.includes(c));
-    return Array.from(new Set([...OFFICIAL_EXPENSE_CATEGORIES, ...extraCategories]));
-  }, [expenses]);
-  const uniqueAllocations = useMemo(() => Array.from(new Set(['Santo Tomé', ...expenses.map(e => e.allocation)])), [expenses]);
+    return Array.from(new Set([...OFFICIAL_EXPENSE_CATEGORIES, ...customCategories, ...extraCategories]));
+  }, [expenses, customCategories]);
+
+  const uniqueAllocations = useMemo(() => {
+    const DEFAULT_ALLOCATIONS = ['Santo Tomé'];
+    const extraAllocations = expenses.map(e => e.allocation).filter(Boolean);
+    return Array.from(new Set([...DEFAULT_ALLOCATIONS, ...customAllocations, ...extraAllocations]));
+  }, [expenses, customAllocations]);
   const uniquePaymentMethods = useMemo(() => Array.from(new Set(['Efectivo', 'Efectivo, Caja chica', 'Caja administración, Mercado Pago', 'Transferencia bancaria', 'Tarjeta de crédito/débito', 'Cheque', ...expenses.map(e => e.paymentMethod)])), [expenses]);
 
   const filteredExpenses = useMemo(() => {
@@ -166,9 +258,12 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   };
 
   const handleDeleteBillClick = (bill: SupplierBill) => {
-    if (window.confirm(`¿Estás seguro de que deseas eliminar la factura N° ${bill.invoiceNumber} de ${bill.supplierName}?`)) {
-      if (onDeleteBill) onDeleteBill(bill.id);
-    }
+    setDeleteConfirm({
+      isOpen: true,
+      type: 'bill',
+      id: bill.id,
+      name: `Factura N° ${bill.invoiceNumber} (${bill.supplierName})`
+    });
   };
 
   const handleOpenAddExpenseModal = () => {
@@ -295,6 +390,18 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                 setFilterEndDate(default6MonthsRange.endDate);
               }}
             />
+          )}
+
+          {activeSubModule !== 'facturas' && activeSubModule !== 'pagos' && (
+            <button
+              type="button"
+              onClick={() => setShowConfigModal(true)}
+              className="bg-[#F5EFF9] text-[#5C3C7B] hover:bg-[#EFE4F5] border border-[#9A7DB8]/30 px-md py-2 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
+              title="Crear nuevas asignaciones y categorías de gastos"
+            >
+              <span className="material-symbols-outlined text-[18px]">settings_suggest</span>
+              <span>Categorías y Asignaciones</span>
+            </button>
           )}
 
           <button
@@ -430,7 +537,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                 setTempBudgetInput(proj.presupuestoTotal.toString());
                               }}>
                                 <span>{proj.presupuestoTotal > 0 ? proj.presupuestoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</span>
-                                <span className="material-symbols-outlined text-[12px] opacity-0 group-hover:opacity-100 text-primary">edit</span>
+                                <span className="material-symbols-outlined text-[12px] text-primary">edit</span>
                               </div>
                             )}
                           </td>
@@ -591,49 +698,63 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     <th className="p-sm px-md">Proveedor</th>
                     <th className="p-sm px-md">N° Factura</th>
                     <th className="p-sm px-md">Método</th>
+                    <th className="p-sm px-md text-right">Total</th>
                     <th className="p-sm px-md text-right">Monto Pagado</th>
+                    <th className="p-sm px-md text-right">Saldo Restante</th>
                     <th className="p-sm px-md">Comprobante</th>
                     <th className="p-sm px-md">Nota</th>
                   </tr>
                 </thead>
                 <tbody className="text-on-surface">
-                  {[...payments].sort((a, b) => b.date.localeCompare(a.date)).map((pay) => (
-                    <tr key={pay.id} className="border-b border-surface-container-low hover:bg-surface-container transition-colors">
-                      <td className="p-sm px-md font-normal text-slate-700">{pay.date}</td>
-                      <td className="p-sm px-md font-medium text-slate-900">{pay.supplierName}</td>
-                      <td className="p-sm px-md font-mono text-[11px]">{pay.billInvoiceNumber}</td>
-                      <td className="p-sm px-md">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-container text-on-surface-variant border border-outline-variant/40">
-                          {pay.paymentMethod}
-                        </span>
-                      </td>
-                      <td className="p-sm px-md text-right font-bold text-[#27AE60]">
-                        ${pay.amount.toLocaleString('es-AR')}
-                      </td>
-                      <td className="p-sm px-md">
-                        {pay.voucherUrl ? (
-                          <a
-                            href={pay.voucherUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E8F5E9] text-[#27AE60] hover:bg-[#C8E6C9] border border-[#27AE60]/30 transition-colors cursor-pointer"
-                            title={`Ver/Descargar ${pay.voucherName || 'Comprobante'}`}
-                          >
-                            <span className="material-symbols-outlined text-[12px]">download</span>
-                            <span className="truncate max-w-[120px] font-bold">{pay.voucherName || 'Ver Comprobante'}</span>
-                          </a>
-                        ) : pay.voucherName ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E8F5E9] text-[#27AE60] border border-[#27AE60]/30" title={pay.voucherName}>
-                            <span className="material-symbols-outlined text-[12px]">attach_file</span>
-                            <span className="truncate max-w-[120px] font-bold">{pay.voucherName}</span>
+                  {[...payments].sort((a, b) => b.date.localeCompare(a.date)).map((pay) => {
+                    const matchingBill = bills.find(b => b.id === pay.billId || (b.invoiceNumber && formatInvoiceFullNumber(b) === pay.billInvoiceNumber));
+                    const totalAmount = matchingBill ? matchingBill.amount : pay.amount;
+                    const remainingBalance = matchingBill ? getRemainingBalance(matchingBill, payments) : 0;
+
+                    return (
+                      <tr key={pay.id} className="border-b border-surface-container-low hover:bg-surface-container transition-colors">
+                        <td className="p-sm px-md font-normal text-slate-700">{pay.date}</td>
+                        <td className="p-sm px-md font-medium text-slate-900">{pay.supplierName}</td>
+                        <td className="p-sm px-md font-mono text-[11px]">{pay.billInvoiceNumber}</td>
+                        <td className="p-sm px-md">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-container text-on-surface-variant border border-outline-variant/40">
+                            {pay.paymentMethod}
                           </span>
-                        ) : (
-                          <span className="text-slate-400 text-[11px]">—</span>
-                        )}
-                      </td>
-                      <td className="p-sm px-md text-slate-500 italic text-[11px]">{pay.note || '—'}</td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="p-sm px-md text-right font-bold text-slate-800">
+                          ${totalAmount.toLocaleString('es-AR')}
+                        </td>
+                        <td className="p-sm px-md text-right font-bold text-[#27AE60]">
+                          ${pay.amount.toLocaleString('es-AR')}
+                        </td>
+                        <td className="p-sm px-md text-right font-bold text-error">
+                          {remainingBalance > 0 ? `$${remainingBalance.toLocaleString('es-AR')}` : <span className="text-[#27AE60]">$0</span>}
+                        </td>
+                        <td className="p-sm px-md">
+                          {pay.voucherUrl ? (
+                            <a
+                              href={pay.voucherUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E8F5E9] text-[#27AE60] hover:bg-[#C8E6C9] border border-[#27AE60]/30 transition-colors cursor-pointer"
+                              title={`Ver/Descargar ${pay.voucherName || 'Comprobante'}`}
+                            >
+                              <span className="material-symbols-outlined text-[12px]">download</span>
+                              <span className="truncate max-w-[120px] font-bold">{pay.voucherName || 'Ver Comprobante'}</span>
+                            </a>
+                          ) : pay.voucherName ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E8F5E9] text-[#27AE60] border border-[#27AE60]/30" title={pay.voucherName}>
+                              <span className="material-symbols-outlined text-[12px]">attach_file</span>
+                              <span className="truncate max-w-[120px] font-bold">{pay.voucherName}</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">—</span>
+                          )}
+                        </td>
+                        <td className="p-sm px-md text-slate-500 italic text-[11px]">{pay.note || '—'}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -783,7 +904,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             <button
                               type="button"
                               title="Eliminar gasto"
-                              onClick={() => onDeleteExpense(exp.id)}
+                              onClick={() => setDeleteConfirm({ isOpen: true, type: 'expense', id: exp.id, name: `Gasto de $${exp.amount.toLocaleString('es-AR')} (${exp.category})` })}
                               className="p-1 text-slate-400 hover:text-error transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-[16px]">delete</span>
@@ -870,12 +991,16 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-on-surface-variant uppercase">Asignación *</label>
-                  <input
-                    type="text"
-                    value="Santo Tomé"
-                    readOnly
-                    className="bg-surface-container/60 p-2 rounded-xl border border-outline-variant/40 text-xs font-semibold text-on-surface-variant outline-none cursor-not-allowed"
-                  />
+                  <select
+                    value={expAllocation}
+                    onChange={(e) => setExpAllocation(e.target.value)}
+                    required
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                  >
+                    {uniqueAllocations.map(a => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -963,6 +1088,43 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
             onAddPayment(paymentData);
           }
         }}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <AppConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        title={deleteConfirm.type === 'bill' ? 'Confirmar eliminación de factura' : 'Confirmar eliminación de gasto'}
+        message={`¿Está seguro de que desea eliminar ${deleteConfirm.name}?`}
+        confirmText="Sí, eliminar"
+        cancelText="Cancelar"
+        isDanger={true}
+        onConfirm={() => {
+          if (deleteConfirm.type === 'bill' && onDeleteBill && deleteConfirm.id) {
+            onDeleteBill(deleteConfirm.id);
+          } else if (deleteConfirm.type === 'expense' && onDeleteExpense && deleteConfirm.id) {
+            onDeleteExpense(deleteConfirm.id);
+          }
+          setDeleteConfirm({ isOpen: false, type: 'bill', id: '', name: '' });
+        }}
+        onCancel={() => setDeleteConfirm({ isOpen: false, type: 'bill', id: '', name: '' })}
+      />
+
+      {/* Config Categories, Allocations & Responsibles Modal */}
+      <ExpenseCategoryModal
+        isOpen={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+        allCategories={uniqueCategories}
+        allAllocations={uniqueAllocations}
+        allResponsibles={uniqueResponsibles}
+        customCategories={customCategories}
+        customAllocations={customAllocations}
+        customResponsibles={customResponsibles}
+        onAddCategory={handleAddCustomCategory}
+        onRemoveCategory={handleRemoveCustomCategory}
+        onAddAllocation={handleAddCustomAllocation}
+        onRemoveAllocation={handleRemoveCustomAllocation}
+        onAddResponsible={handleAddCustomResponsible}
+        onRemoveResponsible={handleRemoveCustomResponsible}
       />
     </div>
   );

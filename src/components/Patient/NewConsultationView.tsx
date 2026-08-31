@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Patient } from '../../domain/types';
 import { formatAttachmentFileList } from '../../domain/services/patientService';
+import { uploadConsultationAttachmentToSupabase, uploadPrescriptionToSupabase } from '../../domain/services/supabaseService';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 
 interface NewConsultationViewProps {
@@ -12,7 +13,9 @@ interface NewConsultationViewProps {
     vetName: string;
     notes: string;
     prescription?: string;
+    prescriptionUrl?: string;
     attachments?: string[];
+    attachmentUrls?: string[];
   }) => void;
 }
 
@@ -28,7 +31,9 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
   const [showPrescription, setShowPrescription] = useState(false);
   const [prescriptionText, setPrescriptionText] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<string[]>([]);
+  const [rawAttachedFiles, setRawAttachedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -43,6 +48,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
       const fileNames = formatAttachmentFileList(newFiles);
+      setRawAttachedFiles(prev => [...prev, ...newFiles]);
       setAttachedFiles(prev => [...prev, ...fileNames]);
     }
   };
@@ -67,6 +73,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const newFiles = Array.from(e.dataTransfer.files);
       const fileNames = formatAttachmentFileList(newFiles);
+      setRawAttachedFiles(prev => [...prev, ...newFiles]);
       setAttachedFiles(prev => [...prev, ...fileNames]);
     }
   };
@@ -81,7 +88,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
     type: 'success'
   });
 
-  const handleSave = (generatePrescription: boolean = false) => {
+  const handleSave = async (generatePrescription: boolean = false) => {
     if (!notes.trim()) {
       setModalNotif({
         isOpen: true,
@@ -91,18 +98,48 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
       return;
     }
 
+    setIsUploading(true);
+    const uploadedAttachments: string[] = [];
+    const uploadedAttachmentUrls: string[] = [];
+
+    for (const rawFile of rawAttachedFiles) {
+      const res = await uploadConsultationAttachmentToSupabase(rawFile);
+      if (res) {
+        uploadedAttachments.push(res.fileName);
+        uploadedAttachmentUrls.push(res.fileUrl);
+      } else {
+        uploadedAttachments.push(rawFile.name);
+      }
+    }
+
+    let finalPrescription = (showPrescription || generatePrescription) ? (prescriptionText || 'Receta generada en consulta médica') : undefined;
+    let finalPrescriptionUrl: string | undefined = undefined;
+
+    if (finalPrescription) {
+      const prescriptionBlob = new Blob([`RECETA VETSOFT\n\nPaciente: ${currentPatient.name}\nVeterinario: ${vetName}\nFecha: ${new Date().toLocaleDateString('es-AR')}\n\nIndicaciones:\n${finalPrescription}`], { type: 'text/plain;charset=utf-8' });
+      const resPresc = await uploadPrescriptionToSupabase(prescriptionBlob, `receta_${currentPatient.name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.txt`);
+      if (resPresc) {
+        finalPrescriptionUrl = resPresc.fileUrl;
+      }
+    }
+
+    setIsUploading(false);
+
     onSaveConsultation({
       patientId: currentPatient.id,
       vetName,
       notes,
-      prescription: (showPrescription || generatePrescription) ? (prescriptionText || 'Receta generada en consulta médica') : undefined,
-      attachments: attachedFiles.length > 0 ? attachedFiles : undefined
+      prescription: finalPrescription,
+      prescriptionUrl: finalPrescriptionUrl,
+      attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
+      attachmentUrls: uploadedAttachmentUrls.length > 0 ? uploadedAttachmentUrls : undefined
     });
 
     setNotes('');
     setPrescriptionText('');
     setShowPrescription(false);
     setAttachedFiles([]);
+    setRawAttachedFiles([]);
     onCancel();
   };
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Patient, VaccineCatalogItem, VaccineDosis } from '../../domain/types';
+import { AppConfirmModal } from '../Common/AppConfirmModal';
 
 interface VaccinesViewProps {
   patients?: Patient[];
@@ -7,6 +8,8 @@ interface VaccinesViewProps {
   onSelectPatient?: (patient: Patient) => void;
   vaccineCatalog: VaccineCatalogItem[];
   onAddVaccineToCatalog: (name: string, frequencyDays: number) => void;
+  onUpdateVaccineInCatalog?: (id: string, name: string, frequencyDays: number) => void;
+  onDeleteVaccineFromCatalog?: (id: string) => void;
   vaccineDoses: VaccineDosis[];
   onRegisterDosis: (dosis: { vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => void;
   onScheduleAppointment: (patientId: string) => void;
@@ -19,6 +22,8 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   onSelectPatient,
   vaccineCatalog,
   onAddVaccineToCatalog,
+  onUpdateVaccineInCatalog,
+  onDeleteVaccineFromCatalog,
   vaccineDoses,
   onRegisterDosis,
   onScheduleAppointment,
@@ -27,6 +32,11 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [editingItem, setEditingItem] = useState<VaccineCatalogItem | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; vaccineId: string; vaccineName: string }>({
+    isOpen: false,
+    vaccineId: '',
+    vaccineName: ''
+  });
   const [patientSearch, setPatientSearch] = useState('');
 
   // New / edit catalog item state
@@ -54,8 +64,12 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
     if (!newVacName.trim()) return;
 
     if (editingItem) {
-      editingItem.name = newVacName.trim();
-      editingItem.frequencyDays = Number(newVacDays);
+      if (onUpdateVaccineInCatalog) {
+        onUpdateVaccineInCatalog(editingItem.id, newVacName.trim(), Number(newVacDays));
+      } else {
+        editingItem.name = newVacName.trim();
+        editingItem.frequencyDays = Number(newVacDays);
+      }
       setEditingItem(null);
     } else {
       onAddVaccineToCatalog(newVacName.trim(), Number(newVacDays));
@@ -149,13 +163,24 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                         </span>
                       </td>
                       <td className="p-sm px-md text-right">
-                        <button
-                          onClick={() => handleOpenEditModal(item)}
-                          className="bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-2.5 py-1 rounded-lg font-label-md text-xs inline-flex items-center gap-xs transition-colors font-medium cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">edit</span>
-                          Modificar Plazo / Datos
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleOpenEditModal(item)}
+                            className="bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-2.5 py-1 rounded-lg font-label-md text-xs inline-flex items-center gap-xs transition-colors font-medium cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">edit</span>
+                            Modificar
+                          </button>
+                          {onDeleteVaccineFromCatalog && (
+                            <button
+                              onClick={() => setDeleteConfirm({ isOpen: true, vaccineId: item.id, vaccineName: item.name })}
+                              className="bg-red-50 hover:bg-red-100 text-error border border-red-200 p-1.5 rounded-lg text-xs inline-flex items-center transition-colors cursor-pointer"
+                              title="Eliminar vacuna del catálogo"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -223,6 +248,23 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
             </div>
           </div>
         )}
+
+        {/* Delete Confirmation Modal */}
+        <AppConfirmModal
+          isOpen={deleteConfirm.isOpen}
+          title="Confirmar eliminación de vacuna"
+          message={`¿Está seguro de que desea eliminar la vacuna "${deleteConfirm.vaccineName}" del catálogo general de la clínica?`}
+          confirmText="Sí, eliminar"
+          cancelText="Cancelar"
+          isDanger={true}
+          onConfirm={() => {
+            if (onDeleteVaccineFromCatalog && deleteConfirm.vaccineId) {
+              onDeleteVaccineFromCatalog(deleteConfirm.vaccineId);
+            }
+            setDeleteConfirm({ isOpen: false, vaccineId: '', vaccineName: '' });
+          }}
+          onCancel={() => setDeleteConfirm({ isOpen: false, vaccineId: '', vaccineName: '' })}
+        />
       </div>
     );
   }
@@ -571,6 +613,23 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <AppConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        title="Confirmar eliminación de vacuna"
+        message={`¿Está seguro de que desea eliminar la vacuna "${deleteConfirm.vaccineName}" del catálogo general de la clínica?`}
+        confirmText="Sí, eliminar"
+        cancelText="Cancelar"
+        isDanger={true}
+        onConfirm={() => {
+          if (onDeleteVaccineFromCatalog && deleteConfirm.vaccineId) {
+            onDeleteVaccineFromCatalog(deleteConfirm.vaccineId);
+          }
+          setDeleteConfirm({ isOpen: false, vaccineId: '', vaccineName: '' });
+        }}
+        onCancel={() => setDeleteConfirm({ isOpen: false, vaccineId: '', vaccineName: '' })}
+      />
     </div>
   );
 };

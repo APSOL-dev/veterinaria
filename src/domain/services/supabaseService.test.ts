@@ -7,7 +7,9 @@ import {
   mapRowToExpenseRecord,
   mapRowToMedicalAppointment,
   mapRowToGroomingAppointment,
-  mapRowToSupplierPayment
+  mapRowToSupplierPayment,
+  mapRowToVaccineCatalogItem,
+  mapRowToServiceCatalogItem
 } from './supabaseService';
 
 describe('supabaseService row mappers', () => {
@@ -43,7 +45,9 @@ describe('supabaseService row mappers', () => {
       vetName: 'Dr. Pérez',
       notes: 'Consulta de rutina',
       prescription: 'Amoxicilina 500mg',
-      attachments: ['receta.pdf']
+      attachments: ['receta.pdf'],
+      attachment_urls: ['https://storage.supabase.co/consultas/receta.pdf'],
+      prescription_url: 'https://storage.supabase.co/recetas/receta.pdf'
     };
 
     const note = mapRowToClinicalNote(rawRow);
@@ -52,6 +56,8 @@ describe('supabaseService row mappers', () => {
     expect(note.patientId).toBe('pat-100');
     expect(note.vetName).toBe('Dr. Pérez');
     expect(note.prescription).toBe('Amoxicilina 500mg');
+    expect(note.attachmentUrls).toContain('https://storage.supabase.co/consultas/receta.pdf');
+    expect(note.prescriptionUrl).toBe('https://storage.supabase.co/recetas/receta.pdf');
   });
 
   it('should map DB row to Product domain model', () => {
@@ -178,5 +184,39 @@ describe('supabaseService row mappers', () => {
     expect(payment.paymentMethod).toBe('Efectivo');
     expect(payment.voucherName).toBe('comprobante_001.pdf');
     expect(payment.voucherUrl).toBe('https://cjqziapqtyjsxqxumgbx.supabase.co/storage/v1/object/public/comprobantes/comprobante_001.pdf');
+  });
+
+  it('should map DB row to VaccineCatalogItem domain model', () => {
+    const rawRow = {
+      id: 'vac-1',
+      name: 'Antirrábica',
+      frequency_days: 365
+    };
+
+    const vac = mapRowToVaccineCatalogItem(rawRow);
+
+    expect(vac.id).toBe('vac-1');
+    expect(vac.name).toBe('Antirrábica');
+    expect(vac.frequencyDays).toBe(365);
+  });
+
+  it('should map DB row to ServiceCatalogItem domain model', () => {
+    const rawRow = {
+      id: 'srv-1',
+      category: 'clinica',
+      name: 'Consulta General',
+      description: 'Atención clínica de rutina',
+      quantity: 1,
+      is_active: true,
+      price: 15000,
+      price_last_updated: '2026-08-31'
+    };
+
+    const srv = mapRowToServiceCatalogItem(rawRow);
+
+    expect(srv.id).toBe('srv-1');
+    expect(srv.name).toBe('Consulta General');
+    expect(srv.price).toBe(15000);
+    expect(srv.isActive).toBe(true);
   });
 });

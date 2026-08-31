@@ -14,8 +14,14 @@ Al presionar el botón **"Nueva Consulta"** (desde la barra lateral o cualquier 
   - **"Guardar Consulta":** Almacena el registro en el historial clínico del paciente y navega inmediatamente a su ficha técnica en el módulo "Pacientes", mostrando la nueva entrada en la cronología.
   - **"Guardar y Generar Receta":** Guarda la consulta médica y registra la indicación de receta para el paciente.
 
+- **Almacenamiento en Supabase Storage (`veterinaria-archivos`):**
+  - **Archivos Adjuntos:** Todos los estudios, radiografías o análisis cargados se suben al bucket público `veterinaria-archivos` dentro de la carpeta `/consultas/`.
+  - **Recetas Médicas:** Al guardar y generar recetas, las indicaciones se almacenan como comprobantes/archivos en la carpeta `/recetas/`.
+  - **Acceso y Descarga:** En la ficha histórica del paciente, cada consulta muestra botones de descarga directa (`Ver Receta Adjunta` y lista de adjuntos) enlazados a sus URLs públicas en Supabase Storage.
+
 **Casos borde conocidos:**
 - Validación de notas vacías: El sistema requiere ingresar texto de diagnóstico antes de permitir guardar la atención.
+- Carga de archivos múltiples: Soporta la subida simultánea de varios documentos e imágenes (.JPG, .PNG, .PDF, .DOC).
 
 **Restricciones o supuestos:**
-- Todas las consultas registradas actualizan en tiempo real la cronología de "Consultas Anteriores" del paciente seleccionado.
+- Todas las consultas registradas actualizan en tiempo real la cronología de "Consultas Anteriores" del paciente seleccionado y persisten sus URLs en Supabase DB (`public.vetsoft_consultas_clinicas`).

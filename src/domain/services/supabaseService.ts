@@ -63,7 +63,9 @@ export function mapRowToClinicalNote(row: any): ClinicalNote {
     vetName: String(row.vetName || row.vet_name || ''),
     notes: String(row.notes || ''),
     prescription: row.prescription || undefined,
-    attachments: Array.isArray(row.attachments) ? row.attachments : []
+    attachments: Array.isArray(row.attachments) ? row.attachments : [],
+    attachmentUrls: Array.isArray(row.attachmentUrls || row.attachment_urls) ? (row.attachmentUrls || row.attachment_urls) : undefined,
+    prescriptionUrl: row.prescriptionUrl || row.prescription_url || undefined
   };
 }
 
@@ -321,6 +323,26 @@ export async function fetchReceiptsFromSupabase(): Promise<BillReceipt[] | null>
   }
 }
 
+export async function fetchVaccineCatalogFromSupabase(): Promise<VaccineCatalogItem[] | null> {
+  try {
+    const { data, error } = await supabase.from('vetsoft_vacunas_catalogo').select('*');
+    if (error || !data || data.length === 0) return null;
+    return data.map(mapRowToVaccineCatalogItem);
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchServicesCatalogFromSupabase(): Promise<ServiceCatalogItem[] | null> {
+  try {
+    const { data, error } = await supabase.from('vetsoft_catalogo_servicios').select('*');
+    if (error || !data || data.length === 0) return null;
+    return data.map(mapRowToServiceCatalogItem);
+  } catch {
+    return null;
+  }
+}
+
 // =============================================================================
 // INSERTION HELPERS (Tables prefixed with vetsoft_)
 // =============================================================================
@@ -370,7 +392,9 @@ export async function insertClinicalNoteToSupabase(note: ClinicalNote): Promise<
       vet_name: note.vetName,
       notes: note.notes,
       prescription: note.prescription || null,
-      attachments: note.attachments || []
+      attachments: note.attachments || [],
+      attachment_urls: note.attachmentUrls || [],
+      prescription_url: note.prescriptionUrl || null
     });
     if (error) console.error('Supabase error inserting clinical note:', error);
     return { success: !error, error: extractErrorMessage(error) };
@@ -430,6 +454,123 @@ export async function insertProductToSupabase(prod: Product): Promise<SyncResult
       barcode: prod.barcode || null
     });
     if (error) console.error('Supabase error inserting product:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function updateProductInSupabase(id: string, prod: Partial<Product>): Promise<SyncResult> {
+  try {
+    const payload: any = {};
+    if (prod.sku !== undefined) payload.sku = prod.sku;
+    if (prod.name !== undefined) payload.name = prod.name;
+    if (prod.category !== undefined) payload.category = prod.category;
+    if (prod.currentStock !== undefined) payload.current_stock = prod.currentStock;
+    if (prod.minStock !== undefined) payload.min_stock = prod.minStock;
+    if (prod.price !== undefined) payload.price = prod.price;
+    if (prod.barcode !== undefined) payload.barcode = prod.barcode || null;
+
+    const { error } = await supabase.from('vetsoft_productos').update(payload).eq('id', id);
+    if (error) console.error('Supabase error updating product:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function deleteProductFromSupabase(id: string): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_productos').delete().eq('id', id);
+    if (error) console.error('Supabase error deleting product:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function insertVaccineCatalogItemToSupabase(item: VaccineCatalogItem): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_vacunas_catalogo').insert({
+      id: item.id,
+      name: item.name,
+      frequency_days: item.frequencyDays
+    });
+    if (error) console.error('Supabase error inserting vaccine catalog item:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function updateVaccineCatalogItemInSupabase(id: string, item: Partial<VaccineCatalogItem>): Promise<SyncResult> {
+  try {
+    const payload: any = {};
+    if (item.name !== undefined) payload.name = item.name;
+    if (item.frequencyDays !== undefined) payload.frequency_days = item.frequencyDays;
+
+    const { error } = await supabase.from('vetsoft_vacunas_catalogo').update(payload).eq('id', id);
+    if (error) console.error('Supabase error updating vaccine catalog item:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function deleteVaccineCatalogItemFromSupabase(id: string): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_vacunas_catalogo').delete().eq('id', id);
+    if (error) console.error('Supabase error deleting vaccine catalog item:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function insertServiceCatalogItemToSupabase(item: ServiceCatalogItem): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_catalogo_servicios').insert({
+      id: item.id,
+      category: item.category,
+      name: item.name,
+      description: item.description,
+      quantity: item.quantity,
+      is_active: item.isActive,
+      price: item.price,
+      price_last_updated: item.priceLastUpdated || new Date().toISOString().substring(0, 10),
+      last_sold_at: item.lastSoldAt || null
+    });
+    if (error) console.error('Supabase error inserting service catalog item:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function updateServiceCatalogItemInSupabase(id: string, item: Partial<ServiceCatalogItem>): Promise<SyncResult> {
+  try {
+    const payload: any = {};
+    if (item.category !== undefined) payload.category = item.category;
+    if (item.name !== undefined) payload.name = item.name;
+    if (item.description !== undefined) payload.description = item.description;
+    if (item.quantity !== undefined) payload.quantity = item.quantity;
+    if (item.isActive !== undefined) payload.is_active = item.isActive;
+    if (item.price !== undefined) payload.price = item.price;
+    if (item.priceLastUpdated !== undefined) payload.price_last_updated = item.priceLastUpdated;
+    if (item.lastSoldAt !== undefined) payload.last_sold_at = item.lastSoldAt || null;
+
+    const { error } = await supabase.from('vetsoft_catalogo_servicios').update(payload).eq('id', id);
+    if (error) console.error('Supabase error updating service catalog item:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function deleteServiceCatalogItemFromSupabase(id: string): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_catalogo_servicios').delete().eq('id', id);
+    if (error) console.error('Supabase error deleting service catalog item:', error);
     return { success: !error, error: extractErrorMessage(error) };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error de conexión' };
@@ -669,6 +810,71 @@ export async function uploadVoucherToSupabase(file: File): Promise<{ voucherName
     };
   } catch (err) {
     console.error('Exception uploading voucher to Supabase Storage:', err);
+    return null;
+  }
+}
+
+export async function uploadConsultationAttachmentToSupabase(file: File): Promise<{ fileName: string; fileUrl: string } | null> {
+  try {
+    const fileExt = file.name.split('.').pop() || 'pdf';
+    const cleanFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+    const filePath = `consultas/${cleanFileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('veterinaria-archivos')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Error uploading consultation attachment to Supabase Storage:', error);
+      return null;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('veterinaria-archivos')
+      .getPublicUrl(data.path);
+
+    return {
+      fileName: file.name,
+      fileUrl: publicUrlData.publicUrl
+    };
+  } catch (err) {
+    console.error('Exception uploading consultation attachment to Supabase Storage:', err);
+    return null;
+  }
+}
+
+export async function uploadPrescriptionToSupabase(fileOrBlob: File | Blob, originalName?: string): Promise<{ fileName: string; fileUrl: string } | null> {
+  try {
+    const name = originalName || (fileOrBlob instanceof File ? fileOrBlob.name : `receta_${Date.now()}.pdf`);
+    const fileExt = name.split('.').pop() || 'pdf';
+    const cleanFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+    const filePath = `recetas/${cleanFileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('veterinaria-archivos')
+      .upload(filePath, fileOrBlob, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Error uploading prescription to Supabase Storage:', error);
+      return null;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('veterinaria-archivos')
+      .getPublicUrl(data.path);
+
+    return {
+      fileName: name,
+      fileUrl: publicUrlData.publicUrl
+    };
+  } catch (err) {
+    console.error('Exception uploading prescription to Supabase Storage:', err);
     return null;
   }
 }

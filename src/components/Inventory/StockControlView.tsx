@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Product, ProductCategory, ServiceCatalogItem } from '../../domain/types';
 import { updateServicePrice, toggleServiceStatus } from '../../domain/services/serviceCatalogService';
+import { AppConfirmModal } from '../Common/AppConfirmModal';
 
 interface StockControlViewProps {
   products: Product[];
@@ -8,6 +9,11 @@ interface StockControlViewProps {
   activeSubmodule: 'productos-fisicos' | 'servicios-catalogo';
   onAddStockEntry: (productId: string, quantity: number, provider?: string) => void;
   onAddProduct: (product: Omit<Product, 'id'>) => void;
+  onUpdateProduct?: (id: string, product: Partial<Product>) => void;
+  onDeleteProduct?: (id: string) => void;
+  onAddServiceCatalogItem?: (item: Omit<ServiceCatalogItem, 'id'>) => void;
+  onUpdateServiceCatalogItem?: (id: string, item: Partial<ServiceCatalogItem>) => void;
+  onDeleteServiceCatalogItem?: (id: string) => void;
   onAdjustStock: (productId: string, newStock: number, reason: string) => void;
   onUpdateServicesCatalog: (services: ServiceCatalogItem[]) => void;
 }
@@ -18,6 +24,11 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   activeSubmodule,
   onAddStockEntry,
   onAddProduct,
+  onUpdateProduct,
+  onDeleteProduct,
+  onAddServiceCatalogItem,
+  onUpdateServiceCatalogItem,
+  onDeleteServiceCatalogItem,
   onAdjustStock,
   onUpdateServicesCatalog
 }) => {
@@ -25,12 +36,33 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showEntryModal, setShowEntryModal] = useState(false);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
+  const [showEditProductModal, setShowEditProductModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showPriceModal, setShowPriceModal] = useState(false);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; type: 'product' | 'service'; id: string; name: string }>({
+    isOpen: false,
+    type: 'product',
+    id: '',
+    name: ''
+  });
   
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedService, setSelectedService] = useState<ServiceCatalogItem | null>(null);
   const [newServicePrice, setNewServicePrice] = useState(0);
+
+  // Service form state
+  const [serviceFormName, setServiceFormName] = useState('');
+  const [serviceFormCategory, setServiceFormCategory] = useState('clinica');
+  const [serviceFormDesc, setServiceFormDesc] = useState('');
+  const [serviceFormPrice, setServiceFormPrice] = useState(10000);
+
+  // Edit product form state
+  const [editSku, setEditSku] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editCategory, setEditCategory] = useState<ProductCategory>('Medicamentos');
+  const [editPrice, setEditPrice] = useState(0);
+  const [editMinStock, setEditMinStock] = useState(5);
 
   // Stock Entry form state
   const [entryProductId, setEntryProductId] = useState(products[0]?.id || '');
@@ -48,6 +80,77 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   const [newInitialStock, setNewInitialStock] = useState(10);
   const [newMinStock, setNewMinStock] = useState(5);
   const [newPrice, setNewPrice] = useState(15000);
+
+  const handleOpenEditProduct = (prod: Product) => {
+    setSelectedProduct(prod);
+    setEditSku(prod.sku || '');
+    setEditName(prod.name);
+    setEditCategory(prod.category);
+    setEditPrice(prod.price);
+    setEditMinStock(prod.minStock);
+    setShowEditProductModal(true);
+  };
+
+  const handleEditProductSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProduct || !editName.trim()) return;
+    if (onUpdateProduct) {
+      onUpdateProduct(selectedProduct.id, {
+        sku: editSku,
+        name: editName,
+        category: editCategory,
+        price: editPrice,
+        minStock: editMinStock
+      });
+    }
+    setShowEditProductModal(false);
+  };
+
+  const handleOpenNewService = () => {
+    setSelectedService(null);
+    setServiceFormName('');
+    setServiceFormCategory('clinica');
+    setServiceFormDesc('');
+    setServiceFormPrice(10000);
+    setShowServiceModal(true);
+  };
+
+  const handleOpenEditService = (srv: ServiceCatalogItem) => {
+    setSelectedService(srv);
+    setServiceFormName(srv.name);
+    setServiceFormCategory(srv.category);
+    setServiceFormDesc(srv.description || '');
+    setServiceFormPrice(srv.price);
+    setShowServiceModal(true);
+  };
+
+  const handleServiceFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!serviceFormName.trim()) return;
+    if (selectedService) {
+      if (onUpdateServiceCatalogItem) {
+        onUpdateServiceCatalogItem(selectedService.id, {
+          name: serviceFormName,
+          category: serviceFormCategory,
+          description: serviceFormDesc,
+          price: serviceFormPrice
+        });
+      }
+    } else {
+      if (onAddServiceCatalogItem) {
+        onAddServiceCatalogItem({
+          name: serviceFormName,
+          category: serviceFormCategory,
+          description: serviceFormDesc,
+          quantity: 1,
+          isActive: true,
+          price: serviceFormPrice,
+          priceLastUpdated: new Date().toISOString().substring(0, 10)
+        });
+      }
+    }
+    setShowServiceModal(false);
+  };
   const [newBarcode, setNewBarcode] = useState('');
 
   const categories = ['Todos', 'Medicamentos', 'Alimentación', 'Accesorios', 'Insumos Clínicos'];
@@ -125,20 +228,28 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
           <div className="flex items-center gap-sm">
             <button
               onClick={() => setShowEntryModal(true)}
-              className="bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors px-md py-2 rounded-lg font-label-md text-xs uppercase tracking-wider flex items-center gap-xs shadow-sm font-bold"
+              className="bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors px-md py-2 rounded-lg font-label-md text-xs uppercase tracking-wider flex items-center gap-xs shadow-sm font-bold cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">inventory_2</span>
               Entrada de Stock
             </button>
             <button
               onClick={() => setShowNewProductModal(true)}
-              className="bg-primary text-on-primary hover:bg-primary-container transition-all px-md py-2 rounded-lg font-label-md text-xs uppercase tracking-wider flex items-center gap-xs shadow-sm font-bold"
+              className="bg-primary text-on-primary hover:bg-primary-container transition-all px-md py-2 rounded-lg font-label-md text-xs uppercase tracking-wider flex items-center gap-xs shadow-sm font-bold cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
               Nuevo Producto
             </button>
           </div>
-        ) : null}
+        ) : (
+          <button
+            onClick={handleOpenNewService}
+            className="bg-primary text-on-primary hover:bg-primary-container transition-all px-md py-2 rounded-lg font-label-md text-xs uppercase tracking-wider flex items-center gap-xs shadow-sm font-bold cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[16px]">add</span>
+            Nuevo Servicio / Prestación
+          </button>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -237,13 +348,31 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                           )}
                         </td>
                         <td className="p-sm px-md text-right">
-                          <button
-                            onClick={() => { setSelectedProduct(p); setAdjustNewStock(p.currentStock); setShowAdjustModal(true); }}
-                            className="p-1 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                            title="Ajustar Stock"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">tune</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => { setSelectedProduct(p); setAdjustNewStock(p.currentStock); setShowAdjustModal(true); }}
+                              className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-lg transition-colors cursor-pointer"
+                              title="Ajustar Stock"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">tune</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenEditProduct(p)}
+                              className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-lg transition-colors cursor-pointer"
+                              title="Editar Producto"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">edit</span>
+                            </button>
+                            {onDeleteProduct && (
+                              <button
+                                onClick={() => setDeleteConfirm({ isOpen: true, type: 'product', id: p.id, name: p.name })}
+                                className="p-1.5 text-on-surface-variant hover:text-error hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                title="Eliminar Producto del Catálogo"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -291,12 +420,25 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                     <td className="p-sm px-md text-center text-on-surface-variant">{srv.priceLastUpdated}</td>
                     <td className="p-sm px-md text-center text-on-surface-variant">{srv.lastSoldAt || 'Sin ventas'}</td>
                     <td className="p-sm px-md text-right">
-                      <button
-                        onClick={() => { setSelectedService(srv); setNewServicePrice(srv.price); setShowPriceModal(true); }}
-                        className="px-2 py-1 bg-surface-container-high hover:bg-primary hover:text-white rounded-lg text-[11px] font-bold transition-all shadow-sm"
-                      >
-                        Actualizar Precio
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleOpenEditService(srv)}
+                          className="px-2 py-1 bg-surface-container-high hover:bg-primary hover:text-white rounded-lg text-[11px] font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+                          title="Editar Servicio / Precio"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">edit</span>
+                          <span>Editar</span>
+                        </button>
+                        {onDeleteServiceCatalogItem && (
+                          <button
+                            onClick={() => setDeleteConfirm({ isOpen: true, type: 'service', id: srv.id, name: srv.name })}
+                            className="p-1.5 bg-red-50 text-error hover:bg-red-100 rounded-lg text-[11px] font-bold transition-all shadow-sm cursor-pointer"
+                            title="Eliminar Servicio del Catálogo"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -404,13 +546,169 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-bold text-base"
               />
 
-              <button type="submit" className="bg-primary text-on-primary py-2 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm">
+              <button type="submit" className="bg-primary text-on-primary py-2 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm cursor-pointer">
                 Guardar Precio y Actualizar Fecha
               </button>
             </form>
           </div>
         </div>
       )}
+
+      {/* Edit Product Modal */}
+      {showEditProductModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
+            <div className="flex justify-between items-center border-b pb-sm">
+              <h3 className="font-headline-sm text-primary text-base font-bold">Editar Producto del Inventario</h3>
+              <button onClick={() => setShowEditProductModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleEditProductSubmit} className="flex flex-col gap-xs text-xs">
+              <label className="font-label-md text-on-surface-variant uppercase text-[11px]">Código SKU</label>
+              <input
+                type="text"
+                value={editSku}
+                onChange={(e) => setEditSku(e.target.value)}
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+              />
+
+              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Nombre del Producto *</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                required
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+              />
+
+              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Categoría *</label>
+              <select
+                value={editCategory}
+                onChange={(e) => setEditCategory(e.target.value as ProductCategory)}
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+              >
+                <option value="Medicamentos">Medicamentos</option>
+                <option value="Alimentación">Alimentación</option>
+                <option value="Accesorios">Accesorios</option>
+                <option value="Insumos Clínicos">Insumos Clínicos</option>
+              </select>
+
+              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Precio de Venta ($) *</label>
+              <input
+                type="number"
+                value={editPrice}
+                onChange={(e) => setEditPrice(Number(e.target.value))}
+                min={0}
+                required
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+              />
+
+              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Stock Mínimo (Alerta)</label>
+              <input
+                type="number"
+                value={editMinStock}
+                onChange={(e) => setEditMinStock(Number(e.target.value))}
+                min={0}
+                required
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+              />
+
+              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm cursor-pointer">
+                Guardar Cambios del Producto
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Service Catalog Add/Edit Modal */}
+      {showServiceModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
+            <div className="flex justify-between items-center border-b pb-sm">
+              <h3 className="font-headline-sm text-primary text-base font-bold">
+                {selectedService ? 'Editar Servicio / Prestación' : 'Nuevo Servicio / Prestación'}
+              </h3>
+              <button onClick={() => setShowServiceModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleServiceFormSubmit} className="flex flex-col gap-xs text-xs">
+              <label className="font-label-md text-on-surface-variant uppercase text-[11px]">Nombre del Servicio *</label>
+              <input
+                type="text"
+                value={serviceFormName}
+                onChange={(e) => setServiceFormName(e.target.value)}
+                placeholder="Ej. Consulta Especialista, Baño Perros Grandes..."
+                required
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+              />
+
+              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Categoría *</label>
+              <select
+                value={serviceFormCategory}
+                onChange={(e) => setServiceFormCategory(e.target.value)}
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+              >
+                <option value="clinica">Clínica</option>
+                <option value="cirugia">Cirugía</option>
+                <option value="peluqueria">Peluquería</option>
+                <option value="laboratorio">Laboratorio</option>
+                <option value="ecografia">Ecografía / Rayos</option>
+              </select>
+
+              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Descripción</label>
+              <textarea
+                value={serviceFormDesc}
+                onChange={(e) => setServiceFormDesc(e.target.value)}
+                rows={2}
+                placeholder="Detalle o requisitos de la prestación..."
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+              />
+
+              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Precio ($) *</label>
+              <input
+                type="number"
+                value={serviceFormPrice}
+                onChange={(e) => setServiceFormPrice(Number(e.target.value))}
+                min={0}
+                required
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-bold text-base"
+              />
+
+              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm cursor-pointer">
+                {selectedService ? 'Guardar Cambios del Servicio' : 'Crear Servicio'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <AppConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        title={deleteConfirm.type === 'product' ? 'Confirmar eliminación de producto' : 'Confirmar eliminación de servicio'}
+        message={
+          deleteConfirm.type === 'product'
+            ? `¿Está seguro de que desea eliminar el producto "${deleteConfirm.name}" del inventario?`
+            : `¿Está seguro de que desea eliminar el servicio/prestación "${deleteConfirm.name}" del catálogo?`
+        }
+        confirmText="Sí, eliminar"
+        cancelText="Cancelar"
+        isDanger={true}
+        onConfirm={() => {
+          if (deleteConfirm.type === 'product' && onDeleteProduct && deleteConfirm.id) {
+            onDeleteProduct(deleteConfirm.id);
+          } else if (deleteConfirm.type === 'service' && onDeleteServiceCatalogItem && deleteConfirm.id) {
+            onDeleteServiceCatalogItem(deleteConfirm.id);
+          }
+          setDeleteConfirm({ isOpen: false, type: 'product', id: '', name: '' });
+        }}
+        onCancel={() => setDeleteConfirm({ isOpen: false, type: 'product', id: '', name: '' })}
+      />
     </div>
   );
 };

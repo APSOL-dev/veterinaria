@@ -64,6 +64,12 @@ import {
   fetchSupplierBillsFromSupabase,
   fetchExpensesFromSupabase,
   fetchProductsFromSupabase,
+  fetchVaccineCatalogFromSupabase,
+  fetchServicesCatalogFromSupabase,
+  fetchClinicalNotesFromSupabase,
+  fetchMedicalAppointmentsFromSupabase,
+  fetchGroomingAppointmentsFromSupabase,
+  fetchReceiptsFromSupabase,
   insertPatientToSupabase,
   insertClinicalNoteToSupabase,
   insertMedicalAppointmentToSupabase,
@@ -75,7 +81,15 @@ import {
   insertExpenseToSupabase,
   insertReceiptToSupabase,
   fetchSupplierPaymentsFromSupabase,
-  insertSupplierPaymentToSupabase
+  insertSupplierPaymentToSupabase,
+  insertVaccineCatalogItemToSupabase,
+  updateVaccineCatalogItemInSupabase,
+  deleteVaccineCatalogItemFromSupabase,
+  insertServiceCatalogItemToSupabase,
+  updateServiceCatalogItemInSupabase,
+  deleteServiceCatalogItemFromSupabase,
+  updateProductInSupabase,
+  deleteProductFromSupabase
 } from './domain/services/supabaseService';
 
 import { AppNotificationModal } from './components/Common/AppNotificationModal';
@@ -181,13 +195,32 @@ export const App: React.FC = () => {
 
   React.useEffect(() => {
     async function loadDataFromSupabase() {
-      const [dbPatients, dbBills, dbExpenses, dbProducts, dbPayments] = await Promise.all([
+      const [
+        dbPatients, 
+        dbBills, 
+        dbExpenses, 
+        dbProducts, 
+        dbPayments,
+        dbVaccines,
+        dbServices,
+        dbNotes,
+        dbMedApps,
+        dbGroomApps,
+        dbReceipts
+      ] = await Promise.all([
         fetchPatientsFromSupabase(),
         fetchSupplierBillsFromSupabase(),
         fetchExpensesFromSupabase(),
         fetchProductsFromSupabase(),
-        fetchSupplierPaymentsFromSupabase()
+        fetchSupplierPaymentsFromSupabase(),
+        fetchVaccineCatalogFromSupabase(),
+        fetchServicesCatalogFromSupabase(),
+        fetchClinicalNotesFromSupabase(),
+        fetchMedicalAppointmentsFromSupabase(),
+        fetchGroomingAppointmentsFromSupabase(),
+        fetchReceiptsFromSupabase()
       ]);
+
       if (dbPatients && dbPatients.length > 0) {
         setPatients(dbPatients);
         setSelectedPatient(dbPatients[0]);
@@ -203,6 +236,24 @@ export const App: React.FC = () => {
       }
       if (dbPayments && dbPayments.length > 0) {
         setPayments(dbPayments);
+      }
+      if (dbVaccines && dbVaccines.length > 0) {
+        setVaccineCatalog(dbVaccines);
+      }
+      if (dbServices && dbServices.length > 0) {
+        setServicesCatalog(dbServices);
+      }
+      if (dbNotes && dbNotes.length > 0) {
+        setClinicalNotes(dbNotes);
+      }
+      if (dbMedApps && dbMedApps.length > 0) {
+        setMedicalAppointments(dbMedApps);
+      }
+      if (dbGroomApps && dbGroomApps.length > 0) {
+        setGroomingAppointments(dbGroomApps);
+      }
+      if (dbReceipts && dbReceipts.length > 0) {
+        setReceipts(dbReceipts);
       }
     }
     loadDataFromSupabase();
@@ -227,7 +278,9 @@ export const App: React.FC = () => {
     vetName: string;
     notes: string;
     prescription?: string;
+    prescriptionUrl?: string;
     attachments?: string[];
+    attachmentUrls?: string[];
   }) => {
     const newNote: ClinicalNote = {
       id: 'note-' + Date.now(),
@@ -236,7 +289,9 @@ export const App: React.FC = () => {
       vetName: data.vetName,
       notes: data.notes,
       prescription: data.prescription,
-      attachments: data.attachments
+      prescriptionUrl: data.prescriptionUrl,
+      attachments: data.attachments,
+      attachmentUrls: data.attachmentUrls
     };
     setClinicalNotes([newNote, ...clinicalNotes]);
     insertClinicalNoteToSupabase(newNote);
@@ -250,7 +305,18 @@ export const App: React.FC = () => {
       name,
       frequencyDays
     };
-    setVaccineCatalog([...vaccineCatalog, newItem]);
+    setVaccineCatalog(prev => [...prev, newItem]);
+    insertVaccineCatalogItemToSupabase(newItem);
+  };
+
+  const handleUpdateVaccineInCatalog = (id: string, name: string, frequencyDays: number) => {
+    setVaccineCatalog(prev => prev.map(v => v.id === id ? { ...v, name, frequencyDays } : v));
+    updateVaccineCatalogItemInSupabase(id, { name, frequencyDays });
+  };
+
+  const handleDeleteVaccineFromCatalog = (id: string) => {
+    setVaccineCatalog(prev => prev.filter(v => v.id !== id));
+    deleteVaccineCatalogItemFromSupabase(id);
   };
 
   const handleRegisterDosis = (data: { vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => {
@@ -293,6 +359,37 @@ export const App: React.FC = () => {
     };
     setProducts([...products, product]);
     insertProductToSupabase(product);
+  };
+
+  const handleUpdateProduct = (id: string, prodData: Partial<Product>) => {
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, ...prodData } : p));
+    updateProductInSupabase(id, prodData);
+  };
+
+  const handleDeleteProduct = (id: string) => {
+    setProducts(prev => prev.filter(p => p.id !== id));
+    deleteProductFromSupabase(id);
+  };
+
+  const handleAddServiceToCatalog = (item: Omit<ServiceCatalogItem, 'id'>) => {
+    const newItem: ServiceCatalogItem = {
+      ...item,
+      id: 'srv-' + Date.now(),
+      isActive: true,
+      priceLastUpdated: new Date().toISOString().substring(0, 10)
+    };
+    setServicesCatalog(prev => [...prev, newItem]);
+    insertServiceCatalogItemToSupabase(newItem);
+  };
+
+  const handleUpdateServiceInCatalog = (id: string, itemData: Partial<ServiceCatalogItem>) => {
+    setServicesCatalog(prev => prev.map(s => s.id === id ? { ...s, ...itemData, priceLastUpdated: new Date().toISOString().substring(0, 10) } : s));
+    updateServiceCatalogItemInSupabase(id, { ...itemData, priceLastUpdated: new Date().toISOString().substring(0, 10) });
+  };
+
+  const handleDeleteServiceFromCatalog = (id: string) => {
+    setServicesCatalog(prev => prev.filter(s => s.id !== id));
+    deleteServiceCatalogItemFromSupabase(id);
   };
 
   const handleAdjustStock = (productId: string, newStock: number, reason: string) => {
@@ -573,6 +670,8 @@ export const App: React.FC = () => {
                   selectedPatient={selectedPatient}
                   vaccineCatalog={vaccineCatalog}
                   onAddVaccineToCatalog={handleAddVaccineToCatalog}
+                  onUpdateVaccineInCatalog={handleUpdateVaccineInCatalog}
+                  onDeleteVaccineFromCatalog={handleDeleteVaccineFromCatalog}
                   vaccineDoses={vaccineDoses}
                   onRegisterDosis={handleRegisterDosis}
                   onScheduleAppointment={() => {
@@ -622,6 +721,8 @@ export const App: React.FC = () => {
                   onSelectPatient={setSelectedPatient}
                   vaccineCatalog={vaccineCatalog}
                   onAddVaccineToCatalog={handleAddVaccineToCatalog}
+                  onUpdateVaccineInCatalog={handleUpdateVaccineInCatalog}
+                  onDeleteVaccineFromCatalog={handleDeleteVaccineFromCatalog}
                   vaccineDoses={vaccineDoses}
                   onRegisterDosis={handleRegisterDosis}
                   onScheduleAppointment={() => {
@@ -662,6 +763,11 @@ export const App: React.FC = () => {
               activeSubmodule={activeSubmodule === 'servicios-catalogo' ? 'servicios-catalogo' : 'productos-fisicos'}
               onAddStockEntry={handleAddStockEntry}
               onAddProduct={handleAddProduct}
+              onUpdateProduct={handleUpdateProduct}
+              onDeleteProduct={handleDeleteProduct}
+              onAddServiceCatalogItem={handleAddServiceToCatalog}
+              onUpdateServiceCatalogItem={handleUpdateServiceInCatalog}
+              onDeleteServiceCatalogItem={handleDeleteServiceFromCatalog}
               onAdjustStock={handleAdjustStock}
               onUpdateServicesCatalog={setServicesCatalog}
             />

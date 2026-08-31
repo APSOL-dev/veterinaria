@@ -18,10 +18,16 @@ El submódulo **Registrar gastos** (dentro del módulo de Proveedores) permite l
   - **Copiar gasto:** Abre el modal de alta con todos los campos precompletados con los mismos datos del gasto seleccionado (Fecha, Responsable, Rubro, Asignación, Método pago, Descripción, Monto y Nota) para que el usuario pueda revisarlos o modificarlos antes de guardar (sin duplicar de forma automática).
   - **Editar gasto:** Abre el modal precompletado para modificar el registro existente.
   - **Eliminar gasto:** Elimina el registro del gasto.
+- **Modal Independiente de Configuración de Parámetros de Gastos (`ExpenseCategoryModal`):**
+  - Accesible de forma independiente mediante el botón `Categorías y Asignaciones` al lado de `Registrar Gasto`.
+  - Muestra todos los rubros, asignaciones y responsables **existentes** en listas dinámicas ordenadas con contadores en tiempo real.
+  - Posee 3 solapas: **Categorías / Rubros**, **Asignaciones / Sedes** y **Responsables**.
+  - Permite la creación y eliminación en tiempo real de nuevos rubros, sedes e incluso responsables adicionales (ej: Dr. Gómez, Recepción).
+  - Guarda las configuraciones de forma persistente en `localStorage`.
 - **Modal de Alta / Edición de Gastos:**
-  - `Asignación`: Campo fijo configurado en "Santo Tomé".
-  - `Responsable`: Opciones del desplegable: Administración, Clínica, Peluquería.
-  - `Rubro / Categoría`: 19 categorías oficiales (Alimentos y Balanceados, Farmacología y Medicamentos, Accesorios y Juguetes, Higiene y Estética, Materiales Descartables y Quirúrgicos, Alquiler del Local, Servicios Públicos, Internet y Telefonía, Seguridad y Monitoreo, Tasas e Impuestos, Sueldos y Jornales, Honorarios Profesionales, Cargas Sociales y Sindicales, Mantenimiento de Equipos, Limpieza y Desinfección, Fletes y Logística, Gastos Bancarios y Comisiones, Software y Suscripciones, Gastos Varios / Caja Chica).
+  - `Asignación`: Desplegable dinámico que incluye la sede predeterminada oficial ("Santo Tomé") más las asignaciones adicionales creadas en el modal.
+  - `Responsable`: Desplegable dinámico alimentado por los responsables predeterminados y creados.
+  - `Rubro / Categoría`: 19 categorías oficiales más todas las categorías personalizadas creadas en el modal.
   - Permite ingresar Fecha, Monto, Descripción y Nota opcional.
 
 **Casos borde conocidos:**

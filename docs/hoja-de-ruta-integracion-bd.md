@@ -1,22 +1,23 @@
 # Hoja de Ruta para Funcionalidad Completa y Conexión a Base de Datos (VETSOFT)
 
-## 1. Estado Actual de Módulos y Submódulos
+## 1. Estado Actual de Módulos y Persistencia en Supabase DB
 
-| Módulo | Submódulo | Estado Frontend | Estado Datos Actual |
+| Módulo | Submódulo | Estado Frontend | Estado Datos & Persistencia SQL |
 | :--- | :--- | :--- | :--- |
-| **Pacientes** | `ficha-pacientes` | Completo (Búsqueda, Perfil, Historial Peso, Alertas) | React State (`initialPatients`) |
-| **Pacientes** | `tutores` | Completo (Desglose Propietarios, Mascotas a cargo) | Derivado de Patients |
-| **Pacientes** | `control-vacunas` | Completo (Semáforo de Vigencia, Filtros) | React State (`initialVaccineDoses`) |
-| **Clínica** | `fichas-medicas` | Completo (Notas Clínicas, Receta, Adjuntos Drag&Drop) | React State (`initialClinicalNotes`) |
-| **Clínica** | `vacunas` | Completo (Registro Dosis con Lote/Vencimiento) | React State (`initialVaccineCatalog`) |
-| **Clínica** | `calendario-clinica` | Completo (Agenda Médica, Estados de Turnos) | React State (`initialMedicalAppointments`) |
-| **Peluquería** | `calendario-peluqueria` | Completo (Agenda Peluquería, Precios, Estados) | React State (`initialGroomingAppointments`) |
-| **Proveedores** | `facturas` | Completo (Carga Auto/Manual, Webhook, Filtro Pagos) | React State (`initialSupplierBills`) |
-| **Proveedores** | `presupuestos` | Completo (Gestión de Presupuestos, Estados) | React State (`initialSupplierQuotes`) |
-| **Inventario** | `productos-fisicos` | Completo (Stock, Ajustes, Alertas Stock Bajo) | React State (`initialProducts`) |
-| **Inventario** | `servicios-catalogo` | Completo (Lista de Precios, Servicios Clínicos/Peluquería) | React State (`initialServicesCatalog`) |
-| **Cobros** | `nueva-facturacion` | Completo (Punto de Venta POS, Carrito, IVA, Checkout) | React State (`initialReceipts`) |
-| **Cobros** | `historial-cobros` | Completo (Historial Recibos, Filtro Métodos Pago) | React State (`initialReceipts`) |
+| **Pacientes** | `ficha-pacientes` | Completo (Búsqueda, Perfil, Historial Peso, Alertas) | Supabase DB (`public.vetsoft_pacientes`) |
+| **Pacientes** | `tutores` | Completo (Desglose Propietarios, Mascotas a cargo) | Supabase DB (`public.vetsoft_pacientes`) |
+| **Pacientes** | `control-vacunas` | Completo (Semáforo de Vigencia, Filtros) | Supabase DB (`public.vetsoft_vacunas_catalogo` / Dosis) |
+| **Clínica** | `fichas-medicas` | Completo (Notas Clínicas, Receta, Adjuntos en Storage) | Supabase DB (`public.vetsoft_consultas_clinicas`) |
+| **Clínica** | `vacunas` | Completo (Catálogo y Dosis con Lote/Vencimiento) | Supabase DB (`public.vetsoft_vacunas_catalogo`) |
+| **Clínica** | `calendario-clinica` | Completo (Agenda Médica, Estados de Turnos) | Supabase DB (`public.vetsoft_turnos_clinica`) |
+| **Peluquería** | `calendario-peluqueria` | Completo (Agenda Peluquería, Precios, Estados) | Supabase DB (`public.vetsoft_turnos_peluqueria`) |
+| **Proveedores** | `facturas` | Completo (Carga Auto/Manual, Comprobantes Storage) | Supabase DB (`public.vetsoft_facturas_proveedores`) |
+| **Proveedores** | `presupuestos` | Completo (Gestión de Presupuestos, Proyecciones) | Supabase DB (`public.vetsoft_facturas_proveedores`) |
+| **Proveedores** | `pagos` | Completo (Registros de Pagos, Comprobantes Storage) | Supabase DB (`public.vetsoft_pagos_proveedores`) |
+| **Inventario** | `productos-fisicos` | Completo (Stock, Ajustes, CRUD en Tiempo Real) | Supabase DB (`public.vetsoft_productos`) |
+| **Inventario** | `servicios-catalogo` | Completo (Lista de Precios, CRUD Prestaciones) | Supabase DB (`public.vetsoft_catalogo_servicios`) |
+| **Cobros** | `nueva-facturacion` | Completo (POS, Checkout, Tickets) | Supabase DB (`public.vetsoft_recibos_cobro`) |
+| **Cobros** | `historial-cobros` | Completo (Historial Recibos y Ventas) | Supabase DB (`public.vetsoft_recibos_cobro`) |
 
 ---
 

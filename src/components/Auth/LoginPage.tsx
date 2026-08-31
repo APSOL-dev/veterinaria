@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
-import { authenticateUser, getDemoCredentials, UserSession } from '../../domain/services/authService';
+import { authenticateUser, UserSession } from '../../domain/services/authService';
 
 interface LoginPageProps {
   onLoginSuccess: (session: UserSession) => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
-  const [username, setUsername] = useState('Administrador');
-  const [password, setPassword] = useState('VETSOFT123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  const demoUsers = getDemoCredentials();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,15 +20,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       onLoginSuccess(session);
     } else {
       setErrorMessage('Credenciales inválidas. Por favor verifique el usuario y la contraseña.');
-    }
-  };
-
-  const handleQuickLogin = (demoUsername: string, demoPass: string) => {
-    setUsername(demoUsername);
-    setPassword(demoPass);
-    const session = authenticateUser(demoUsername, demoPass);
-    if (session) {
-      onLoginSuccess(session);
     }
   };
 
@@ -104,13 +94,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="block w-full pl-10 pr-3 py-3 border border-transparent rounded-lg text-gray-900 bg-[#F5EFF9] focus:outline-none focus:ring-2 focus:ring-[#9A7DB8] focus:border-transparent sm:text-sm font-bold tracking-widest"
+                  className="block w-full pl-10 pr-10 py-3 border border-transparent rounded-lg text-gray-900 bg-[#F5EFF9] focus:outline-none focus:ring-2 focus:ring-[#9A7DB8] focus:border-transparent sm:text-sm font-medium tracking-normal"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-[#5C3C7B] transition-colors cursor-pointer"
+                  title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    {showPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
               </div>
             </div>
 
@@ -127,26 +127,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               </button>
             </div>
           </form>
-
-          {/* Quick Access Demo Roles */}
-          <div className="mt-8 pt-6 border-t border-gray-100">
-            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider text-center mb-4">
-              Acceso rápido de prueba (Demo Roles)
-            </h3>
-            <div className="grid grid-cols-3 gap-3">
-              {demoUsers.map((demo) => (
-                <button
-                  key={demo.role}
-                  type="button"
-                  onClick={() => handleQuickLogin(demo.username, demo.pass)}
-                  className="bg-[#F5EFF9] hover:bg-[#EFE4F5] p-2.5 rounded-lg text-left transition-colors cursor-pointer flex flex-col justify-between"
-                >
-                  <p className="text-xs font-bold text-[#5C3C7B] truncate">{demo.role}</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5 font-mono">{demo.pass}</p>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </main>
 

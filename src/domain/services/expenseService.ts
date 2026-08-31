@@ -92,3 +92,33 @@ export function prepareExpenseForCopy(expense: ExpenseRecord): Omit<ExpenseRecor
     note: expense.note
   };
 }
+
+export function addCustomCategory(existing: string[], newCat: string): string[] {
+  const trimmed = newCat.trim();
+  if (!trimmed || existing.includes(trimmed)) return existing;
+  return [...existing, trimmed];
+}
+
+export function removeCustomCategory(existing: string[], catToRemove: string): string[] {
+  return existing.filter(c => c !== catToRemove);
+}
+
+export function addCustomAllocation(existing: string[], newAlloc: string): string[] {
+  const trimmed = newAlloc.trim();
+  if (!trimmed || existing.includes(trimmed)) return existing;
+  return [...existing, trimmed];
+}
+
+export function removeCustomAllocation(existing: string[], allocToRemove: string): string[] {
+  return existing.filter(a => a !== allocToRemove);
+}
+
+export function addCustomResponsible(existing: string[], newResp: string): string[] {
+  const trimmed = newResp.trim();
+  if (!trimmed || existing.includes(trimmed)) return existing;
+  return [...existing, trimmed];
+}
+
+export function removeCustomResponsible(existing: string[], respToRemove: string): string[] {
+  return existing.filter(r => r !== respToRemove);
+}

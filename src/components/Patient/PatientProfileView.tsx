@@ -518,9 +518,50 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                       </p>
 
                       {note.prescription && (
-                        <div className="mt-xs p-3 bg-[#FAF5FF] border-l-4 border-l-[#9A7DB8] rounded-r-xl border border-purple-100/80 text-xs shadow-xs">
-                          <span className="font-bold text-[#5C3C7B] block text-[11px] mb-0.5">Receta:</span>
+                        <div className="mt-xs p-3 bg-[#FAF5FF] border-l-4 border-l-[#9A7DB8] rounded-r-xl border border-purple-100/80 text-xs shadow-xs flex flex-col gap-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-[#5C3C7B] block text-[11px]">Indicaciones / Receta Médica:</span>
+                            {note.prescriptionUrl && (
+                              <a
+                                href={note.prescriptionUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#E8F5E9] text-[#27AE60] hover:bg-[#C8E6C9] border border-[#27AE60]/30 transition-colors cursor-pointer"
+                                title="Descargar Comprobante de Receta"
+                              >
+                                <span className="material-symbols-outlined text-[12px]">download</span>
+                                <span>Ver Receta Adjunta</span>
+                              </a>
+                            )}
+                          </div>
                           <span className="font-body-md text-slate-900 text-xs font-medium">{note.prescription}</span>
+                        </div>
+                      )}
+
+                      {note.attachments && note.attachments.length > 0 && (
+                        <div className="mt-xs flex flex-wrap items-center gap-xs">
+                          <span className="text-[10px] font-bold uppercase text-slate-500">Archivos Adjuntos:</span>
+                          {note.attachments.map((att, idx) => {
+                            const url = note.attachmentUrls && note.attachmentUrls[idx];
+                            return url ? (
+                              <a
+                                key={idx}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E8F5E9] text-[#27AE60] hover:bg-[#C8E6C9] border border-[#27AE60]/30 transition-colors cursor-pointer"
+                                title={`Ver/Descargar ${att}`}
+                              >
+                                <span className="material-symbols-outlined text-[12px]">download</span>
+                                <span className="truncate max-w-[140px] font-bold">{att}</span>
+                              </a>
+                            ) : (
+                              <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                <span className="material-symbols-outlined text-[12px]">attach_file</span>
+                                <span className="truncate max-w-[140px] font-bold">{att}</span>
+                              </span>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

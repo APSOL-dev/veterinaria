@@ -4,7 +4,13 @@ import {
   createExpenseRecord, 
   filterExpenseRecords, 
   calculateExpenseTotals,
-  prepareExpenseForCopy
+  prepareExpenseForCopy,
+  addCustomCategory,
+  removeCustomCategory,
+  addCustomAllocation,
+  removeCustomAllocation,
+  addCustomResponsible,
+  removeCustomResponsible
 } from './expenseService';
 
 describe('expenseService', () => {
@@ -118,5 +124,35 @@ describe('expenseService', () => {
       amount: 1000,
       note: 'Compra insumos'
     });
+  });
+
+  it('addCustomCategory and removeCustomCategory should manage categories correctly', () => {
+    const initial: string[] = ['Marketing'];
+    const added = addCustomCategory(initial, 'Publicidad');
+    expect(added).toEqual(['Marketing', 'Publicidad']);
+
+    const duplicate = addCustomCategory(added, 'Publicidad');
+    expect(duplicate).toEqual(['Marketing', 'Publicidad']);
+
+    const removed = removeCustomCategory(added, 'Marketing');
+    expect(removed).toEqual(['Publicidad']);
+  });
+
+  it('addCustomAllocation and removeCustomAllocation should manage allocations correctly', () => {
+    const initial: string[] = ['Sucursal Norte'];
+    const added = addCustomAllocation(initial, 'Sucursal Centro');
+    expect(added).toEqual(['Sucursal Norte', 'Sucursal Centro']);
+
+    const removed = removeCustomAllocation(added, 'Sucursal Norte');
+    expect(removed).toEqual(['Sucursal Centro']);
+  });
+
+  it('addCustomResponsible and removeCustomResponsible should manage responsibles correctly', () => {
+    const initial: string[] = ['Recepción'];
+    const added = addCustomResponsible(initial, 'Dr. Gómez');
+    expect(added).toEqual(['Recepción', 'Dr. Gómez']);
+
+    const removed = removeCustomResponsible(added, 'Recepción');
+    expect(removed).toEqual(['Dr. Gómez']);
   });
 });
