@@ -154,25 +154,28 @@ export const PaymentDrawer: React.FC<PaymentDrawerProps> = ({
             <label className="text-[11px] font-bold text-slate-300">
               Factura de Proveedor *
             </label>
-            <select
-              value={selectedBillId}
-              onChange={(e) => handleBillSelect(e.target.value)}
-              className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
-              required
-            >
-              {bills.length === 0 ? (
-                <option value="">No hay facturas disponibles</option>
-              ) : (
-                bills.map((bill) => {
-                  const rem = getRemainingBalance(bill, payments);
-                  return (
-                    <option key={bill.id} value={bill.id}>
-                      {formatInvoiceFullNumber(bill)} — {bill.supplierName} (Saldo: ${rem.toLocaleString('es-AR')})
-                    </option>
-                  );
-                })
-              )}
-            </select>
+            <div className="relative">
+              <select
+                value={selectedBillId}
+                onChange={(e) => handleBillSelect(e.target.value)}
+                className="w-full appearance-none bg-[#160E1E] border border-purple-900/60 rounded-xl pr-8 pl-2.5 py-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] cursor-pointer"
+                required
+              >
+                {bills.length === 0 ? (
+                  <option value="">No hay facturas disponibles</option>
+                ) : (
+                  bills.map((bill) => {
+                    const rem = getRemainingBalance(bill, payments);
+                    return (
+                      <option key={bill.id} value={bill.id}>
+                        {formatInvoiceFullNumber(bill)} — {bill.supplierName} (Saldo: ${rem.toLocaleString('es-AR')})
+                      </option>
+                    );
+                  })
+                )}
+              </select>
+              <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#CBB5E2] pointer-events-none text-[18px]">expand_more</span>
+            </div>
           </div>
 
           {/* 2. Saldo adeudado */}
@@ -233,18 +236,21 @@ export const PaymentDrawer: React.FC<PaymentDrawerProps> = ({
             <label className="text-[11px] font-bold text-slate-300">
               Método de Pago *
             </label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as SupplierPaymentMethod)}
-              className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
-              required
-            >
-              <option value="Efectivo">Efectivo</option>
-              <option value="Transferencia">Transferencia</option>
-              <option value="Cheque">Cheque</option>
-              <option value="Tarjeta">Tarjeta</option>
-              <option value="Otro">Otro</option>
-            </select>
+            <div className="relative">
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as SupplierPaymentMethod)}
+                className="w-full appearance-none bg-[#160E1E] border border-purple-900/60 rounded-xl pr-8 pl-2.5 py-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] cursor-pointer"
+                required
+              >
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Tarjeta">Tarjeta</option>
+                <option value="Otro">Otro</option>
+              </select>
+              <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#CBB5E2] pointer-events-none text-[18px]">expand_more</span>
+            </div>
           </div>
 
           {/* 7. Saldo restante */}

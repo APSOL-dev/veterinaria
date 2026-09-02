@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Patient, ClinicalNote, VaccineDosis, Species, Sex } from '../../domain/types';
+import { Patient, ClinicalNote, VaccineDosis, Species, Sex, PatientRequiredVaccine, VaccineCatalogItem } from '../../domain/types';
 import { filterPatients, calculateWeightTrend, updatePatientRecord } from '../../domain/services/patientService';
 import { NewPatientModal } from './NewPatientModal';
+import { PrescriptionModal } from './PrescriptionModal';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 
 interface PatientProfileViewProps {
@@ -14,6 +15,9 @@ interface PatientProfileViewProps {
   onNavigateToTab: (tabName: string) => void;
   onAddPatient?: (patientData: any) => void;
   onUpdatePatients?: (updatedPatients: Patient[]) => void;
+  vaccineCatalog?: VaccineCatalogItem[];
+  onRegisterDosis?: (dosis: { vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => void;
+  onAddVaccineToCatalog?: (name: string, frequencyDays: number) => void;
 }
 
 export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
@@ -25,7 +29,10 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   vaccineDoses,
   onNavigateToTab,
   onAddPatient,
-  onUpdatePatients
+  onUpdatePatients,
+  vaccineCatalog = [],
+  onRegisterDosis,
+  onAddVaccineToCatalog
 }) => {
   const [newNoteText, setNewNoteText] = useState('');
   const [newPrescriptionText, setNewPrescriptionText] = useState('');
@@ -33,6 +40,18 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   const [patientSearch, setPatientSearch] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('Todos');
   const [showNewPatientModal, setShowNewPatientModal] = useState(false);
+
+  // Active Tab state for redesigned layout (No Sidebar)
+  const [activeTab, setActiveTab] = useState<'ficha' | 'vacunas'>('ficha');
+  const [activePrescriptionNote, setActivePrescriptionNote] = useState<ClinicalNote | null>(null);
+
+  // Required Vaccines State
+  const [showAddVaccineModal, setShowAddVaccineModal] = useState(false);
+  const [reqVaccineSource, setReqVaccineSource] = useState<'catalog' | 'new'>(vaccineCatalog.length > 0 ? 'catalog' : 'new');
+  const [selectedCatalogVacId, setSelectedCatalogVacId] = useState<string>(vaccineCatalog[0]?.id || '');
+  const [reqVaccineName, setReqVaccineName] = useState('');
+  const [reqVaccineDate, setReqVaccineDate] = useState('2026-10-15');
+  const [reqVaccineNotes, setReqVaccineNotes] = useState('');
 
   // Edit Pet Modal state
   const [showEditPetModal, setShowEditPetModal] = useState(false);
@@ -122,6 +141,100 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
     setShowPrescriptionInput(false);
   };
 
+  const handleAddRequiredVaccineSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    let finalVacName = '';
+    let finalVacId = '';
+
+    if (reqVaccineSource === 'catalog') {
+      const catItem = vaccineCatalog.find(v => v.id === selectedCatalogVacId) || vaccineCatalog[0];
+      if (!catItem) return;
+      finalVacName = catItem.name;
+      finalVacId = catItem.id;
+    } else {
+      if (!reqVaccineName.trim()) return;
+      finalVacName = reqVaccineName.trim();
+      finalVacId = `v-cat-${Date.now()}`;
+      if (onAddVaccineToCatalog) {
+        onAddVaccineToCatalog(finalVacName, 365);
+      }
+    }
+
+    const newVaccine: PatientRequiredVaccine = {
+      id: `req-vac-${Date.now()}`,
+      vaccineName: finalVacName,
+      suggestedDate: reqVaccineDate,
+      status: 'pendiente',
+      notes: reqVaccineNotes.trim() || undefined
+    };
+
+    const currentReqs = selectedPatient.requiredVaccines || [];
+    const updatedPatient: Patient = {
+      ...selectedPatient,
+      requiredVaccines: [...currentReqs, newVaccine]
+    };
+
+    if (onUpdatePatients) {
+      const updatedList = patients.map(p => p.id === selectedPatient.id ? updatedPatient : p);
+      onUpdatePatients(updatedList);
+    }
+    onSelectPatient(updatedPatient);
+
+    // Agregar automáticamente al Historial de Vacunación del Paciente
+    if (onRegisterDosis && finalVacId) {
+      onRegisterDosis({
+        vaccineId: finalVacId,
+        applicationDate: reqVaccineDate,
+        vetName: 'Dr. J. Silva'
+      });
+    }
+
+    setReqVaccineName('');
+    setReqVaccineNotes('');
+    setShowAddVaccineModal(false);
+  };
+
+  const handleToggleVaccineApplied = (vacId: string) => {
+    const currentReqs = selectedPatient.requiredVaccines || [];
+    let toggledVacName = '';
+    const updatedReqs = currentReqs.map(v => {
+      if (v.id === vacId) {
+        toggledVacName = v.vaccineName;
+        const isNowApplied = v.status === 'pendiente';
+        return {
+          ...v,
+          status: (isNowApplied ? 'aplicada' : 'pendiente') as 'pendiente' | 'aplicada',
+          appliedDate: isNowApplied ? new Date().toISOString().split('T')[0] : undefined
+        };
+      }
+      return v;
+    });
+
+    const updatedPatient: Patient = {
+      ...selectedPatient,
+      requiredVaccines: updatedReqs
+    };
+
+    if (onUpdatePatients) {
+      const updatedList = patients.map(p => p.id === selectedPatient.id ? updatedPatient : p);
+      onUpdatePatients(updatedList);
+    }
+    onSelectPatient(updatedPatient);
+
+    // Si se marca como aplicada, registrar dosis en el Historial de Vacunación
+    const foundTarget = currentReqs.find(v => v.id === vacId);
+    if (foundTarget && foundTarget.status === 'pendiente' && onRegisterDosis) {
+      const matchedCat = vaccineCatalog.find(c => c.name.toLowerCase() === toggledVacName.toLowerCase()) || vaccineCatalog[0];
+      if (matchedCat) {
+        onRegisterDosis({
+          vaccineId: matchedCat.id,
+          applicationDate: new Date().toISOString().split('T')[0],
+          vetName: 'Dr. J. Silva'
+        });
+      }
+    }
+  };
+
   const handleExportPDF = () => {
     window.print();
   };
@@ -132,130 +245,46 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-md w-full h-full flex-1 overflow-hidden">
-      {/* Left Column: Master List (Fixed 256px/288px width) */}
-      <aside className="flex flex-col w-full md:w-64 xl:w-72 gap-xs shrink-0 overflow-hidden">
-        {/* Quick Header + "+ Nuevo Paciente" Button */}
-        <div className="flex items-center justify-between px-xs">
-          <h2 className="font-label-md text-xs text-slate-700 uppercase tracking-wider font-bold truncate">
-            Mis Pacientes ({filteredPatients.length})
-          </h2>
+    <div className="flex flex-col gap-md w-full h-full flex-1 overflow-y-auto font-body-md text-slate-800 pr-1">
+      {/* Top Header Bar con Selector de Pacientes a Ancho Completo */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md shrink-0 bg-white p-md rounded-2xl border border-slate-200 shadow-xs">
+        <div>
+          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+            Ficha del Paciente — {selectedPatient.name}
+          </h1>
+          <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
+            {selectedPatient.species} • {selectedPatient.breed} • Propietario: <strong className="text-slate-900 font-bold">{selectedPatient.ownerName}</strong>
+          </p>
+        </div>
+
+        <div className="flex items-center gap-sm flex-wrap self-stretch md:self-auto justify-between">
+          <div className="flex items-center gap-2 bg-slate-100 p-1.5 px-3 rounded-xl border border-slate-300">
+            <label className="text-[10px] font-medium text-slate-500">Seleccionar paciente:</label>
+            <select
+              value={selectedPatient.id}
+              onChange={(e) => {
+                const found = patients.find(p => p.id === e.target.value);
+                if (found) onSelectPatient(found);
+              }}
+              className="bg-transparent font-semibold text-xs text-slate-900 outline-none cursor-pointer"
+            >
+              {patients.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.species} - {p.breed} | Tutor: {p.ownerName})
+                </option>
+              ))}
+            </select>
+          </div>
 
           <button
             onClick={() => setShowNewPatientModal(true)}
-            className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-2.5 py-1 rounded-lg font-label-md text-xs flex items-center gap-1 shadow-sm transition-all font-bold shrink-0 cursor-pointer"
+            className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
-            <span className="hidden sm:inline">Nuevo Paciente</span>
-            <span className="sm:hidden">+</span>
+            <span>Nuevo paciente</span>
           </button>
         </div>
-
-        {/* Quick Search */}
-        <div className="bg-white rounded-xl shadow-sm p-xs flex items-center relative border border-slate-300">
-          <span className="material-symbols-outlined text-slate-400 ml-sm mr-xs text-[18px]">
-            search
-          </span>
-          <input
-            type="text"
-            value={patientSearch}
-            onChange={(e) => setPatientSearch(e.target.value)}
-            placeholder="Buscar paciente o dueño..."
-            className="w-full bg-transparent outline-none p-xs font-body-md text-xs text-slate-800 placeholder:text-slate-400 font-medium"
-          />
-        </div>
-
-        {/* Category Pills */}
-        <div className="flex items-center gap-xs overflow-x-auto py-xs scrollbar-hide">
-          {categoryPills.map((pill) => {
-            const isSelected = selectedCategoryFilter === pill.filter;
-            return (
-              <button
-                key={pill.filter}
-                onClick={() => setSelectedCategoryFilter(pill.filter)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-label-md whitespace-nowrap transition-all shrink-0 cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#9A7DB8] text-white shadow-sm font-bold'
-                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 font-medium'
-                }`}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Patient List Container */}
-        <div className="flex flex-col gap-xs overflow-y-auto flex-1 pr-1">
-          {filteredPatients.map((patient) => {
-            const isSelected = patient.id === selectedPatient.id;
-            const hasAlerts = patient.alerts && patient.alerts.length > 0;
-
-            return (
-              <button
-                key={patient.id}
-                onClick={() => onSelectPatient(patient)}
-                className={`p-xs px-sm rounded-xl shadow-sm flex items-center gap-sm text-left transition-all relative overflow-hidden group cursor-pointer border ${
-                  isSelected
-                    ? 'bg-white text-slate-900 border-l-4 border-l-[#9A7DB8] border-purple-300 shadow-md ring-1 ring-[#9A7DB8]/30'
-                    : 'bg-white text-slate-800 hover:bg-purple-50/50 border-slate-200'
-                }`}
-              >
-                <div className={`relative w-10 h-10 rounded-full overflow-hidden shadow-sm shrink-0 flex items-center justify-center ${
-                  isSelected ? 'bg-[#FAF5FF] border border-[#9A7DB8]/40' : 'bg-slate-100'
-                }`}>
-                  {patient.photoUrl ? (
-                    <img 
-                      src={patient.photoUrl} 
-                      alt={patient.name} 
-                      className="w-full h-full object-cover relative z-10" 
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    />
-                  ) : null}
-                  <span className={`material-symbols-outlined text-[22px] absolute ${isSelected ? 'text-[#9A7DB8]' : 'text-slate-400'}`} style={{ fontVariationSettings: "'FILL' 1" }}>
-                    pets
-                  </span>
-                  {hasAlerts && (
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-error rounded-full ring-2 ring-white z-20" title="Tiene alertas clínicas"></span>
-                  )}
-                </div>
-
-                <div className="flex flex-col flex-1 min-w-0 z-10">
-                  <div className="flex items-center justify-between">
-                    <span className={`font-headline-sm text-xs font-bold truncate ${isSelected ? 'text-slate-900' : 'text-slate-800'}`}>
-                      {patient.name}
-                    </span>
-                    {isSelected && (
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#9A7DB8] shadow-[0_0_6px_rgba(154,125,184,0.6)] shrink-0"></span>
-                    )}
-                  </div>
-                  <span className={`font-body-md text-[11px] truncate ${isSelected ? 'text-slate-600 font-medium' : 'text-slate-500'}`}>
-                    {patient.species} • {patient.breed}
-                  </span>
-                  <div className={`flex items-center gap-xs mt-0.5 ${isSelected ? 'text-slate-700 font-semibold' : 'text-slate-500'}`}>
-                    <span className="material-symbols-outlined text-[12px]">person</span>
-                    <span className="font-label-sm text-[10px] truncate">{patient.ownerName}</span>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </aside>
-
-      {/* Right Column: Detailed Patient Profile */}
-      <main className="flex flex-col flex-1 min-w-0 gap-sm overflow-hidden">
-        {/* Module Title Header */}
-        <div className="flex items-center justify-between mb-md shrink-0">
-          <div>
-            <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
-              Pacientes — Ficha Médica ({selectedPatient.name})
-            </h1>
-            <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
-              Historia clínica consolidada, registro de consultas, vacunas y prescripciones
-            </p>
-          </div>
-        </div>
+      </div>
 
         {/* Pet Hero Card */}
         <header className="bg-white rounded-2xl shadow-sm p-md flex flex-col gap-sm border border-slate-200 shrink-0">
@@ -273,14 +302,14 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 <span className="material-symbols-outlined text-[40px] text-[#9A7DB8] absolute" style={{ fontVariationSettings: "'FILL' 1" }}>
                   pets
                 </span>
-                <div className="absolute bottom-1 right-1 bg-[#5C3C7B] text-white px-1.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 z-20">
+                <div className="absolute bottom-1 right-1 bg-[#5C3C7B] text-white px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 z-20">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]"></span>
-                  <span className="font-label-sm text-[9px] font-bold uppercase">Activo</span>
+                  <span className="font-label-sm text-[9px] font-medium">Activo</span>
                 </div>
               </div>
 
               <div>
-                <h2 className="font-headline-sm text-lg text-slate-900 leading-tight font-bold">
+                <h2 className="font-headline-sm text-lg text-slate-900 leading-tight font-semibold">
                   {selectedPatient.name}
                 </h2>
                 <p className="font-body-md text-xs text-slate-600 font-medium flex flex-wrap items-center gap-1.5 mt-0.5">
@@ -288,31 +317,31 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                   <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                   <span>{selectedPatient.sex}</span>
                   <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                  <span>Nac.: {selectedPatient.birthDate}</span>
+                  <span>Nacimiento: {selectedPatient.birthDate}</span>
                 </p>
 
                 {/* Owner Contact Quick Action (WhatsApp Direct) */}
                 <div className="flex items-center gap-sm mt-1.5 text-xs text-slate-800">
-                  <span className="font-bold text-slate-900">Propietario: {selectedPatient.ownerName}</span>
+                  <span className="font-medium text-slate-900">Propietario: {selectedPatient.ownerName}</span>
                   {selectedPatient.ownerPhone && (
                     <a
                       href={`https://wa.me/${cleanPhone(selectedPatient.ownerPhone)}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="bg-[#25D366] text-white hover:brightness-105 px-2.5 py-0.5 rounded-full font-label-sm text-[10px] flex items-center gap-1 shadow-sm font-bold transition-all"
+                      className="bg-[#25D366] text-white hover:brightness-105 px-3 py-1 rounded-full font-label-sm text-[11px] flex items-center gap-1 shadow-sm font-semibold transition-all"
                       title="Enviar WhatsApp al dueño"
                     >
-                      <span className="material-symbols-outlined text-[13px]">chat</span>
+                      <span className="material-symbols-outlined text-[14px]">chat</span>
                       WhatsApp
                     </a>
                   )}
 
                   <button
                     onClick={handleOpenEditPetModal}
-                    className="bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-2.5 py-0.5 rounded-full font-label-sm text-[10px] font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer ml-xs"
+                    className="bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-3 py-1 rounded-full font-label-sm text-[11px] font-semibold flex items-center gap-1 transition-all shadow-xs cursor-pointer ml-xs"
                     title="Editar datos clínicos del paciente"
                   >
-                    <span className="material-symbols-outlined text-[13px]">edit</span>
+                    <span className="material-symbols-outlined text-[14px]">edit</span>
                     Editar datos del paciente
                   </button>
                 </div>
@@ -321,12 +350,12 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
             {/* Weight Evolution Sparkline Widget */}
             <div className="bg-[#FAF8FC] text-slate-900 rounded-xl p-2 px-3 shadow-xs border border-purple-200 flex flex-col items-end min-w-[140px]">
-              <span className="font-label-sm text-[10px] text-slate-600 uppercase font-bold">Evolución de Peso</span>
+              <span className="font-label-sm text-[10px] text-slate-600 font-medium">Evolución de peso</span>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="font-headline-md text-base text-slate-900 font-bold">
+                <span className="font-headline-md text-base text-slate-900 font-semibold">
                   {selectedPatient.weightKg || '0'}<span className="font-body-md text-xs text-slate-500 ml-0.5">kg</span>
                 </span>
-                <span className={`font-label-sm text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                <span className={`font-label-sm text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
                   weightTrend.direction === 'up' ? 'bg-[#E8F5E9] text-[#27AE60]' : weightTrend.direction === 'down' ? 'bg-[#FDEDEC] text-[#C0392B]' : 'bg-slate-200 text-slate-700'
                 }`}>
                   {weightTrend.formatted}
@@ -352,84 +381,72 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
           {/* Banner de Alertas Médicas (Sin emojis) */}
           {selectedPatient.alerts && selectedPatient.alerts.length > 0 && (
             <div className="bg-[#FFF5F5] border border-red-200 p-2 px-3 rounded-xl flex items-center gap-2 flex-wrap text-xs">
-              <span className="font-bold text-red-700 flex items-center gap-1 text-[11px] uppercase tracking-wider">
+              <span className="font-semibold text-red-700 flex items-center gap-1 text-[11px]">
                 <span className="material-symbols-outlined text-[16px]">warning</span>
-                Alertas Clínicas:
+                Alertas clínicas:
               </span>
               <div className="flex flex-wrap gap-1">
                 {selectedPatient.alerts.map((alert, idx) => (
-                  <span key={idx} className="bg-red-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-md shadow-xs">
+                  <span key={idx} className="bg-red-600 text-white font-medium text-[10px] px-2 py-0.5 rounded-md shadow-xs">
                     {alert.replace(/^⚠️\s*/, '')}
                   </span>
                 ))}
               </div>
             </div>
           )}
-
-          {/* Barra de Accesos Directos de la Ficha (Jerarquía de Botones Clara) */}
-          <div className="flex items-center gap-xs overflow-x-auto pt-xs border-t border-slate-200">
-            {/* Primary Action Button */}
-            <button
-              onClick={() => onNavigateToTab('nueva-consulta')}
-              className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-3.5 py-1.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-bold transition-all cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">stethoscope</span>
-              Nueva Consulta
-            </button>
-
-            {/* Secondary Action Buttons (Fondo lila suave + Texto morado de alto contraste) */}
-            <button
-              onClick={() => onNavigateToTab('control-vacunas')}
-              className="bg-[#F4EBFC] hover:bg-[#EAE0F5] text-[#5C3C7B] border border-[#D2B3EA] px-3.5 py-1.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-xs font-bold transition-all cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">vaccines</span>
-              Registrar Vacuna
-            </button>
-
-            <button
-              onClick={() => onNavigateToTab('agenda')}
-              className="bg-[#F4EBFC] hover:bg-[#EAE0F5] text-[#5C3C7B] border border-[#D2B3EA] px-3.5 py-1.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-xs font-bold transition-all cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">calendar_month</span>
-              Agendar Turno
-            </button>
-
-            <button
-              onClick={() => onNavigateToTab('cobros')}
-              className="bg-[#F4EBFC] hover:bg-[#EAE0F5] text-[#5C3C7B] border border-[#D2B3EA] px-3.5 py-1.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-xs font-bold transition-all cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">receipt_long</span>
-              Registrar Cobro
-            </button>
-
-            <button
-              onClick={handleExportPDF}
-              className="bg-[#F4EBFC] hover:bg-[#EAE0F5] text-[#5C3C7B] border border-[#D2B3EA] px-3.5 py-1.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-xs font-bold transition-all ml-auto cursor-pointer"
-              title="Imprimir o guardar en PDF la Historia Clínica"
-            >
-              <span className="material-symbols-outlined text-[16px]">print</span>
-              Exportar HC (PDF)
-            </button>
-          </div>
         </header>
 
-        {/* Section Header: Historia Clínica */}
-        <div className="flex items-center justify-between px-xs py-1 shrink-0 border-b border-slate-200">
-          <div className="flex items-center gap-xs">
-            <span className="material-symbols-outlined text-[#9A7DB8] text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              clinical_notes
-            </span>
-            <h2 className="font-headline-sm text-sm font-bold text-slate-900">Historia Clínica</h2>
-          </div>
-        </div>
+        {/* Sub-Tab Navigation Bar */}
+      <div className="flex items-center gap-xs border-b border-slate-200 pb-1 shrink-0 overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => setActiveTab('ficha')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+            activeTab === 'ficha'
+              ? 'bg-[#5C3C7B] text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:bg-purple-50 border border-slate-200 font-medium'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px]">clinical_notes</span>
+          <span>1. Historia clínica & consultas</span>
+        </button>
 
-        {/* Content: Historial Clínico */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('vacunas')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+            activeTab === 'vacunas'
+              ? 'bg-[#5C3C7B] text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:bg-purple-50 border border-slate-200 font-medium'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px]">vaccines</span>
+          <span>2. Vacunas requeridas & plan sanitario</span>
+          {selectedPatient.requiredVaccines && selectedPatient.requiredVaccines.length > 0 && (
+            <span className="px-2 py-0.2 bg-amber-100 text-amber-900 rounded-full text-[10px] font-semibold">
+              {selectedPatient.requiredVaccines.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={handleExportPDF}
+          className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-xs font-semibold transition-all ml-auto cursor-pointer"
+          title="Imprimir o guardar en PDF la historia clínica"
+        >
+          <span className="material-symbols-outlined text-[16px]">print</span>
+          <span>Exportar historia clínica (PDF)</span>
+        </button>
+      </div>
+
+      {/* CONTENIDO PESTAÑA 1: HISTORIA CLÍNICA */}
+      {activeTab === 'ficha' && (
         <section className="flex flex-col gap-sm flex-1 min-h-0 overflow-y-auto pr-1">
           {/* Quick Consultation Form */}
           <div className="bg-white shadow-sm rounded-xl p-sm px-md flex flex-col gap-xs border border-slate-200 shrink-0">
             <div className="flex items-center gap-xs">
               <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">add_circle</span>
-              <h2 className="font-headline-sm text-xs font-bold text-slate-900">Registrar Atención Rápida</h2>
+              <h2 className="font-headline-sm text-xs font-semibold text-slate-900">Registrar atención rápida</h2>
             </div>
 
             <div className="flex flex-col gap-1">
@@ -443,7 +460,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
               {showPrescriptionInput && (
                 <div className="flex flex-col gap-1 bg-[#FAF5FF] p-2.5 rounded-xl border-l-4 border-l-[#9A7DB8] border-purple-200 shadow-xs">
-                  <label className="font-label-md text-[10px] text-[#5C3C7B] font-bold uppercase tracking-wider">Indicaciones / Receta Médica</label>
+                  <label className="font-label-md text-[10px] text-[#5C3C7B] font-semibold">Indicaciones / receta médica</label>
                   <textarea
                     value={newPrescriptionText}
                     onChange={(e) => setNewPrescriptionText(e.target.value)}
@@ -460,28 +477,28 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowPrescriptionInput(!showPrescriptionInput)}
-                className="px-md py-1 rounded-lg bg-[#F4EBFC] hover:bg-[#EAE0F5] text-[#5C3C7B] border border-[#D2B3EA] font-label-md text-xs shadow-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#F4EBFC] hover:bg-[#EAE0F5] text-[#5C3C7B] border border-[#D2B3EA] font-label-md text-xs shadow-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[14px]">prescriptions</span> 
-                {showPrescriptionInput ? 'Quitar Receta' : 'Generar Receta'}
+                <span className="material-symbols-outlined text-[16px]">prescriptions</span> 
+                {showPrescriptionInput ? 'Quitar receta' : 'Generar receta'}
               </button>
               <button
                 type="button"
                 onClick={handleSaveConsultation}
-                className="px-md py-1 rounded-lg bg-[#9A7DB8] hover:bg-[#8362A5] text-white font-label-md text-xs shadow-sm font-bold flex items-center gap-1 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#9A7DB8] hover:bg-[#8362A5] text-white font-label-md text-xs shadow-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   save
                 </span> 
-                Guardar en Ficha
+                Guardar en ficha
               </button>
             </div>
           </div>
 
           {/* History Timeline */}
           <div className="flex flex-col gap-xs">
-            <h3 className="font-label-md text-[11px] text-slate-700 uppercase tracking-wider font-bold ml-1">
-              Consultas Anteriores ({patientNotes.length})
+            <h3 className="font-label-md text-[11px] text-slate-700 font-semibold ml-1">
+              Consultas anteriores ({patientNotes.length})
             </h3>
 
             {patientNotes.length === 0 ? (
@@ -492,55 +509,68 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               patientNotes.map((note) => {
                 const noteDate = new Date(note.date);
                 const day = noteDate.getDate();
-                const monthYear = noteDate.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+                const monthName = noteDate.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '');
+                const year = noteDate.getFullYear();
 
                 return (
                   <div key={note.id} className="bg-white rounded-xl shadow-xs p-md flex flex-col sm:flex-row gap-md hover:shadow-md transition-shadow relative border border-slate-200">
                     {/* Date Badge */}
-                    <div className="flex flex-col items-center justify-center sm:w-16 shrink-0 bg-[#F4EBFC] border border-[#D2B3EA] rounded-xl p-2 px-3 shadow-xs">
-                      <span className="font-display-lg text-base font-bold text-[#5C3C7B]">{day}</span>
-                      <span className="font-label-sm text-[10px] text-[#5C3C7B] uppercase font-bold">{monthYear}</span>
+                    <div className="flex flex-col items-center justify-center min-w-[76px] shrink-0 bg-[#F4EBFC] border border-[#D2B3EA] rounded-xl py-2.5 px-3 shadow-xs self-start sm:self-center">
+                      <span className="text-lg font-bold text-[#5C3C7B] leading-none">{day}</span>
+                      <span className="text-[11px] font-semibold text-[#5C3C7B] capitalize mt-1 leading-tight">{monthName}</span>
+                      <span className="text-[10px] font-medium text-[#7B549C] leading-none mt-0.5">{year}</span>
                     </div>
 
                     <div className="flex flex-col gap-xs flex-1">
                       <div className="flex flex-wrap items-center justify-between gap-1">
-                        <span className="font-headline-sm text-xs font-bold text-slate-900">Consulta Médica</span>
-                        <span className="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full font-label-sm text-[9px] font-bold uppercase">
-                          Atención Clínica
+                        <span className="font-headline-sm text-xs font-semibold text-slate-900">Consulta médica</span>
+                        <span className="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full font-label-sm text-[9px] font-medium">
+                          Atención clínica
                         </span>
                       </div>
                       <div className="flex items-center gap-1 text-slate-700 text-[11px] mb-0.5">
                         <span className="material-symbols-outlined text-[13px] text-[#9A7DB8]">stethoscope</span>
-                        <span className="font-bold">{note.vetName}</span>
+                        <span className="font-semibold">{note.vetName}</span>
                       </div>
                       <p className="font-body-md text-xs text-slate-800 leading-relaxed font-normal">
                         {note.notes}
                       </p>
 
                       {note.prescription && (
-                        <div className="mt-xs p-3 bg-[#FAF5FF] border-l-4 border-l-[#9A7DB8] rounded-r-xl border border-purple-100/80 text-xs shadow-xs flex flex-col gap-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-[#5C3C7B] block text-[11px]">Indicaciones / Receta Médica:</span>
-                            {note.prescriptionUrl && (
-                              <a
-                                href={note.prescriptionUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#E8F5E9] text-[#27AE60] hover:bg-[#C8E6C9] border border-[#27AE60]/30 transition-colors cursor-pointer"
-                                title="Descargar Comprobante de Receta"
+                        <div className="mt-xs p-3 bg-[#FAF5FF] border-l-4 border-l-[#9A7DB8] rounded-r-xl border border-purple-100/80 text-xs shadow-xs flex flex-col gap-2">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <span className="font-semibold text-[#5C3C7B] block text-[11px]">Indicaciones / receta médica:</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setActivePrescriptionNote(note)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#5C3C7B] text-white hover:bg-[#4A2F66] shadow-2xs transition-colors cursor-pointer"
+                                title="Ver receta en PDF y enviar por WhatsApp"
                               >
-                                <span className="material-symbols-outlined text-[12px]">download</span>
-                                <span>Ver Receta Adjunta</span>
-                              </a>
-                            )}
+                                <span className="material-symbols-outlined text-[14px]">prescriptions</span>
+                                <span>Ver receta PDF / WhatsApp</span>
+                              </button>
+                              {note.prescriptionUrl && (
+                                <a
+                                  href={note.prescriptionUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#E8F5E9] text-[#27AE60] hover:bg-[#C8E6C9] border border-[#27AE60]/30 transition-colors cursor-pointer"
+                                  title="Descargar comprobante de receta"
+                                >
+                                  <span className="material-symbols-outlined text-[14px]">download</span>
+                                  <span>Adjunto</span>
+                                </a>
+                              )}
+                            </div>
                           </div>
-                          <span className="font-body-md text-slate-900 text-xs font-medium">{note.prescription}</span>
+                          <span className="font-body-md text-slate-900 text-xs font-medium whitespace-pre-line">{note.prescription}</span>
                         </div>
                       )}
 
                       {note.attachments && note.attachments.length > 0 && (
                         <div className="mt-xs flex flex-wrap items-center gap-xs">
-                          <span className="text-[10px] font-bold uppercase text-slate-500">Archivos Adjuntos:</span>
+                          <span className="text-[10px] font-medium text-slate-500">Archivos adjuntos:</span>
                           {note.attachments.map((att, idx) => {
                             const url = note.attachmentUrls && note.attachmentUrls[idx];
                             return url ? (
@@ -553,12 +583,12 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                                 title={`Ver/Descargar ${att}`}
                               >
                                 <span className="material-symbols-outlined text-[12px]">download</span>
-                                <span className="truncate max-w-[140px] font-bold">{att}</span>
+                                <span className="truncate max-w-[140px] font-semibold">{att}</span>
                               </a>
                             ) : (
                               <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
                                 <span className="material-symbols-outlined text-[12px]">attach_file</span>
-                                <span className="truncate max-w-[140px] font-bold">{att}</span>
+                                <span className="truncate max-w-[140px] font-semibold">{att}</span>
                               </span>
                             );
                           })}
@@ -571,7 +601,88 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             )}
           </div>
         </section>
-      </main>
+      )}
+
+      {/* CONTENIDO PESTAÑA 2: VACUNAS REQUERIDAS & PLAN SANITARIO */}
+      {activeTab === 'vacunas' && (
+        <section className="flex flex-col gap-md flex-1 min-h-0 overflow-y-auto pr-1">
+          <div className="bg-white rounded-2xl shadow-sm p-md border border-slate-200 flex flex-col gap-xs shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-xs">
+                <span className="material-symbols-outlined text-[#9A7DB8] text-[20px]">vaccines</span>
+                <h3 className="font-headline-sm text-xs font-semibold text-slate-900">
+                  Vacunas necesarias / requeridas por paciente
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddVaccineModal(true)}
+                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                <span>Agregar vacuna requerida</span>
+              </button>
+            </div>
+
+            {(!selectedPatient.requiredVaccines || selectedPatient.requiredVaccines.length === 0) ? (
+              <p className="text-slate-500 text-xs italic py-3 text-center">
+                No hay vacunas sugeridas/requeridas cargadas manualmente para este paciente. Presione "Agregar vacuna requerida".
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-xs mt-1">
+                {selectedPatient.requiredVaccines.map(vac => (
+                  <div
+                    key={vac.id}
+                    className={`p-3 rounded-xl border flex items-center justify-between gap-sm text-xs ${
+                      vac.status === 'aplicada'
+                        ? 'bg-emerald-50/60 border-emerald-200 text-emerald-950'
+                        : 'bg-amber-50/60 border-amber-200 text-amber-950'
+                    }`}
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-semibold text-xs">{vac.vaccineName}</span>
+                      <span className="text-[10px] text-slate-600 font-medium">
+                        Fecha sugerida: <strong>{vac.suggestedDate}</strong>
+                        {vac.appliedDate && ` • Aplicada el: ${vac.appliedDate}`}
+                      </span>
+                      {vac.notes && <span className="text-[10px] text-slate-500 italic">{vac.notes}</span>}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleToggleVaccineApplied(vac.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
+                        vac.status === 'aplicada'
+                          ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                          : 'bg-amber-500 text-white hover:bg-amber-600'
+                      }`}
+                    >
+                      {vac.status === 'aplicada' ? '✓ Aplicada' : 'Marcar aplicada'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl p-md border border-slate-200 shadow-sm">
+            <h3 className="font-headline-sm text-xs font-semibold text-slate-900 mb-sm flex items-center gap-xs">
+              <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">verified</span>
+              Ir al control de vacunas general
+            </h3>
+            <p className="text-xs text-slate-600 mb-md">
+              Consulte el calendario completo del vacunatorio, programe turnos de refuerzo y notifique recordatorios por SMS/WhatsApp.
+            </p>
+            <button
+              onClick={() => onNavigateToTab('control-vacunas')}
+              className="bg-[#5C3C7B] hover:bg-[#4A2F66] text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]">vaccines</span>
+              Ver vacunatorio completo
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* New Patient Modal */}
       {showNewPatientModal && (
@@ -719,6 +830,134 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
         type="success"
         onClose={() => setNotifModal({ isOpen: false, message: '' })}
       />
+
+      {/* Prescription Modal Grande */}
+      {activePrescriptionNote && (
+        <PrescriptionModal
+          isOpen={true}
+          onClose={() => setActivePrescriptionNote(null)}
+          patient={selectedPatient}
+          vetName={activePrescriptionNote.vetName}
+          vetLicenseNumber={activePrescriptionNote.vetLicenseNumber}
+          prescriptionText={activePrescriptionNote.prescription || ''}
+          dateStr={activePrescriptionNote.date ? activePrescriptionNote.date.split('T')[0] : undefined}
+        />
+      )}
+
+      {/* Modal Carga Vacuna Requerida Manual */}
+      {showAddVaccineModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
+            <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#9A7DB8] text-[22px]">vaccines</span>
+                <h3 className="font-bold text-sm text-slate-900">Agregar Vacuna Requerida</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddVaccineModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleAddRequiredVaccineSubmit} className="flex flex-col gap-md text-xs">
+              <div className="flex flex-col gap-xs">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-xs text-slate-700 block">Vacuna requerida *</label>
+                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setReqVaccineSource('catalog')}
+                      className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                        reqVaccineSource === 'catalog'
+                          ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      Elegir del catálogo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReqVaccineSource('new')}
+                      className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                        reqVaccineSource === 'new'
+                          ? 'bg-[#9A7DB8] text-white shadow-2xs font-semibold'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      Crear nueva
+                    </button>
+                  </div>
+                </div>
+
+                {reqVaccineSource === 'catalog' ? (
+                  <select
+                    value={selectedCatalogVacId}
+                    onChange={(e) => setSelectedCatalogVacId(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-xs focus:border-[#9A7DB8] shadow-xs cursor-pointer"
+                  >
+                    {vaccineCatalog.map(item => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} ({item.frequencyDays} días)
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={reqVaccineName}
+                    onChange={(e) => setReqVaccineName(e.target.value)}
+                    placeholder="Ej. Bordetella, Giardia..."
+                    required={reqVaccineSource === 'new'}
+                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-xs focus:border-[#9A7DB8] placeholder:text-slate-400 shadow-xs"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Fecha sugerida de aplicación *</label>
+                <input
+                  type="date"
+                  value={reqVaccineDate}
+                  onChange={(e) => setReqVaccineDate(e.target.value)}
+                  required
+                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8]"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Observaciones / notas (Opcional)</label>
+                <textarea
+                  value={reqVaccineNotes}
+                  onChange={(e) => setReqVaccineNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Indicaciones adicionales, refuerzo anual, laboratorio..."
+                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-sm pt-xs border-t border-slate-200 mt-xs">
+                <button
+                  type="button"
+                  onClick={() => setShowAddVaccineModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">save</span>
+                  <span>Guardar vacuna</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

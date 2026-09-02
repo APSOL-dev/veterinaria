@@ -1,21 +1,32 @@
 import React, { useState, useMemo } from 'react';
-import { Patient } from '../../domain/types';
-import { getUniqueTutores, updateTutorAndPetInfo, TutorSummary } from '../../domain/services/tutorService';
+import { Patient, BillReceipt } from '../../domain/types';
+import { getUniqueTutores, updateTutorAndPetInfo, calculateTutorAccountMovements, TutorPaymentRecord } from '../../domain/services/tutorService';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 
 interface TutoresViewProps {
   patients: Patient[];
   onUpdatePatients: (updatedPatients: Patient[]) => void;
+  receipts?: BillReceipt[];
 }
 
 export const TutoresView: React.FC<TutoresViewProps> = ({
   patients,
-  onUpdatePatients
+  onUpdatePatients,
+  receipts = []
 }) => {
   const tutores = useMemo(() => getUniqueTutores(patients), [patients]);
   const [selectedTutorName, setSelectedTutorName] = useState<string>(tutores[0]?.ownerName || '');
   const [searchQuery, setSearchQuery] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // Tutor Payments state
+  const [tutorPayments, setTutorPayments] = useState<TutorPaymentRecord[]>([
+    { id: 'tp-init-1', tutorName: 'Carlos Mendoza', date: '2026-08-15', amount: 5000, concept: 'Abono consulta clínica' }
+  ]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [payAmount, setPayAmount] = useState<number>(0);
+  const [payConcept, setPayConcept] = useState('');
+  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
 
   const activeTutor = useMemo(() => {
     return tutores.find(t => t.ownerName.toLowerCase() === selectedTutorName.toLowerCase()) || tutores[0];
@@ -28,6 +39,17 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
       t.pets.some(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [tutores, searchQuery]);
+
+  // Account movements for active tutor
+  const accountMovements = useMemo(() => {
+    if (!activeTutor) return [];
+    return calculateTutorAccountMovements(activeTutor.ownerName, receipts, tutorPayments);
+  }, [activeTutor, receipts, tutorPayments]);
+
+  const currentTutorSaldo = useMemo(() => {
+    if (accountMovements.length === 0) return 0;
+    return accountMovements[accountMovements.length - 1].saldo;
+  }, [accountMovements]);
 
   // Edit Modal Form State
   const [editOwnerName, setEditOwnerName] = useState('');
@@ -75,6 +97,28 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
     });
   };
 
+  const handleAddTutorPaymentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeTutor || payAmount <= 0) return;
+
+    const newPayment: TutorPaymentRecord = {
+      id: `tp-${Date.now()}`,
+      tutorName: activeTutor.ownerName,
+      date: payDate,
+      amount: Number(payAmount),
+      concept: payConcept.trim() || 'Abono / Pago a Cuenta Corriente'
+    };
+
+    setTutorPayments(prev => [newPayment, ...prev]);
+    setShowPaymentModal(false);
+    setPayAmount(0);
+    setPayConcept('');
+    setNotifModal({
+      isOpen: true,
+      message: `¡Pago de $${newPayment.amount.toLocaleString('es-AR')} registrado a favor de ${activeTutor.ownerName}!`
+    });
+  };
+
   const cleanPhone = (phone?: string) => {
     if (!phone) return '';
     return phone.replace(/[^0-9]/g, '');
@@ -89,8 +133,8 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
       {/* Left Column: Tutores Master List */}
       <aside className="flex flex-col w-full md:w-64 xl:w-72 gap-xs shrink-0 overflow-hidden">
         <div className="flex items-center justify-between px-xs">
-          <h2 className="font-label-md text-xs text-on-surface-variant uppercase tracking-wider font-bold truncate">
-            Padrón de Tutores ({filteredTutores.length})
+          <h2 className="font-label-md text-xs text-on-surface-variant font-semibold truncate">
+            Padrón de tutores ({filteredTutores.length})
           </h2>
         </div>
 
@@ -103,74 +147,72 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar tutor, teléfono o mascota..."
-            className="w-full bg-transparent outline-none p-xs font-body-md text-xs text-on-surface placeholder:text-on-surface-variant"
+            placeholder="Buscar por dueño, teléfono..."
+            className="w-full bg-transparent text-xs text-on-surface placeholder:text-on-surface-variant/70 outline-none font-medium pr-sm"
           />
         </div>
 
-        {/* Tutores List */}
-        <div className="flex flex-col gap-xs overflow-y-auto flex-1 pr-1 mt-xs">
+        {/* Scrollable Tutor Items */}
+        <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-xs min-h-0">
           {filteredTutores.map((tutor) => {
             const isSelected = tutor.ownerName.toLowerCase() === activeTutor.ownerName.toLowerCase();
             return (
-              <button
+              <div
                 key={tutor.ownerName}
                 onClick={() => setSelectedTutorName(tutor.ownerName)}
-                className={`p-xs px-sm rounded-xl shadow-sm flex items-center gap-sm text-left transition-all relative border ${
+                className={`p-md rounded-2xl cursor-pointer transition-all border flex flex-col gap-xs ${
                   isSelected
-                    ? 'bg-primary text-on-primary border-primary shadow-md'
-                    : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container border-outline-variant/30'
+                    ? 'bg-[#5C3C7B] text-white border-[#5C3C7B] shadow-md scale-[0.99]'
+                    : 'bg-surface-container-lowest hover:bg-surface-container text-on-surface border-outline-variant/30 shadow-xs'
                 }`}
               >
-                <div className="w-10 h-10 rounded-full bg-surface-container-highest text-primary flex items-center justify-center shrink-0 shadow-sm font-bold text-sm">
-                  {tutor.ownerName.slice(0, 2).toUpperCase()}
+                <div className="flex justify-between items-start">
+                  <h3 className={`font-headline-sm text-sm font-semibold truncate ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                    {tutor.ownerName}
+                  </h3>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-surface-container-high text-primary'
+                  }`}>
+                    {tutor.pets.length} {tutor.pets.length === 1 ? 'mascota' : 'mascotas'}
+                  </span>
                 </div>
 
-                <div className="flex flex-col flex-1 min-w-0">
-                  <span className={`font-headline-sm text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-on-background'}`}>
-                    {tutor.ownerName}
-                  </span>
-                  <span className={`font-body-md text-[11px] truncate ${isSelected ? 'text-primary-fixed-dim' : 'text-on-surface-variant'}`}>
-                    {tutor.ownerPhone}
-                  </span>
-                  <span className={`font-label-sm text-[10px] truncate ${isSelected ? 'text-primary-fixed-dim' : 'text-primary font-bold'}`}>
-                    {tutor.pets.length} {tutor.pets.length === 1 ? 'mascota' : 'mascotas'} ({tutor.pets.map(p => p.name).join(', ')})
-                  </span>
+                <div className="flex items-center gap-xs text-xs font-medium">
+                  <span className="material-symbols-outlined text-[14px]">call</span>
+                  <span>{tutor.ownerPhone}</span>
                 </div>
-              </button>
+
+                <div className="flex flex-wrap gap-1 mt-xs">
+                  {tutor.pets.map(p => (
+                    <span
+                      key={p.id}
+                      className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-surface-container text-on-surface-variant'
+                      }`}
+                    >
+                      {p.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
             );
           })}
         </div>
       </aside>
 
-      {/* Right Column: Tutor Details & Associated Pets */}
-      <main className="flex flex-col flex-1 min-w-0 gap-md overflow-y-auto">
-        {/* Module Title Header */}
-        <div className="flex items-center justify-between mb-md">
-          <div>
-            <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
-              Pacientes — Gestión de Tutores
-            </h1>
-            <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
-              Padrón de tutores registrados, información de contacto y mascotas vinculadas
-            </p>
-          </div>
-        </div>
-
-        {/* Tutor Hero Card */}
-        <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-md shrink-0">
+      {/* Right Main Panel: Tutor Info & Account Ledger */}
+      <main className="flex-1 flex flex-col gap-md min-w-0 overflow-y-auto pr-1">
+        {/* Tutor Profile Header Card */}
+        <div className="bg-surface-container-lowest rounded-2xl p-lg shadow-md border border-outline-variant/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-md">
           <div className="flex items-center gap-md">
-            <div className="w-14 h-14 rounded-2xl bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xl shadow-md shrink-0">
-              {activeTutor.ownerName.slice(0, 2).toUpperCase()}
+            <div className="w-14 h-14 rounded-2xl bg-[#1D1426] text-white flex items-center justify-center font-bold text-xl shadow-md shrink-0">
+              {activeTutor.ownerName.substring(0, 2).toUpperCase()}
             </div>
             <div>
-              <div className="flex items-center gap-sm">
-                <h1 className="font-display-lg text-[22px] text-slate-900 font-bold leading-tight">Pacientes — {activeTutor.ownerName}</h1>
-                <span className="bg-secondary-container text-on-secondary-container text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  Tutor Registrado
-                </span>
-              </div>
-              <p className="font-body-md text-xs text-on-surface-variant flex flex-wrap items-center gap-md mt-xs">
+              <h1 className="font-display-lg text-xl text-slate-900 font-semibold leading-tight">
+                {activeTutor.ownerName}
+              </h1>
+              <p className="font-body-md text-xs text-slate-600 font-medium flex flex-wrap items-center gap-md mt-1">
                 <span className="flex items-center gap-xs">
                   <span className="material-symbols-outlined text-[15px]">call</span>
                   {activeTutor.ownerPhone}
@@ -179,40 +221,117 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                   <span className="material-symbols-outlined text-[15px]">location_on</span>
                   {activeTutor.address || 'San Juan 450'}
                 </span>
-                <span className="flex items-center gap-xs">
-                  <span className="material-symbols-outlined text-[15px]">mail</span>
-                  {activeTutor.email}
-                </span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-sm">
+          <div className="flex items-center gap-sm flex-wrap">
+            {/* Saldo Badge */}
+            <div className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-4 py-2 flex items-center gap-xs">
+              <span className="text-[10px] font-medium text-slate-500">Saldo cta. cte.:</span>
+              <span className={`text-sm font-semibold font-mono ${currentTutorSaldo > 0 ? 'text-red-700' : 'text-[#27AE60]'}`}>
+                $ {currentTutorSaldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              className="bg-[#5C3C7B] hover:bg-[#4A2F66] text-white px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 transition-colors shadow-sm font-semibold cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]">payments</span>
+              <span>Registrar pago</span>
+            </button>
+
             {activeTutor.ownerPhone && (
               <a
                 href={`https://wa.me/${cleanPhone(activeTutor.ownerPhone)}`}
                 target="_blank"
                 rel="noreferrer"
-                className="bg-[#25D366] text-white hover:bg-[#1EBE5D] px-md py-2 rounded-xl font-label-md text-xs flex items-center gap-xs transition-colors shadow-sm font-semibold"
+                className="bg-[#25D366] text-white hover:bg-[#1EBE5D] px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 transition-colors shadow-sm font-semibold"
               >
                 <span className="material-symbols-outlined text-[16px]">chat</span>
                 WhatsApp
               </a>
             )}
+
             <button
               onClick={handleOpenEdit}
-              className="bg-primary text-on-primary hover:bg-primary-container px-md py-2 rounded-xl font-label-md text-xs flex items-center gap-xs transition-colors shadow-sm font-semibold"
+              className="bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/40 px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 transition-colors shadow-xs font-semibold cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">edit</span>
-              Editar Datos de Tutor y Mascota
+              Editar datos
             </button>
+          </div>
+        </div>
+
+        {/* Cuenta Corriente del Tutor (Debe, Haber, Saldo) */}
+        <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex flex-col gap-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="font-headline-sm text-sm font-semibold text-slate-900 flex items-center gap-xs">
+              <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">account_balance</span>
+              Cuenta corriente del tutor — Movimientos de saldo
+            </h2>
+            <span className="text-xs text-slate-500 font-medium">
+              Servicios cobrados (Debe) y abonos recibidos (Haber)
+            </span>
+          </div>
+
+          <div className="overflow-x-auto border border-outline-variant/30 rounded-xl">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#5C3C7B] text-white font-semibold text-xs border-b border-purple-900/20">
+                  <th className="py-3 px-md text-center">Fecha</th>
+                  <th className="py-3 px-md">Concepto / comprobante</th>
+                  <th className="py-3 px-md text-right">Debe</th>
+                  <th className="py-3 px-md text-right">Haber</th>
+                  <th className="py-3 px-md text-right">Saldo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/20 font-medium">
+                {accountMovements.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-md text-center text-slate-500 italic">
+                      No hay movimientos registrados en la cuenta corriente de este tutor.
+                    </td>
+                  </tr>
+                ) : (
+                  accountMovements.map(m => (
+                    <tr key={m.id} className="hover:bg-surface-container/20 transition-colors">
+                      <td className="py-2.5 px-md text-center font-mono text-slate-600">
+                        {m.date}
+                      </td>
+                      <td className="py-2.5 px-md font-medium text-slate-900">
+                        {m.concept}
+                      </td>
+                      <td className="py-2.5 px-md text-right font-medium text-slate-900">
+                        {m.debe > 0 ? (
+                          `$ ${m.debe.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        ) : (
+                          <span className="text-slate-400 font-normal">-</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-md text-right font-semibold text-[#27AE60]">
+                        {m.haber > 0 ? (
+                          `$ ${m.haber.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        ) : (
+                          <span className="text-slate-400 font-normal">-</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-md text-right font-semibold text-slate-900 font-mono">
+                        $ {m.saldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
         {/* Associated Pets Section */}
         <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex-1">
           <h2 className="font-headline-sm text-sm font-bold text-on-surface mb-md flex items-center gap-xs">
-            <span className="material-symbols-outlined text-primary text-[18px]">pets</span>
+            <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">pets</span>
             Mascotas Asociadas a {activeTutor.ownerName} ({activeTutor.pets.length})
           </h2>
 
@@ -250,14 +369,100 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
         </div>
       </main>
 
+      {/* Modal Registrar Pago / Abono a Tutor */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
+            <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#5C3C7B] text-[22px]">payments</span>
+                <h3 className="font-bold text-sm text-slate-900">Registrar pago</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleAddTutorPaymentSubmit} className="flex flex-col gap-md text-xs">
+              <div>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Tutor beneficiario</label>
+                <input
+                  type="text"
+                  value={activeTutor.ownerName}
+                  disabled
+                  className="w-full bg-slate-100 border border-slate-300 rounded-xl p-2.5 text-slate-700 font-semibold text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Fecha del pago *</label>
+                <input
+                  type="date"
+                  value={payDate}
+                  onChange={(e) => setPayDate(e.target.value)}
+                  required
+                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8]"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Importe a abonar ($) *</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(Number(e.target.value))}
+                  placeholder="Ej. 10000"
+                  required
+                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-sm focus:border-[#9A7DB8]"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Concepto / nota (Opcional)</label>
+                <input
+                  type="text"
+                  value={payConcept}
+                  onChange={(e) => setPayConcept(e.target.value)}
+                  placeholder="Ej. Pago parcial de servicios de clínica"
+                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-sm pt-xs border-t border-slate-200 mt-xs">
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="bg-[#5C3C7B] hover:bg-[#4A2F66] text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">save</span>
+                  <span>Registrar abono</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Edit Tutor & Pets Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
           <div className="bg-surface-container-lowest rounded-2xl max-w-2xl w-full p-lg shadow-xl flex flex-col gap-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b pb-sm">
-              <h3 className="font-headline-sm text-primary font-bold text-base flex items-center gap-xs">
+              <h3 className="font-headline-sm text-primary font-semibold text-base flex items-center gap-xs">
                 <span className="material-symbols-outlined text-[20px]">edit_note</span>
-                Editar Datos del Tutor y sus Mascotas
+                Editar datos del tutor y sus mascotas
               </h3>
               <button onClick={() => setShowEditModal(false)} className="text-on-surface-variant hover:text-error">
                 <span className="material-symbols-outlined">close</span>
@@ -267,140 +472,46 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
             <form onSubmit={handleSaveEdit} className="flex flex-col gap-md">
               {/* Tutor Section */}
               <div className="bg-surface-container-low p-md rounded-xl flex flex-col gap-sm border border-outline-variant/30">
-                <h4 className="font-label-md text-xs text-primary uppercase font-bold tracking-wider">
-                  1. Datos del Tutor (Propietario)
+                <h4 className="font-label-md text-xs text-primary font-semibold">
+                  1. Datos del tutor (Propietario)
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-sm text-xs">
                   <div>
-                    <label className="font-label-md text-on-surface-variant block mb-1">Nombre Completo</label>
+                    <label className="font-label-md text-on-surface-variant block mb-1">Nombre completo</label>
                     <input
                       type="text"
                       value={editOwnerName}
                       onChange={(e) => setEditOwnerName(e.target.value)}
                       required
-                      className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-xs px-sm text-on-surface outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full bg-surface-container border border-outline-variant/80 rounded-lg p-2 text-on-surface font-semibold outline-none focus:ring-2 focus:ring-secondary"
                     />
                   </div>
                   <div>
-                    <label className="font-label-md text-on-surface-variant block mb-1">Teléfono de Contacto</label>
+                    <label className="font-label-md text-on-surface-variant block mb-1">Teléfono / WhatsApp</label>
                     <input
                       type="text"
                       value={editOwnerPhone}
                       onChange={(e) => setEditOwnerPhone(e.target.value)}
-                      required
-                      className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-xs px-sm text-on-surface outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="font-label-md text-on-surface-variant block mb-1">Dirección / Domicilio</label>
-                    <input
-                      type="text"
-                      value={editAddress}
-                      onChange={(e) => setEditAddress(e.target.value)}
-                      className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-xs px-sm text-on-surface outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full bg-surface-container border border-outline-variant/80 rounded-lg p-2 text-on-surface font-semibold outline-none focus:ring-2 focus:ring-secondary"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Pets Section */}
-              <div className="bg-surface-container-low p-md rounded-xl flex flex-col gap-sm border border-outline-variant/30">
-                <h4 className="font-label-md text-xs text-primary uppercase font-bold tracking-wider">
-                  2. Datos de las Mascotas Asociadas
-                </h4>
-
-                {activeTutor.pets.map((pet) => {
-                  const pFields = editPetFields[pet.id] || {
-                    name: pet.name,
-                    species: pet.species,
-                    breed: pet.breed,
-                    weightKg: pet.weightKg
-                  };
-
-                  return (
-                    <div key={pet.id} className="bg-surface-container-lowest p-sm rounded-xl border border-outline-variant/40 flex flex-col gap-xs text-xs">
-                      <span className="font-bold text-secondary text-xs">Mascota: {pet.name} (ID: {pet.id})</span>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-xs">
-                        <div>
-                          <label className="text-[10px] text-on-surface-variant block">Nombre</label>
-                          <input
-                            type="text"
-                            value={pFields.name}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setEditPetFields(prev => ({
-                                ...prev,
-                                [pet.id]: { ...prev[pet.id], name: val }
-                              }));
-                            }}
-                            className="w-full bg-surface-container border border-outline-variant/30 rounded-lg p-xs text-xs outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-on-surface-variant block">Especie</label>
-                          <input
-                            type="text"
-                            value={pFields.species}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setEditPetFields(prev => ({
-                                ...prev,
-                                [pet.id]: { ...prev[pet.id], species: val }
-                              }));
-                            }}
-                            className="w-full bg-surface-container border border-outline-variant/30 rounded-lg p-xs text-xs outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-on-surface-variant block">Raza</label>
-                          <input
-                            type="text"
-                            value={pFields.breed}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setEditPetFields(prev => ({
-                                ...prev,
-                                [pet.id]: { ...prev[pet.id], breed: val }
-                              }));
-                            }}
-                            className="w-full bg-surface-container border border-outline-variant/30 rounded-lg p-xs text-xs outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-on-surface-variant block">Peso (kg)</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={pFields.weightKg}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              setEditPetFields(prev => ({
-                                ...prev,
-                                [pet.id]: { ...prev[pet.id], weightKg: val }
-                              }));
-                            }}
-                            className="w-full bg-surface-container border border-outline-variant/30 rounded-lg p-xs text-xs outline-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="flex justify-end gap-sm pt-xs border-t">
+              <div className="flex items-center justify-end gap-sm pt-xs border-t">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="px-md py-2 rounded-xl bg-surface-container text-on-surface text-xs font-semibold cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-md py-2 rounded-xl bg-primary text-on-primary hover:bg-primary-container text-xs font-bold shadow-sm cursor-pointer"
+                  className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                 >
-                  Guardar Cambios
+                  <span className="material-symbols-outlined text-[16px]">save</span>
+                  <span>Guardar cambios</span>
                 </button>
               </div>
             </form>

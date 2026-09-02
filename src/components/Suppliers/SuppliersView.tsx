@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { SupplierBill, SupplierQuote, ExpenseRecord, SupplierPayment, SupplierPaymentMethod } from '../../domain/types';
-import { calculateSupplierTotals, calculateMonthlyExpenditureProjections, formatInvoiceFullNumber, filterBillsByDateRange, filterPaymentsByDateRange, getDefaultDateRange } from '../../domain/services/supplierService';
+import { SupplierBill, SupplierQuote, ExpenseRecord, SupplierPayment, SupplierPaymentMethod, SupplierCreditTerm } from '../../domain/types';
+import { calculateSupplierTotals, calculateMonthlyExpenditureProjections, groupProjectionsByYear, formatInvoiceFullNumber, filterBillsByDateRange, filterPaymentsByDateRange, getDefaultDateRange } from '../../domain/services/supplierService';
 import { filterExpenseRecords, calculateExpenseTotals } from '../../domain/services/expenseService';
 import { getTotalPaidForBill, getRemainingBalance } from '../../domain/services/paymentService';
 import { NewInvoiceDrawer } from './NewInvoiceDrawer';
@@ -8,14 +8,17 @@ import { PaymentDrawer } from './PaymentDrawer';
 import { PowerBIDateRangeFilter } from './PowerBIDateRangeFilter';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
 import { ExpenseCategoryModal } from './ExpenseCategoryModal';
+import { SupplierCreditTermsView } from './SupplierCreditTermsView';
+import { SupplierCurrentAccountView } from './SupplierCurrentAccountView';
 
 interface SuppliersViewProps {
   bills: SupplierBill[];
   quotes: SupplierQuote[];
   expenses?: ExpenseRecord[];
   payments?: SupplierPayment[];
+  creditTerms?: SupplierCreditTerm[];
   monthlyBudgets?: Record<string, number>;
-  activeSubModule: 'facturas' | 'presupuestos' | 'pagos';
+  activeSubModule: 'facturas' | 'presupuestos' | 'pagos' | 'cuentas' | 'plazos';
   onAddBill: (bill: Omit<SupplierBill, 'id'>) => void;
   onUpdateBill?: (id: string, bill: Omit<SupplierBill, 'id'>) => void;
   onDeleteBill?: (id: string) => void;
@@ -26,6 +29,8 @@ interface SuppliersViewProps {
   onDeleteExpense?: (id: string) => void;
   onDuplicateExpense?: (id: string) => void;
   onAddPayment?: (payment: Omit<SupplierPayment, 'id'>) => void;
+  onSaveCreditTerm?: (term: SupplierCreditTerm) => void;
+  onNavigateSubModule?: (subModule: string) => void;
 }
 
 export const SuppliersView: React.FC<SuppliersViewProps> = ({
@@ -33,6 +38,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   quotes,
   expenses = [],
   payments = [],
+  creditTerms = [],
   monthlyBudgets = {},
   activeSubModule,
   onAddBill,
@@ -44,7 +50,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   onUpdateExpense,
   onDeleteExpense,
   onDuplicateExpense,
-  onAddPayment
+  onAddPayment,
+  onSaveCreditTerm,
+  onNavigateSubModule
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [showInvoiceDrawer, setShowInvoiceDrawer] = useState(false);
@@ -89,6 +97,19 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
   const totals = useMemo(() => calculateSupplierTotals(filteredBills, quotes, filteredPayments, '2026-08-31'), [filteredBills, quotes, filteredPayments]);
   const projections = useMemo(() => calculateMonthlyExpenditureProjections(bills, monthlyBudgets, payments, filterStartDate, filterEndDate), [bills, monthlyBudgets, payments, filterStartDate, filterEndDate]);
+
+  const yearlyProjections = useMemo(() => {
+    return groupProjectionsByYear(projections);
+  }, [projections]);
+
+  const [expandedYears, setExpandedYears] = useState<Record<number, boolean>>(() => {
+    const currentYear = new Date().getFullYear();
+    return { [currentYear]: true };
+  });
+
+  const toggleYearExpand = (year: number) => {
+    setExpandedYears(prev => ({ ...prev, [year]: !prev[year] }));
+  };
 
   // Submodule: Pagos — drawer de registro de pago
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -354,96 +375,115 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
   return (
     <div className="flex flex-col w-full h-full gap-md font-body-md text-on-surface">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-md">
-        <div>
-          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
-            {activeSubModule === 'facturas'
-              ? 'Proveedores — Facturas de Compras'
-              : activeSubModule === 'pagos'
-              ? 'Proveedores — Pagos'
-              : 'Proveedores — Registrar Gastos'}
-          </h1>
-          <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
-            {activeSubModule === 'facturas'
-              ? 'Control de comprobantes de ingreso de mercadería, proyección de erogaciones y pagos'
-              : activeSubModule === 'pagos'
-              ? 'Historial de pagos registrados a facturas de proveedores'
-              : 'Gestión y registro directo de gastos de operación y proveedores'}
+      {activeSubModule === 'cuentas' ? (
+        <SupplierCurrentAccountView
+          bills={bills}
+          payments={payments}
+          creditTerms={creditTerms}
+          onSaveCreditTerm={onSaveCreditTerm}
+          onDeleteBill={onDeleteBill}
+          onNavigateToPlazos={() => onNavigateSubModule && onNavigateSubModule('plazos')}
+          onOpenRegisterPayment={(billId) => handleOpenPaymentModal(bills.find(b => b.id === billId))}
+        />
+      ) : activeSubModule === 'plazos' ? (
+        <SupplierCreditTermsView
+          bills={bills}
+          payments={payments}
+          creditTerms={creditTerms}
+          onSaveCreditTerm={onSaveCreditTerm}
+          onNavigateToCuentas={() => onNavigateSubModule && onNavigateSubModule('cuentas')}
+        />
+      ) : (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-md">
+            <div>
+              <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+                {activeSubModule === 'facturas'
+                  ? 'Proveedores — Facturas de Compras'
+                  : activeSubModule === 'pagos'
+                  ? 'Proveedores — Pagos'
+                  : 'Proveedores — Registrar Gastos'}
+              </h1>
+              <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
+                {activeSubModule === 'facturas'
+                  ? 'Control de comprobantes de ingreso de mercadería, proyección de erogaciones y pagos'
+                  : activeSubModule === 'pagos'
+                  ? 'Historial de pagos registrados a facturas de proveedores'
+                  : 'Gestión y registro directo de gastos de operación y proveedores'}
+              </p>
+            </div>
 
-          </p>
-        </div>
+            <div className="flex items-center gap-sm flex-wrap">
+              {activeSubModule === 'facturas' && (
+                <PowerBIDateRangeFilter
+                  minDate={default6MonthsRange.startDate}
+                  maxDate={default6MonthsRange.endDate}
+                  startDate={filterStartDate}
+                  endDate={filterEndDate}
+                  onChange={(s, e) => {
+                    setFilterStartDate(s);
+                    setFilterEndDate(e);
+                  }}
+                  onReset={() => {
+                    setFilterStartDate(default6MonthsRange.startDate);
+                    setFilterEndDate(default6MonthsRange.endDate);
+                  }}
+                />
+              )}
 
-        <div className="flex items-center gap-sm flex-wrap">
-          {activeSubModule === 'facturas' && (
-            <PowerBIDateRangeFilter
-              minDate={default6MonthsRange.startDate}
-              maxDate={default6MonthsRange.endDate}
-              startDate={filterStartDate}
-              endDate={filterEndDate}
-              onChange={(s, e) => {
-                setFilterStartDate(s);
-                setFilterEndDate(e);
-              }}
-              onReset={() => {
-                setFilterStartDate(default6MonthsRange.startDate);
-                setFilterEndDate(default6MonthsRange.endDate);
-              }}
-            />
-          )}
+              {activeSubModule === 'presupuestos' && (
+                <button
+                  type="button"
+                  onClick={() => setShowConfigModal(true)}
+                  className="bg-[#F5EFF9] text-[#5C3C7B] hover:bg-[#EFE4F5] border border-[#9A7DB8]/30 px-md py-2 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                  title="Crear nuevas asignaciones y categorías de gastos"
+                >
+                  <span className="material-symbols-outlined text-[18px]">settings_suggest</span>
+                  <span>Categorías y Asignaciones</span>
+                </button>
+              )}
 
-          {activeSubModule !== 'facturas' && activeSubModule !== 'pagos' && (
-            <button
-              type="button"
-              onClick={() => setShowConfigModal(true)}
-              className="bg-[#F5EFF9] text-[#5C3C7B] hover:bg-[#EFE4F5] border border-[#9A7DB8]/30 px-md py-2 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
-              title="Crear nuevas asignaciones y categorías de gastos"
-            >
-              <span className="material-symbols-outlined text-[18px]">settings_suggest</span>
-              <span>Categorías y Asignaciones</span>
-            </button>
-          )}
+              <button
+                type="button"
+                onClick={() =>
+                  activeSubModule === 'facturas'
+                    ? handleOpenAddBill()
+                    : activeSubModule === 'pagos'
+                    ? handleOpenPaymentModal()
+                    : handleOpenAddExpenseModal()
+                }
+                className="bg-primary text-on-primary hover:bg-primary-container px-md py-2 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                {activeSubModule === 'facturas'
+                  ? 'Registrar Factura'
+                  : activeSubModule === 'pagos'
+                  ? 'Registrar pago'
+                  : 'Registrar Gasto'}
+              </button>
+            </div>
+          </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              activeSubModule === 'facturas'
-                ? handleOpenAddBill()
-                : activeSubModule === 'pagos'
-                ? handleOpenPaymentModal()
-                : handleOpenAddExpenseModal()
-            }
-            className="bg-primary text-on-primary hover:bg-primary-container px-md py-2 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
-          >
-            <span className="material-symbols-outlined text-[16px]">add</span>
-            {activeSubModule === 'facturas'
-              ? 'Registrar Factura'
-              : activeSubModule === 'pagos'
-              ? 'Registrar pago'
-              : 'Registrar Gasto'}
-          </button>
-        </div>
-      </div>
-
-      {activeSubModule === 'facturas' ? (
+          {activeSubModule === 'facturas' ? (
         <>
           {/* KPI Cards Summary for Facturas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-md">
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
-              <span className="font-label-md text-[11px] text-on-surface-variant uppercase font-bold">Comprado este mes</span>
-              <span className="font-display-lg text-2xl font-bold text-primary mt-xs">${totals.purchasedThisMonthTotal.toLocaleString('es-AR')}</span>
+              <span className="font-label-md text-[11px] text-on-surface-variant font-semibold">Comprado este mes</span>
+              <span className="font-display-lg text-2xl font-semibold text-primary mt-xs">${totals.purchasedThisMonthTotal.toLocaleString('es-AR')}</span>
             </div>
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
-              <span className="font-label-md text-[11px] text-on-surface-variant uppercase font-bold">Facturas pagadas</span>
-              <span className="font-display-lg text-2xl font-bold text-[#27AE60] mt-xs">${totals.paidBillsTotal.toLocaleString('es-AR')}</span>
+              <span className="font-label-md text-[11px] text-on-surface-variant font-semibold">Facturas pagadas</span>
+              <span className="font-display-lg text-2xl font-semibold text-[#27AE60] mt-xs">${totals.paidBillsTotal.toLocaleString('es-AR')}</span>
             </div>
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
-              <span className="font-label-md text-[11px] text-on-surface-variant uppercase font-bold">Pendiente de pago</span>
-              <span className="font-display-lg text-2xl font-bold text-error mt-xs">${totals.pendingBillsTotal.toLocaleString('es-AR')}</span>
+              <span className="font-label-md text-[11px] text-on-surface-variant font-semibold">Pendiente de pago</span>
+              <span className="font-display-lg text-2xl font-semibold text-error mt-xs">${totals.pendingBillsTotal.toLocaleString('es-AR')}</span>
             </div>
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
-              <span className="font-label-md text-[11px] text-on-surface-variant uppercase font-bold">Comprometido a 30 días</span>
-              <span className="font-display-lg text-2xl font-bold text-amber-600 mt-xs">${totals.committed30DaysTotal.toLocaleString('es-AR')}</span>
+              <span className="font-label-md text-[11px] text-on-surface-variant font-semibold">Comprometido a 30 días</span>
+              <span className="font-display-lg text-2xl font-semibold text-amber-600 mt-xs">${totals.committed30DaysTotal.toLocaleString('es-AR')}</span>
             </div>
           </div>
 
@@ -451,25 +491,25 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           <div className="flex items-center gap-sm border-b border-outline-variant/20 pb-xs">
             <button
               onClick={() => setFacturasTab('resumen')}
-              className={`px-md py-1.5 rounded-xl font-label-md text-xs font-bold transition-all flex items-center gap-xs ${
+              className={`px-4 py-2 rounded-xl font-label-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                 facturasTab === 'resumen'
-                  ? 'bg-primary text-on-primary shadow-sm'
+                  ? 'bg-primary text-on-primary shadow-xs'
                   : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">bar_chart</span>
-              Resumen (Proyección)
+              <span>Resumen (Proyección)</span>
             </button>
             <button
               onClick={() => setFacturasTab('listado')}
-              className={`px-md py-1.5 rounded-xl font-label-md text-xs font-bold transition-all flex items-center gap-xs ${
+              className={`px-4 py-2 rounded-xl font-label-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                 facturasTab === 'listado'
-                  ? 'bg-primary text-on-primary shadow-sm'
+                  ? 'bg-primary text-on-primary shadow-xs'
                   : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">receipt_long</span>
-              Listado de Facturas ({bills.length})
+              <span>Listado de facturas ({bills.length})</span>
             </button>
           </div>
 
@@ -478,105 +518,158 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
             <div className="overflow-x-auto flex-1">
               {facturasTab === 'resumen' ? (
                 <div>
-                  <h2 className="font-headline-sm text-base font-bold text-primary mb-md">Resumen de Proyección (por Fecha de Pago)</h2>
-                  <table className="w-full text-left font-body-md text-xs">
-                    <thead className="bg-surface-container-low text-on-surface-variant font-label-md uppercase text-[10px]">
+                  <h2 className="font-headline-sm text-base font-semibold text-primary mb-md">Resumen de proyección (por fecha de pago)</h2>
+                  <table className="w-full text-left font-body-md text-xs border-collapse">
+                    <thead className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
                       <tr>
-                        <th className="p-sm px-md">Fecha Pago</th>
+                        <th className="p-sm px-md">Año / mes de pago</th>
                         <th className="p-sm px-md text-right">Total adeudado</th>
                         <th className="p-sm px-md text-right">Total pagado</th>
                         <th className="p-sm px-md text-right">Total</th>
-                        <th className="p-sm px-md text-right">Presupuesto Total</th>
+                        <th className="p-sm px-md text-right">Presupuesto total</th>
                         <th className="p-sm px-md text-center">Cumplimiento</th>
                       </tr>
                     </thead>
                     <tbody className="text-on-surface">
-                      {projections.map((proj) => (
-                        <tr key={proj.monthKey} className="border-b border-surface-container-low hover:bg-surface-container/60 transition-colors">
-                          <td className="p-sm px-md font-mono font-medium text-on-surface">{proj.dateLabel}</td>
-                          <td className="p-sm px-md text-right">
-                            {proj.totalAdeudado > 0 ? (
-                              <span className="inline-flex items-center gap-1.5 font-bold text-[#C0392B]">
-                                <span className="w-2 h-2 rounded-full bg-[#C0392B] inline-block"></span>
-                                {proj.totalAdeudado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            ) : (
-                              <span className="text-on-surface-variant/60">0.00</span>
-                            )}
-                          </td>
-                          <td className="p-sm px-md text-right">
-                            {proj.totalPagado > 0 ? (
-                              <span className="inline-flex items-center gap-1.5 font-bold text-[#27AE60]">
-                                <span className="w-2 h-2 rounded-full bg-[#27AE60] inline-block"></span>
-                                {proj.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            ) : (
-                              <span className="text-on-surface-variant/60">0.00</span>
-                            )}
-                          </td>
-                          <td className="p-sm px-md text-right font-medium text-on-surface">
-                            {proj.total > 0
-                              ? proj.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                              : '0.00'}
-                          </td>
-                          <td className="p-sm px-md text-right">
-                            {editingBudgetMonth === proj.monthKey ? (
-                              <div className="flex items-center justify-end gap-1">
-                                <input
-                                  type="number"
-                                  value={tempBudgetInput}
-                                  onChange={(e) => setTempBudgetInput(e.target.value)}
-                                  className="w-28 p-1 text-right text-xs rounded border border-primary outline-none"
-                                  autoFocus
-                                />
-                                <button onClick={() => handleSaveBudget(proj.monthKey)} className="text-[#27AE60] font-bold px-1">✓</button>
-                              </div>
-                            ) : (
-                              <div className="group inline-flex items-center gap-1 cursor-pointer" onClick={() => {
-                                setEditingBudgetMonth(proj.monthKey);
-                                setTempBudgetInput(proj.presupuestoTotal.toString());
-                              }}>
-                                <span>{proj.presupuestoTotal > 0 ? proj.presupuestoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</span>
-                                <span className="material-symbols-outlined text-[12px] text-primary">edit</span>
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-sm px-md text-center">
-                            {proj.statusLevel === 'exceeded' && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#FDEDEC] text-[#C0392B]">
-                                <span className="material-symbols-outlined text-[14px]">cancel</span>
-                                {proj.cumplimientoPercentage}%
-                              </span>
-                            )}
-                            {proj.statusLevel === 'warning' && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#FEF9E7] text-[#D35400]">
-                                <span className="material-symbols-outlined text-[14px]">warning</span>
-                                {proj.cumplimientoPercentage}%
-                              </span>
-                            )}
-                            {proj.statusLevel === 'ok' && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F5E9] text-[#27AE60]">
-                                <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                                {proj.cumplimientoPercentage}%
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                      {yearlyProjections.map((yearGroup) => {
+                        const isExpanded = !!expandedYears[yearGroup.year];
+                        return (
+                          <React.Fragment key={`year-${yearGroup.year}`}>
+                            {/* Year Header Accordion Row */}
+                            <tr className="bg-surface-container/80 border-y border-outline-variant/40 font-semibold">
+                              <td className="p-sm px-md">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleYearExpand(yearGroup.year)}
+                                  className="inline-flex items-center gap-1.5 text-primary hover:text-primary-container font-semibold text-xs cursor-pointer select-none"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">
+                                    {isExpanded ? 'expand_more' : 'chevron_right'}
+                                  </span>
+                                  <span className="font-headline-sm text-sm font-semibold text-slate-900">
+                                    Año {yearGroup.year}
+                                  </span>
+                                  <span className="text-[11px] font-medium text-slate-500">
+                                    ({yearGroup.projections.length} {yearGroup.projections.length === 1 ? 'mes' : 'meses'})
+                                  </span>
+                                </button>
+                              </td>
+                              <td className="p-sm px-md text-right font-semibold text-[#C0392B]">
+                                $ {yearGroup.totalAdeudado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="p-sm px-md text-right font-semibold text-[#27AE60]">
+                                $ {yearGroup.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="p-sm px-md text-right font-semibold text-slate-900">
+                                $ {yearGroup.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="p-sm px-md text-right font-semibold text-slate-700">
+                                $ {yearGroup.presupuestoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="p-sm px-md text-center">
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                                  yearGroup.statusLevel === 'exceeded'
+                                    ? 'bg-[#FDEDEC] text-[#C0392B]'
+                                    : yearGroup.statusLevel === 'warning'
+                                    ? 'bg-[#FEF9E7] text-[#D35400]'
+                                    : 'bg-[#E8F5E9] text-[#27AE60]'
+                                }`}>
+                                  <span>{yearGroup.cumplimientoPercentage}% Anual</span>
+                                </span>
+                              </td>
+                            </tr>
+
+                            {/* Monthly child rows inside year */}
+                            {isExpanded && yearGroup.projections.map((proj) => (
+                              <tr key={proj.monthKey} className="border-b border-surface-container-low hover:bg-surface-container/40 transition-colors">
+                                <td className="p-sm px-md font-medium text-slate-700 pl-8">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-slate-300 mr-2"></span>
+                                  {proj.dateLabel}
+                                </td>
+                                <td className="p-sm px-md text-right">
+                                  {proj.totalAdeudado > 0 ? (
+                                    <span className="inline-flex items-center gap-1 font-semibold text-[#C0392B]">
+                                      {proj.totalAdeudado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                  ) : (
+                                    <span className="text-on-surface-variant/60">0.00</span>
+                                  )}
+                                </td>
+                                <td className="p-sm px-md text-right">
+                                  {proj.totalPagado > 0 ? (
+                                    <span className="inline-flex items-center gap-1 font-semibold text-[#27AE60]">
+                                      {proj.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                  ) : (
+                                    <span className="text-on-surface-variant/60">0.00</span>
+                                  )}
+                                </td>
+                                <td className="p-sm px-md text-right font-medium text-on-surface">
+                                  {proj.total > 0
+                                    ? proj.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                    : '0.00'}
+                                </td>
+                                <td className="p-sm px-md text-right">
+                                  {editingBudgetMonth === proj.monthKey ? (
+                                    <div className="flex items-center justify-end gap-1">
+                                      <input
+                                        type="number"
+                                        value={tempBudgetInput}
+                                        onChange={(e) => setTempBudgetInput(e.target.value)}
+                                        className="w-28 p-1 text-right text-xs rounded border border-primary outline-none"
+                                        autoFocus
+                                      />
+                                      <button onClick={() => handleSaveBudget(proj.monthKey)} className="text-[#27AE60] font-semibold px-1">✓</button>
+                                    </div>
+                                  ) : (
+                                    <div className="group inline-flex items-center gap-1 cursor-pointer" onClick={() => {
+                                      setEditingBudgetMonth(proj.monthKey);
+                                      setTempBudgetInput(proj.presupuestoTotal.toString());
+                                    }}>
+                                      <span>{proj.presupuestoTotal > 0 ? proj.presupuestoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</span>
+                                      <span className="material-symbols-outlined text-[12px] text-primary">edit</span>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="p-sm px-md text-center">
+                                  {proj.statusLevel === 'exceeded' && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FDEDEC] text-[#C0392B]">
+                                      <span className="material-symbols-outlined text-[14px]">cancel</span>
+                                      {proj.cumplimientoPercentage}%
+                                    </span>
+                                  )}
+                                  {proj.statusLevel === 'warning' && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FEF9E7] text-[#D35400]">
+                                      <span className="material-symbols-outlined text-[14px]">warning</span>
+                                      {proj.cumplimientoPercentage}%
+                                    </span>
+                                  )}
+                                  {proj.statusLevel === 'ok' && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#E8F5E9] text-[#27AE60]">
+                                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                      {proj.cumplimientoPercentage}%
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               ) : (
                   <table className="w-full text-left font-body-md text-xs">
-                    <thead className="bg-surface-container-low text-on-surface-variant font-label-md uppercase text-[10px]">
+                    <thead className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
                       <tr>
-                        <th className="p-sm px-md">Fecha Emisión</th>
-                        <th className="p-sm px-md">Fecha Pago</th>
+                        <th className="p-sm px-md">Fecha emisión</th>
+                        <th className="p-sm px-md">Fecha pago</th>
                         <th className="p-sm px-md">Proveedor</th>
-                        <th className="p-sm px-md">N° Factura</th>
+                        <th className="p-sm px-md">N° factura</th>
                         <th className="p-sm px-md text-center">Ítems</th>
-                        <th className="p-sm px-md text-right">Monto Total</th>
-                        <th className="p-sm px-md text-right">Saldo Restante</th>
+                        <th className="p-sm px-md text-right">Monto total</th>
+                        <th className="p-sm px-md text-right">Saldo restante</th>
                         <th className="p-sm px-md text-center">Estado</th>
                         <th className="p-sm px-md">Comprobante</th>
                         <th className="p-sm px-md text-center">Acciones</th>
@@ -590,13 +683,13 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                         const isPartial = totalPaid > 0 && !isPaid;
 
                         let badgeClass = 'bg-[#FDEDEC] text-[#C0392B]';
-                        let badgeLabel = 'PENDIENTE';
+                        let badgeLabel = 'Pendiente';
                         if (isPaid) {
                           badgeClass = 'bg-[#E8F5E9] text-[#27AE60]';
-                          badgeLabel = 'PAGADO';
+                          badgeLabel = 'Pagado';
                         } else if (isPartial) {
                           badgeClass = 'bg-[#FEF9E7] text-[#D35400]';
-                          badgeLabel = 'PAGO PARCIAL';
+                          badgeLabel = 'Pago parcial';
                         }
 
                         return (
@@ -606,12 +699,12 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             <td className="p-sm px-md font-medium text-slate-900">{bill.supplierName}</td>
                             <td className="p-sm px-md font-mono text-[11px]">{formatInvoiceFullNumber(bill)}</td>
                             <td className="p-sm px-md text-center">{bill.itemsCount}</td>
-                            <td className="p-sm px-md text-right font-bold">${(bill.amount || 0).toLocaleString('es-AR')}</td>
-                            <td className="p-sm px-md text-right font-bold text-error">
+                            <td className="p-sm px-md text-right font-semibold">${(bill.amount || 0).toLocaleString('es-AR')}</td>
+                            <td className="p-sm px-md text-right font-semibold text-error">
                               {remaining > 0 ? `$${remaining.toLocaleString('es-AR')}` : <span className="text-[#27AE60]">$0</span>}
                             </td>
                             <td className="p-sm px-md text-center">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}`}>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${badgeClass}`}>
                                 {badgeLabel}
                               </span>
                             </td>
@@ -625,12 +718,12 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                   title={`Ver/Descargar ${bill.voucherName || 'Comprobante'}`}
                                 >
                                   <span className="material-symbols-outlined text-[12px]">download</span>
-                                  <span className="truncate max-w-[120px] font-bold">{bill.voucherName || 'Ver Comprobante'}</span>
+                                  <span className="truncate max-w-[120px] font-semibold">{bill.voucherName || 'Ver Comprobante'}</span>
                                 </a>
                               ) : bill.voucherName ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E8F5E9] text-[#27AE60] border border-[#27AE60]/30" title={bill.voucherName}>
                                   <span className="material-symbols-outlined text-[12px]">attach_file</span>
-                                  <span className="truncate max-w-[120px] font-bold">{bill.voucherName}</span>
+                                  <span className="truncate max-w-[120px] font-semibold">{bill.voucherName}</span>
                                 </span>
                               ) : (
                                 <span className="text-slate-400 text-[11px]">—</span>
@@ -717,17 +810,17 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                         <td className="p-sm px-md font-medium text-slate-900">{pay.supplierName}</td>
                         <td className="p-sm px-md font-mono text-[11px]">{pay.billInvoiceNumber}</td>
                         <td className="p-sm px-md">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-container text-on-surface-variant border border-outline-variant/40">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-container text-on-surface-variant border border-outline-variant/40">
                             {pay.paymentMethod}
                           </span>
                         </td>
-                        <td className="p-sm px-md text-right font-bold text-slate-800">
+                        <td className="p-sm px-md text-right font-medium text-slate-800">
                           ${totalAmount.toLocaleString('es-AR')}
                         </td>
-                        <td className="p-sm px-md text-right font-bold text-[#27AE60]">
+                        <td className="p-sm px-md text-right font-semibold text-[#27AE60]">
                           ${pay.amount.toLocaleString('es-AR')}
                         </td>
-                        <td className="p-sm px-md text-right font-bold text-error">
+                        <td className="p-sm px-md text-right font-medium text-error">
                           {remainingBalance > 0 ? `$${remainingBalance.toLocaleString('es-AR')}` : <span className="text-[#27AE60]">$0</span>}
                         </td>
                         <td className="p-sm px-md">
@@ -740,12 +833,12 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                               title={`Ver/Descargar ${pay.voucherName || 'Comprobante'}`}
                             >
                               <span className="material-symbols-outlined text-[12px]">download</span>
-                              <span className="truncate max-w-[120px] font-bold">{pay.voucherName || 'Ver Comprobante'}</span>
+                              <span className="truncate max-w-[120px] font-semibold">{pay.voucherName || 'Ver comprobante'}</span>
                             </a>
                           ) : pay.voucherName ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E8F5E9] text-[#27AE60] border border-[#27AE60]/30" title={pay.voucherName}>
                               <span className="material-symbols-outlined text-[12px]">attach_file</span>
-                              <span className="truncate max-w-[120px] font-bold">{pay.voucherName}</span>
+                              <span className="truncate max-w-[120px] font-semibold">{pay.voucherName}</span>
                             </span>
                           ) : (
                             <span className="text-slate-400 text-[11px]">—</span>
@@ -769,11 +862,11 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
             {/* Filters grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-xs flex-1">
               <div className="flex flex-col gap-0.5">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase">Responsable</label>
+                <label className="text-[11px] font-medium text-on-surface-variant">Responsable</label>
                 <select
                   value={filterResponsible}
                   onChange={(e) => setFilterResponsible(e.target.value)}
-                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary"
+                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
                 >
                   <option value="all">Todos</option>
                   {uniqueResponsibles.map(r => (
@@ -783,25 +876,25 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
               </div>
 
               <div className="flex flex-col gap-0.5">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase">Período</label>
+                <label className="text-[11px] font-medium text-on-surface-variant">Período</label>
                 <select
                   value={filterPeriod}
                   onChange={(e) => setFilterPeriod(e.target.value)}
-                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary"
+                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
                 >
                   <option value="all">Todos</option>
-                  <option value="current_month">Mes Actual</option>
-                  <option value="last_month">Mes Anterior</option>
+                  <option value="current_month">Mes actual</option>
+                  <option value="last_month">Mes anterior</option>
                   <option value="year_2026">Año 2026</option>
                 </select>
               </div>
 
               <div className="flex flex-col gap-0.5">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase">Rubro</label>
+                <label className="text-[11px] font-medium text-on-surface-variant">Rubro</label>
                 <select
                   value={filterCategory}
                   onChange={(e) => setFilterCategory(e.target.value)}
-                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary"
+                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
                 >
                   <option value="all">Todos</option>
                   {uniqueCategories.map(c => (
@@ -811,11 +904,11 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
               </div>
 
               <div className="flex flex-col gap-0.5">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase">Asignación</label>
+                <label className="text-[11px] font-medium text-on-surface-variant">Asignación</label>
                 <select
                   value={filterAllocation}
                   onChange={(e) => setFilterAllocation(e.target.value)}
-                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary"
+                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
                 >
                   <option value="all">Todas</option>
                   {uniqueAllocations.map(a => (
@@ -825,11 +918,11 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
               </div>
 
               <div className="flex flex-col gap-0.5">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase">Método Pago</label>
+                <label className="text-[11px] font-medium text-on-surface-variant">Método pago</label>
                 <select
                   value={filterPaymentMethod}
                   onChange={(e) => setFilterPaymentMethod(e.target.value)}
-                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary"
+                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
                 >
                   <option value="all">Todos</option>
                   {uniquePaymentMethods.map(p => (
@@ -843,15 +936,15 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
               <button
                 type="button"
                 onClick={handleClearFilters}
-                className="text-on-surface-variant hover:text-primary text-xs font-bold transition-colors flex items-center gap-xs"
+                className="text-on-surface-variant hover:text-primary text-xs font-semibold transition-colors flex items-center gap-xs cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[14px]">filter_alt_off</span>
-                Limpiar
+                <span>Limpiar</span>
               </button>
 
               <div className="bg-primary/10 border border-primary/30 p-xs px-md rounded-xl flex flex-col items-end shrink-0">
-                <span className="text-[9px] font-bold text-primary uppercase">Total Filtrado ({expenseTotals.count})</span>
-                <span className="font-display-lg text-lg font-bold text-primary">${expenseTotals.totalAmount.toLocaleString('es-AR')}</span>
+                <span className="text-[10px] font-semibold text-primary">Total filtrado ({expenseTotals.count})</span>
+                <span className="font-display-lg text-lg font-semibold text-primary">${expenseTotals.totalAmount.toLocaleString('es-AR')}</span>
               </div>
             </div>
           </div>
@@ -860,13 +953,13 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex-1 overflow-hidden flex flex-col">
             <div className="overflow-x-auto flex-1">
               <table className="w-full text-left font-body-md text-xs">
-                <thead className="bg-surface-container-low text-on-surface-variant font-label-md uppercase text-[10px]">
+                <thead className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
                   <tr>
                     <th className="p-sm px-md">Fecha</th>
                     <th className="p-sm px-md">Responsable</th>
                     <th className="p-sm px-md">Rubro</th>
                     <th className="p-sm px-md">Asignación</th>
-                    <th className="p-sm px-md">Método Pago</th>
+                    <th className="p-sm px-md">Método pago</th>
                     <th className="p-sm px-md">Descripción</th>
                     <th className="p-sm px-md text-right">Monto ($)</th>
                     <th className="p-sm px-md text-center">Acciones</th>
@@ -876,12 +969,12 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   {filteredExpenses.map((exp) => (
                     <tr key={exp.id} className="border-b border-surface-container-low hover:bg-surface-container/60 transition-colors">
                       <td className="p-sm px-md font-mono text-[11px]">{exp.date}</td>
-                      <td className="p-sm px-md font-bold text-primary capitalize">{exp.responsible}</td>
+                      <td className="p-sm px-md font-semibold text-primary capitalize">{exp.responsible}</td>
                       <td className="p-sm px-md">{exp.category}</td>
                       <td className="p-sm px-md">{exp.allocation}</td>
                       <td className="p-sm px-md">{exp.paymentMethod}</td>
                       <td className="p-sm px-md font-medium">{exp.description}</td>
-                      <td className="p-sm px-md text-right font-bold text-on-surface">${exp.amount.toLocaleString('es-AR')}</td>
+                      <td className="p-sm px-md text-right font-semibold text-on-surface">${exp.amount.toLocaleString('es-AR')}</td>
                       <td className="p-sm px-md text-center">
                         <div className="flex items-center justify-center gap-1">
                           <button
@@ -920,6 +1013,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           </div>
         </div>
       )}
+    </>
+  )}
 
       {/* New Invoice Drawer */}
       <NewInvoiceDrawer
@@ -931,6 +1026,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
         onSaveBill={onAddBill}
         onUpdateBill={onUpdateBill}
         editingBill={editingBill}
+        creditTerms={creditTerms}
       />
 
       {/* Register / Edit Expense Modal */}
@@ -938,10 +1034,10 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-md">
           <div className="bg-surface-container-lowest text-on-surface rounded-2xl max-w-lg w-full p-lg shadow-2xl border border-outline-variant/30 animate-fade-in flex flex-col gap-md">
             <div className="flex items-center justify-between border-b border-outline-variant/20 pb-sm">
-              <h3 className="font-display-lg text-base font-bold text-primary">
-                {editingExpenseId ? 'Editar Gasto Registrado' : 'Registrar Nuevo Gasto'}
+              <h3 className="font-display-lg text-base font-semibold text-primary">
+                {editingExpenseId ? 'Editar gasto registrado' : 'Registrar nuevo gasto'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="text-on-surface-variant hover:text-on-surface">
+              <button onClick={() => setShowModal(false)} className="text-on-surface-variant hover:text-on-surface cursor-pointer">
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
             </div>
@@ -949,78 +1045,90 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
             <form onSubmit={handleSubmitExpense} className="flex flex-col gap-md">
               <div className="grid grid-cols-2 gap-md">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Fecha *</label>
+                  <label className="text-[11px] font-medium text-on-surface-variant">Fecha *</label>
                   <input
                     type="date"
                     value={expDate}
                     onChange={(e) => setExpDate(e.target.value)}
                     required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Responsable *</label>
-                  <select
-                    value={expResponsible}
-                    onChange={(e) => setExpResponsible(e.target.value)}
-                    required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
-                  >
-                    {uniqueResponsibles.map(r => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
+                  <label className="text-[11px] font-medium text-on-surface-variant">Responsable *</label>
+                  <div className="relative">
+                    <select
+                      value={expResponsible}
+                      onChange={(e) => setExpResponsible(e.target.value)}
+                      required
+                      className="w-full appearance-none bg-surface-container pr-8 pl-2 p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                    >
+                      {uniqueResponsibles.map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                    <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-md">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Rubro / Categoría *</label>
-                  <select
-                    value={expCategory}
-                    onChange={(e) => setExpCategory(e.target.value)}
-                    required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
-                  >
-                    {uniqueCategories.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                  <label className="text-[11px] font-medium text-on-surface-variant">Rubro / categoría *</label>
+                  <div className="relative">
+                    <select
+                      value={expCategory}
+                      onChange={(e) => setExpCategory(e.target.value)}
+                      required
+                      className="w-full appearance-none bg-surface-container pr-8 pl-2 p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                    >
+                      {uniqueCategories.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Asignación *</label>
-                  <select
-                    value={expAllocation}
-                    onChange={(e) => setExpAllocation(e.target.value)}
-                    required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
-                  >
-                    {uniqueAllocations.map(a => (
-                      <option key={a} value={a}>{a}</option>
-                    ))}
-                  </select>
+                  <label className="text-[11px] font-medium text-on-surface-variant">Asignación *</label>
+                  <div className="relative">
+                    <select
+                      value={expAllocation}
+                      onChange={(e) => setExpAllocation(e.target.value)}
+                      required
+                      className="w-full appearance-none bg-surface-container pr-8 pl-2 p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                    >
+                      {uniqueAllocations.map(a => (
+                        <option key={a} value={a}>{a}</option>
+                      ))}
+                    </select>
+                    <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-md">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Forma de Pago *</label>
-                  <select
-                    value={expPaymentMethod}
-                    onChange={(e) => setExpPaymentMethod(e.target.value)}
-                    required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
-                  >
-                    {uniquePaymentMethods.map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
+                  <label className="text-[11px] font-medium text-on-surface-variant">Forma de pago *</label>
+                  <div className="relative">
+                    <select
+                      value={expPaymentMethod}
+                      onChange={(e) => setExpPaymentMethod(e.target.value)}
+                      required
+                      className="w-full appearance-none bg-surface-container pr-8 pl-2 p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                    >
+                      {uniquePaymentMethods.map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                    <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase">Monto ($) *</label>
+                  <label className="text-[11px] font-medium text-on-surface-variant">Monto ($) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -1028,13 +1136,13 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     value={expAmount}
                     onChange={(e) => setExpAmount(Number(e.target.value))}
                     required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-bold outline-none focus:border-primary"
+                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-semibold outline-none focus:border-primary"
                   />
                 </div>
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-on-surface-variant uppercase">Descripción / Detalle *</label>
+                <label className="text-[11px] font-medium text-on-surface-variant">Descripción / detalle *</label>
                 <input
                   type="text"
                   value={expDescription}
@@ -1046,7 +1154,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-on-surface-variant uppercase">Nota / Comprobante (opcional)</label>
+                <label className="text-[11px] font-medium text-on-surface-variant">Nota / comprobante (opcional)</label>
                 <input
                   type="text"
                   value={expNote}

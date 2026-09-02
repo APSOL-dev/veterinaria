@@ -207,14 +207,14 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display-lg text-[22px] text-on-surface leading-tight">Nueva Facturación y Tienda (POS)</h1>
-          <p className="font-body-lg text-xs text-on-surface-variant flex items-center gap-xs mt-0.5">
+          <h1 className="font-display-lg text-[22px] text-on-surface leading-tight font-semibold">Nueva facturación y tienda (POS)</h1>
+          <p className="font-body-lg text-xs text-on-surface-variant flex items-center gap-xs mt-0.5 font-medium">
             <span className="material-symbols-outlined text-[16px]">pets</span>
             Paciente seleccionado: 
             <select
               value={selectedPatientId}
               onChange={(e) => setSelectedPatientId(e.target.value)}
-              className="ml-2 bg-surface-container border-none rounded-lg py-0.5 px-2 text-primary font-bold outline-none text-xs cursor-pointer"
+              className="ml-2 bg-surface-container border-none rounded-lg py-1 px-2.5 text-primary font-semibold outline-none text-xs cursor-pointer"
             >
               {patients.map(p => (
                 <option key={p.id} value={p.id}>{p.name} ({p.species} • Dueño: {p.ownerName})</option>
@@ -230,39 +230,39 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
         <div className="lg:col-span-8 flex flex-col gap-md">
           <div className="bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/30 flex flex-col h-full overflow-hidden">
             <div className="p-md px-lg flex items-center justify-between border-b border-surface-variant">
-              <h2 className="font-headline-sm text-sm font-bold text-on-surface flex items-center gap-xs">
+              <h2 className="font-headline-sm text-sm font-semibold text-on-surface flex items-center gap-xs">
                 <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   list_alt
                 </span>
-                Detalle de Conceptos (Servicios + Productos)
+                Detalle de conceptos (Servicios + productos)
               </h2>
               <button
                 onClick={() => setShowAddItemModal(true)}
-                className="px-md py-1.5 rounded-lg bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary transition-all font-label-md text-xs flex items-center gap-xs shadow-sm"
+                className="px-4 py-2.5 rounded-xl bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary transition-all font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">add</span>
-                Agregar Ítem
+                <span>Agregar ítem</span>
               </button>
             </div>
 
             {/* Table */}
             <div className="flex-1 overflow-auto">
               <table className="w-full text-left font-body-md text-xs">
-                <thead className="bg-surface-container text-on-surface-variant font-label-sm uppercase tracking-wider text-[10px] sticky top-0">
+                <thead className="bg-surface-container text-on-surface-variant font-label-sm text-[11px] sticky top-0 font-semibold">
                   <tr>
-                    <th className="p-sm px-md font-medium">Descripción</th>
-                    <th className="p-sm px-md font-medium text-center w-24">Cant.</th>
-                    <th className="p-sm px-md font-medium text-right w-28">Precio Unit.</th>
-                    <th className="p-sm px-md font-medium text-center w-20">Desc. %</th>
-                    <th className="p-sm px-md font-medium text-right w-28">Subtotal</th>
-                    <th className="p-sm px-md font-medium text-center w-12"></th>
+                    <th className="p-sm px-md font-semibold">Descripción</th>
+                    <th className="p-sm px-md font-semibold text-center w-24">Cant.</th>
+                    <th className="p-sm px-md font-semibold text-right w-28">Precio unit.</th>
+                    <th className="p-sm px-md font-semibold text-center w-20">Desc. %</th>
+                    <th className="p-sm px-md font-semibold text-right w-28">Subtotal</th>
+                    <th className="p-sm px-md font-semibold text-center w-12"></th>
                   </tr>
                 </thead>
                 <tbody className="text-on-surface">
                   {cartItems.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-lg text-center text-on-surface-variant text-xs">
-                        No hay ítems agregados al cobro. Haz clic en "Agregar Ítem".
+                      <td colSpan={6} className="p-lg text-center text-on-surface-variant text-xs font-medium">
+                        No hay ítems agregados al cobro. Haz clic en "Agregar ítem".
                       </td>
                     </tr>
                   ) : (
@@ -271,21 +271,21 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                         <td className="p-sm px-md">
                           <div className="flex flex-col">
                             <span className="font-semibold text-primary">{item.description}</span>
-                            <span className="text-on-surface-variant text-[11px]">{item.categoryDetails || item.type}</span>
+                            <span className="text-on-surface-variant text-[11px] font-medium">{item.categoryDetails || item.type}</span>
                           </div>
                         </td>
                         <td className="p-sm px-md text-center">
                           <div className="flex items-center justify-center gap-xs">
                             <button
                               onClick={() => handleUpdateQuantity(item.id, -1)}
-                              className="w-5 h-5 rounded bg-surface-container text-on-surface flex items-center justify-center hover:bg-primary-container hover:text-on-primary-container transition-colors"
+                              className="w-5 h-5 rounded bg-surface-container text-on-surface flex items-center justify-center hover:bg-primary-container hover:text-on-primary-container transition-colors cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-[12px]">remove</span>
                             </button>
                             <span className="w-6 text-center font-medium">{item.quantity}</span>
                             <button
                               onClick={() => handleUpdateQuantity(item.id, 1)}
-                              className="w-5 h-5 rounded bg-surface-container text-on-surface flex items-center justify-center hover:bg-primary-container hover:text-on-primary-container transition-colors"
+                              className="w-5 h-5 rounded bg-surface-container text-on-surface flex items-center justify-center hover:bg-primary-container hover:text-on-primary-container transition-colors cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-[12px]">add</span>
                             </button>
@@ -299,7 +299,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                             onChange={(e) => handleUpdateDiscount(item.id, Number(e.target.value))}
                             min={0}
                             max={100}
-                            className="w-10 text-center bg-surface-container border-none rounded py-0.5 text-on-surface focus:ring-2 focus:ring-primary outline-none transition-all text-xs"
+                            className="w-10 text-center bg-surface-container border-none rounded py-0.5 text-on-surface focus:ring-2 focus:ring-primary outline-none transition-all text-xs font-medium"
                           />
                         </td>
                         <td className="p-sm px-md text-right font-semibold text-primary">
@@ -308,7 +308,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                         <td className="p-sm px-md text-center">
                           <button
                             onClick={() => handleRemoveItem(item.id)}
-                            className="text-outline hover:text-error transition-colors p-0.5 rounded-full hover:bg-error-container"
+                            className="text-outline hover:text-error transition-colors p-0.5 rounded-full hover:bg-error-container cursor-pointer"
                           >
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
@@ -326,7 +326,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
         <div className="lg:col-span-4 flex flex-col gap-md">
           {/* Summary Card */}
           <div className="bg-primary text-on-primary rounded-2xl p-md shadow-sm relative overflow-hidden">
-            <h3 className="font-label-md uppercase tracking-wider text-on-primary/70 mb-xs text-[10px]">Resumen de Cuenta</h3>
+            <h3 className="font-label-md text-on-primary/80 mb-xs text-xs font-semibold">Resumen de cuenta</h3>
             <div className="space-y-xs relative z-10 text-xs">
               <div className="flex justify-between items-center">
                 <span className="text-on-primary/80">Subtotal</span>
@@ -341,8 +341,8 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                 <span>${summary.taxAmount.toLocaleString('es-AR')}</span>
               </div>
               <div className="flex justify-between items-end pt-xs">
-                <span className="font-headline-sm text-sm">Total</span>
-                <span className="font-display-lg text-2xl font-bold">${summary.total.toLocaleString('es-AR')}</span>
+                <span className="font-headline-sm text-sm font-semibold">Total</span>
+                <span className="font-display-lg text-2xl font-semibold">${summary.total.toLocaleString('es-AR')}</span>
               </div>
             </div>
           </div>
@@ -350,37 +350,37 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
           {/* Checkout Settings */}
           <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex flex-col justify-between gap-md">
             <div className="space-y-sm text-xs">
-              <h3 className="font-headline-sm text-sm font-bold text-on-surface flex items-center gap-xs">
+              <h3 className="font-headline-sm text-sm font-semibold text-on-surface flex items-center gap-xs">
                 <span className="material-symbols-outlined text-secondary text-[18px]">settings_suggest</span>
-                Configuración de Cobro
+                Configuración de cobro
               </h3>
 
               {/* Document Type */}
               <div className="flex flex-col gap-0.5">
-                <label className="font-label-md text-on-surface-variant uppercase text-[10px]">Tipo de Comprobante</label>
+                <label className="font-label-md text-on-surface-variant text-[11px] font-medium">Tipo de comprobante</label>
                 <select
                   value={documentType}
                   onChange={(e) => setDocumentType(e.target.value as DocumentType)}
-                  className="w-full bg-surface-container hover:bg-surface-variant border-none rounded-xl py-2 px-3 text-on-surface font-body-md text-xs focus:ring-2 focus:ring-primary outline-none cursor-pointer"
+                  className="w-full bg-surface-container hover:bg-surface-variant border-none rounded-xl py-2 px-3 text-on-surface font-body-md text-xs focus:ring-2 focus:ring-primary outline-none cursor-pointer font-medium"
                 >
-                  <option value="factura-b">Factura B (Consumidor Final)</option>
-                  <option value="factura-a">Factura A (Responsable Inscripto)</option>
+                  <option value="factura-b">Factura B (Consumidor final)</option>
+                  <option value="factura-a">Factura A (Responsable inscripto)</option>
                   <option value="factura-c">Factura C</option>
-                  <option value="remito">Remito Interno (Sin valor fiscal)</option>
+                  <option value="remito">Remito interno (Sin valor fiscal)</option>
                 </select>
               </div>
 
               {/* Payment Method */}
               <div className="flex flex-col gap-0.5">
-                <label className="font-label-md text-on-surface-variant uppercase text-[10px]">Método de Pago</label>
+                <label className="font-label-md text-on-surface-variant text-[11px] font-medium">Método de pago</label>
                 <div className="grid grid-cols-2 gap-xs">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('efectivo')}
-                    className={`flex flex-col items-center justify-center p-sm rounded-xl border transition-all ${
+                    className={`flex flex-col items-center justify-center p-sm rounded-xl border transition-all cursor-pointer ${
                       paymentMethod === 'efectivo'
-                        ? 'border-primary bg-primary-container text-on-primary-container font-bold'
-                        : 'border-transparent bg-surface-container text-on-surface'
+                        ? 'border-primary bg-primary-container text-on-primary-container font-semibold'
+                        : 'border-transparent bg-surface-container text-on-surface font-medium'
                     }`}
                   >
                     <span className="material-symbols-outlined mb-0.5 text-[20px]">payments</span>
@@ -390,10 +390,10 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('tarjeta')}
-                    className={`flex flex-col items-center justify-center p-sm rounded-xl border transition-all ${
+                    className={`flex flex-col items-center justify-center p-sm rounded-xl border transition-all cursor-pointer ${
                       paymentMethod === 'tarjeta'
-                        ? 'border-primary bg-primary-container text-on-primary-container font-bold'
-                        : 'border-transparent bg-surface-container text-on-surface'
+                        ? 'border-primary bg-primary-container text-on-primary-container font-semibold'
+                        : 'border-transparent bg-surface-container text-on-surface font-medium'
                     }`}
                   >
                     <span className="material-symbols-outlined mb-0.5 text-[20px]">credit_card</span>
@@ -405,10 +405,10 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
 
             <button
               onClick={handleConfirmCheckout}
-              className="w-full py-2.5 rounded-xl bg-secondary text-on-secondary hover:bg-primary transition-all font-headline-md text-sm flex items-center justify-center gap-xs shadow-sm font-bold"
+              className="w-full py-2.5 rounded-xl bg-secondary text-on-secondary hover:bg-primary transition-all font-headline-md text-xs flex items-center justify-center gap-1.5 shadow-sm font-semibold cursor-pointer"
             >
               <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-              Confirmar y Emitir Cobro
+              <span>Confirmar y emitir cobro</span>
             </button>
           </div>
         </div>
@@ -419,8 +419,8 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
-              <h3 className="font-headline-sm text-primary text-base font-bold">Agregar Ítem al Carrito</h3>
-              <button onClick={() => setShowAddItemModal(false)} className="text-on-surface-variant hover:text-error">
+              <h3 className="font-headline-sm text-primary text-base font-semibold">Agregar ítem al carrito</h3>
+              <button onClick={() => setShowAddItemModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -430,32 +430,32 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setItemType('product')}
-                  className={`flex-1 py-1.5 rounded-xl font-label-md border text-xs flex items-center justify-center gap-1 ${
-                    itemType === 'product' ? 'bg-primary text-on-primary border-primary' : 'bg-surface-container text-on-surface border-transparent'
+                  className={`flex-1 py-2 rounded-xl font-label-md border text-xs flex items-center justify-center gap-1.5 cursor-pointer ${
+                    itemType === 'product' ? 'bg-primary text-on-primary border-primary font-semibold' : 'bg-surface-container text-on-surface border-transparent font-medium'
                   }`}
                 >
                   <span className="material-symbols-outlined text-[16px]">inventory_2</span>
-                  Producto (Pet Shop)
+                  <span>Producto (Pet Shop)</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setItemType('service')}
-                  className={`flex-1 py-1.5 rounded-xl font-label-md border text-xs flex items-center justify-center gap-1 ${
-                    itemType === 'service' ? 'bg-primary text-on-primary border-primary' : 'bg-surface-container text-on-surface border-transparent'
+                  className={`flex-1 py-2 rounded-xl font-label-md border text-xs flex items-center justify-center gap-1.5 cursor-pointer ${
+                    itemType === 'service' ? 'bg-primary text-on-primary border-primary font-semibold' : 'bg-surface-container text-on-surface border-transparent font-medium'
                   }`}
                 >
                   <span className="material-symbols-outlined text-[16px]">medical_services</span>
-                  Prestación de Servicio
+                  <span>Prestación de servicio</span>
                 </button>
               </div>
 
               {itemType === 'product' ? (
                 <>
-                  <label className="font-label-md text-on-surface-variant uppercase text-[11px]">Seleccionar Producto</label>
+                  <label className="font-semibold text-xs text-slate-700 block mt-1">Seleccionar producto</label>
                   <select
                     value={selectedProductId}
                     onChange={(e) => setSelectedProductId(e.target.value)}
-                    className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                    className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
                   >
                     {products.map(p => (
                       <option key={p.id} value={p.id}>
@@ -466,11 +466,11 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                 </>
               ) : (
                 <>
-                  <label className="font-label-md text-on-surface-variant uppercase text-[11px]">Servicios</label>
+                  <label className="font-semibold text-xs text-slate-700 block mt-1">Servicios</label>
                   <select
                     value={selectedGroomSrvId}
                     onChange={(e) => setSelectedGroomSrvId(e.target.value)}
-                    className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                    className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
                   >
                     {groomingServices.map(s => (
                       <option key={s.id} value={s.id}>
@@ -481,18 +481,18 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                 </>
               )}
 
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Cantidad</label>
+              <label className="font-semibold text-xs text-slate-700 block mt-2">Cantidad</label>
               <input
                 type="number"
                 value={addQty}
                 onChange={(e) => setAddQty(Number(e.target.value))}
                 min={1}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <button type="submit" className="bg-primary text-on-primary py-2 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container cursor-pointer">
-                Agregar al Cobro
+              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary-container cursor-pointer shadow-sm">
+                Agregar al cobro
               </button>
             </form>
           </div>

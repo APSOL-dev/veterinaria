@@ -14,6 +14,7 @@ interface VaccinesViewProps {
   onRegisterDosis: (dosis: { vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => void;
   onScheduleAppointment: (patientId: string) => void;
   isGeneralCatalog?: boolean;
+  onUpdatePatients?: (updatedPatients: Patient[]) => void;
 }
 
 export const VaccinesView: React.FC<VaccinesViewProps> = ({
@@ -27,11 +28,53 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   vaccineDoses,
   onRegisterDosis,
   onScheduleAppointment,
-  isGeneralCatalog = false
+  isGeneralCatalog = false,
+  onUpdatePatients
 }) => {
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [editingItem, setEditingItem] = useState<VaccineCatalogItem | null>(null);
+
+  const handleToggleVaccineAppliedInVaccinesView = (vacId: string) => {
+    if (!patients || !onUpdatePatients) return;
+    const currentReqs = selectedPatient.requiredVaccines || [];
+    let toggledVacName = '';
+    let isNowApplied = false;
+
+    const updatedReqs = currentReqs.map(v => {
+      if (v.id === vacId) {
+        toggledVacName = v.vaccineName;
+        isNowApplied = v.status === 'pendiente';
+        return {
+          ...v,
+          status: (isNowApplied ? 'aplicada' : 'pendiente') as 'pendiente' | 'aplicada',
+          appliedDate: isNowApplied ? new Date().toISOString().split('T')[0] : undefined
+        };
+      }
+      return v;
+    });
+
+    const updatedPatient: Patient = {
+      ...selectedPatient,
+      requiredVaccines: updatedReqs
+    };
+
+    const updatedList = patients.map(p => p.id === selectedPatient.id ? updatedPatient : p);
+    onUpdatePatients(updatedList);
+    if (onSelectPatient) onSelectPatient(updatedPatient);
+
+    // Agregar al Historial de Vacunación
+    if (isNowApplied && onRegisterDosis) {
+      const matchedCat = vaccineCatalog.find(c => c.name.toLowerCase() === toggledVacName.toLowerCase()) || vaccineCatalog[0];
+      if (matchedCat) {
+        onRegisterDosis({
+          vaccineId: matchedCat.id,
+          applicationDate: new Date().toISOString().split('T')[0],
+          vetName: 'Dr. J. Silva'
+        });
+      }
+    }
+  };
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; vaccineId: string; vaccineName: string }>({
     isOpen: false,
     vaccineId: '',
@@ -107,8 +150,8 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md mb-md">
           <div>
-            <h1 className="font-display-lg text-[22px] text-slate-900 font-bold leading-tight">
-              Vacunas — Catálogo General (Clínica)
+            <h1 className="font-display-lg text-[22px] text-slate-900 font-semibold leading-tight">
+              Vacunas — Catálogo general (Clínica)
             </h1>
             <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
               Configuración general de biológicos, definición de plazos de inmunización y parámetros institucionales
@@ -122,29 +165,29 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
               setNewVacDays(365);
               setShowCatalogModal(true);
             }}
-            className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-md py-2 rounded-xl font-label-md text-xs flex items-center gap-xs transition-colors shadow-sm font-bold cursor-pointer"
+            className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 transition-colors shadow-sm font-semibold cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
-            Agregar Vacuna al Catálogo
+            <span>Agregar vacuna al catálogo</span>
           </button>
         </div>
 
         {/* Catalog Table */}
         <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 flex-1 overflow-hidden">
           <div className="flex items-center justify-between mb-md">
-            <h2 className="font-headline-sm text-sm font-bold text-slate-900 flex items-center gap-xs">
+            <h2 className="font-headline-sm text-sm font-semibold text-slate-900 flex items-center gap-xs">
               <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">list_alt</span>
-              Vacunas Registradas en la Clínica ({vaccineCatalog.length})
+              Vacunas registradas en la clínica ({vaccineCatalog.length})
             </h2>
           </div>
 
           <div className="w-full overflow-x-auto">
             <table className="w-full text-left font-body-md text-xs whitespace-nowrap">
               <thead>
-                <tr className="bg-slate-50 text-slate-700 font-bold uppercase text-[10px] border-b border-slate-200">
-                  <th className="p-sm px-md">Nombre de la Vacuna</th>
-                  <th className="p-sm px-md">Frecuencia / Vigencia</th>
-                  <th className="p-sm px-md">Equivalente Meses</th>
+                <tr className="bg-slate-50 text-slate-700 font-semibold text-[11px] border-b border-slate-200">
+                  <th className="p-sm px-md">Nombre de la vacuna</th>
+                  <th className="p-sm px-md">Frecuencia / vigencia</th>
+                  <th className="p-sm px-md">Equivalente meses</th>
                   <th className="p-sm px-md text-center">Estado</th>
                   <th className="p-sm px-md text-right">Acciones</th>
                 </tr>
@@ -154,11 +197,11 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                   const months = Math.round(item.frequencyDays / 30);
                   return (
                     <tr key={item.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                      <td className="p-sm px-md font-normal text-slate-900 text-xs">{item.name}</td>
-                      <td className="p-sm px-md font-normal text-slate-800">{item.frequencyDays} días</td>
-                      <td className="p-sm px-md text-slate-600 font-normal">~ {months} {months === 1 ? 'mes' : 'meses'}</td>
+                      <td className="p-sm px-md font-medium text-slate-900 text-xs">{item.name}</td>
+                      <td className="p-sm px-md font-medium text-slate-800">{item.frequencyDays} días</td>
+                      <td className="p-sm px-md text-slate-600 font-medium">~ {months} {months === 1 ? 'mes' : 'meses'}</td>
                       <td className="p-sm px-md text-center">
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">
                           Activa
                         </span>
                       </td>
@@ -166,10 +209,10 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handleOpenEditModal(item)}
-                            className="bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-2.5 py-1 rounded-lg font-label-md text-xs inline-flex items-center gap-xs transition-colors font-medium cursor-pointer"
+                            className="bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-3 py-1.5 rounded-lg font-label-md text-xs inline-flex items-center gap-1 transition-colors font-semibold cursor-pointer"
                           >
                             <span className="material-symbols-outlined text-[14px]">edit</span>
-                            Modificar
+                            <span>Modificar</span>
                           </button>
                           {onDeleteVaccineFromCatalog && (
                             <button
@@ -195,8 +238,8 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
             <div className="bg-white rounded-2xl max-w-lg w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
               <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
-                <h3 className="font-headline-sm text-slate-900 font-bold text-base">
-                  {editingItem ? 'Modificar Vacuna del Catálogo' : 'Agregar Vacuna al Catálogo'}
+                <h3 className="font-headline-sm text-slate-900 font-semibold text-base">
+                  {editingItem ? 'Modificar vacuna del catálogo' : 'Agregar vacuna al catálogo'}
                 </h3>
                 <button onClick={() => setShowCatalogModal(false)} className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer">
                   <span className="material-symbols-outlined text-[20px]">close</span>
@@ -205,7 +248,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
 
               <form onSubmit={handleCatalogAddOrEdit} className="flex flex-col gap-md text-xs">
                 <div>
-                  <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Nombre de la Vacuna *</label>
+                  <label className="font-semibold text-xs text-slate-700 block mb-1">Nombre de la vacuna *</label>
                   <input
                     type="text"
                     value={newVacName}
@@ -217,7 +260,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Frecuencia / Plazo de Vigencia (Días) *</label>
+                  <label className="font-semibold text-xs text-slate-700 block mb-1">Frecuencia / plazo de vigencia (días) *</label>
                   <input
                     type="number"
                     value={newVacDays}
@@ -232,16 +275,16 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowCatalogModal(false)}
-                    className="px-md py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-lg py-2.5 rounded-xl font-label-md text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-xs"
+                    className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                   >
                     <span className="material-symbols-outlined text-[18px]">save</span>
-                    {editingItem ? 'Guardar Cambios' : 'Agregar al Catálogo'}
+                    <span>{editingItem ? 'Guardar cambios' : 'Agregar al catálogo'}</span>
                   </button>
                 </div>
               </form>
@@ -276,8 +319,8 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
       {patients && patients.length > 0 && (
         <aside className="flex flex-col w-full md:w-64 xl:w-72 gap-xs shrink-0 overflow-hidden">
           <div className="flex items-center justify-between px-xs">
-            <h2 className="font-label-md text-xs text-slate-700 uppercase tracking-wider font-bold">
-              Pacientes Vacunatorio ({filteredPatients.length})
+            <h2 className="font-label-md text-xs text-slate-700 font-semibold">
+              Pacientes vacunatorio ({filteredPatients.length})
             </h2>
           </div>
 
@@ -326,13 +369,13 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
 
                   <div className="flex flex-col flex-1 min-w-0 z-10">
                     <div className="flex items-center justify-between">
-                      <span className={`font-headline-sm text-xs font-bold truncate ${isSelected ? 'text-slate-900' : 'text-slate-800'}`}>
+                      <span className={`font-headline-sm text-xs font-semibold truncate ${isSelected ? 'text-slate-900' : 'text-slate-800'}`}>
                         {p.name}
                       </span>
                       {hasExpired ? (
-                        <span className="bg-red-50 text-red-700 border border-red-200 text-[9px] font-bold px-1.5 py-0.2 rounded-full">Vencida</span>
+                        <span className="bg-red-50 text-red-700 border border-red-200 text-[9px] font-semibold px-1.5 py-0.2 rounded-full">Vencida</span>
                       ) : (
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold px-1.5 py-0.2 rounded-full">Al día</span>
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-semibold px-1.5 py-0.2 rounded-full">Al día</span>
                       )}
                     </div>
                     <span className={`font-body-md text-[11px] truncate ${isSelected ? 'text-slate-600 font-medium' : 'text-slate-500'}`}>
@@ -362,9 +405,9 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
               )}
             </div>
             <div>
-              <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">{activePatient.name}</h1>
+              <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">{activePatient.name}</h1>
               <p className="font-body-md text-xs text-slate-600 font-medium flex items-center gap-xs mt-0.5">
-                <span>{activePatient.species}, {activePatient.breed} • {activePatient.sex} • Dueño: <strong className="text-slate-900 font-bold">{activePatient.ownerName}</strong></span>
+                <span>{activePatient.species}, {activePatient.breed} • {activePatient.sex} • Dueño: <strong className="text-slate-900 font-semibold">{activePatient.ownerName}</strong></span>
               </p>
             </div>
           </div>
@@ -372,10 +415,10 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
           <div className="flex gap-sm">
             <button
               onClick={() => setShowRegisterModal(true)}
-              className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-md py-2 rounded-xl font-label-md text-xs flex items-center gap-xs transition-colors shadow-sm font-bold cursor-pointer"
+              className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 transition-colors shadow-sm font-semibold cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
-              Registrar Aplicación
+              <span>Registrar aplicación</span>
             </button>
           </div>
         </div>
@@ -383,28 +426,75 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
         {/* Main Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-md flex-1">
           <div className="xl:col-span-2 flex flex-col gap-md">
+            {/* Tarjeta Vacunas Necesarias del Paciente (Cargadas en Ficha) */}
+            {activePatient.requiredVaccines && activePatient.requiredVaccines.length > 0 && (
+              <div className="bg-white rounded-2xl p-md shadow-sm border border-purple-200 flex flex-col gap-xs">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-headline-sm text-xs font-semibold text-[#5C3C7B] flex items-center gap-xs">
+                    <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">vaccines</span>
+                    Vacunas necesarias / requeridas ({activePatient.name})
+                  </h2>
+                  <span className="text-[11px] text-slate-500 font-medium">Cargadas desde la ficha del paciente</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-xs mt-1">
+                  {activePatient.requiredVaccines.map(vac => (
+                    <div
+                      key={vac.id}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-sm text-xs ${
+                        vac.status === 'aplicada'
+                          ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                          : 'bg-amber-50/70 border-amber-200 text-amber-950'
+                      }`}
+                    >
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <span className="font-semibold text-xs truncate">{vac.vaccineName}</span>
+                        <span className="text-[10px] text-slate-600 font-medium">
+                          Sugerida: <strong>{vac.suggestedDate}</strong>
+                          {vac.appliedDate && ` • Aplicada: ${vac.appliedDate}`}
+                        </span>
+                        {vac.notes && <span className="text-[10px] text-slate-500 italic truncate">{vac.notes}</span>}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleVaccineAppliedInVaccinesView(vac.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
+                          vac.status === 'aplicada'
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            : 'bg-amber-500 text-white hover:bg-amber-600'
+                        }`}
+                      >
+                        {vac.status === 'aplicada' ? '✓ Aplicada' : 'Marcar aplicada'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Historial Table */}
             <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200">
-              <h2 className="font-headline-sm text-sm font-bold text-slate-900 mb-md flex items-center gap-xs">
+              <h2 className="font-headline-sm text-sm font-semibold text-slate-900 mb-md flex items-center gap-xs">
                 <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">vaccines</span>
-                Historial de Vacunación — {activePatient.name}
+                Historial de vacunación — {activePatient.name}
               </h2>
 
               <div className="w-full overflow-x-auto">
                 <table className="w-full text-left font-body-md text-xs whitespace-nowrap">
                   <thead>
-                    <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase text-[10px]">
+                    <tr className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 text-[11px]">
                       <th className="py-2 px-md">Vacuna</th>
-                      <th className="py-2 px-md">Fecha Aplicación</th>
+                      <th className="py-2 px-md">Fecha aplicación</th>
                       <th className="py-2 px-md">Profesional</th>
-                      <th className="py-2 px-md">Fecha Límite</th>
+                      <th className="py-2 px-md">Fecha límite</th>
                       <th className="py-2 px-md">Estado</th>
                     </tr>
                   </thead>
                   <tbody className="text-slate-800">
                     {patientDoses.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-md text-center text-slate-500 text-xs">
+                        <td colSpan={5} className="py-md text-center text-slate-500 text-xs font-medium">
                           No hay dosis aplicadas registradas para {activePatient.name}.
                         </td>
                       </tr>
@@ -412,34 +502,34 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       patientDoses.map((dose) => {
                         return (
                           <tr key={dose.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                            <td className="py-sm px-md font-normal text-slate-900 text-xs">{dose.vaccineName}</td>
-                            <td className="py-sm px-md font-normal text-slate-800">{dose.applicationDate}</td>
-                            <td className="py-sm px-md flex items-center gap-xs font-normal text-slate-800">
-                              <div className="w-5 h-5 rounded-full bg-purple-100 text-[#5C3C7B] flex items-center justify-center font-bold text-[10px]">
+                            <td className="py-sm px-md font-medium text-slate-900 text-xs">{dose.vaccineName}</td>
+                            <td className="py-sm px-md font-medium text-slate-800">{dose.applicationDate}</td>
+                            <td className="py-sm px-md flex items-center gap-xs font-medium text-slate-800">
+                              <div className="w-5 h-5 rounded-full bg-purple-100 text-[#5C3C7B] flex items-center justify-center font-semibold text-[10px]">
                                 {dose.vetName.slice(0, 2).toUpperCase()}
                               </div>
                               {dose.vetName}
                             </td>
-                            <td className={`py-sm px-md font-medium ${
-                              dose.status === 'expired' ? 'text-red-700 font-bold' : dose.status === 'due_soon' ? 'text-amber-700 font-bold' : 'text-slate-800'
+                            <td className={`py-sm px-md font-semibold ${
+                              dose.status === 'expired' ? 'text-red-700' : dose.status === 'due_soon' ? 'text-amber-700' : 'text-slate-800'
                             }`}>
                               {dose.expirationDate}
                             </td>
                             <td className="py-sm px-md">
                               {dose.status === 'ok' && (
-                                <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
+                                <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                                   Al día
                                 </span>
                               )}
                               {dose.status === 'due_soon' && (
-                                <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px]">
+                                <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-semibold text-[10px]">
                                   <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
                                   Próxima
                                 </span>
                               )}
                               {dose.status === 'expired' && (
-                                <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-bold text-[10px]">
+                                <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold text-[10px]">
                                   <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
                                   Vencida
                                 </span>
@@ -459,8 +549,8 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
               {/* Próxima Aplicación Card */}
               <div className="bg-[#9A7DB8] text-white rounded-2xl p-md shadow-sm relative overflow-hidden flex flex-col justify-between">
                 <div>
-                  <h3 className="font-label-md text-purple-100 uppercase text-[10px] mb-xs font-bold">Próxima Aplicación</h3>
-                  <p className="font-display-lg text-lg mb-xs font-bold">
+                  <h3 className="font-label-md text-purple-100 text-[10px] mb-xs font-semibold">Próxima aplicación</h3>
+                  <p className="font-display-lg text-lg mb-xs font-semibold">
                     {dueOrExpiredDosis ? dueOrExpiredDosis.vaccineName : 'Antirrábica'}
                   </p>
                   <p className="font-body-md text-purple-100 text-xs flex items-center gap-xs mb-md font-medium">
@@ -472,18 +562,18 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 </div>
                 <button
                   onClick={() => onScheduleAppointment(activePatient.id)}
-                  className="w-full bg-white text-[#5C3C7B] hover:bg-purple-50 py-2 rounded-xl font-label-md text-xs transition-colors font-bold shadow-xs cursor-pointer"
+                  className="w-full bg-white text-[#5C3C7B] hover:bg-purple-50 py-2.5 rounded-xl font-label-md text-xs transition-colors font-semibold shadow-xs cursor-pointer"
                 >
-                  Agendar Turno
+                  Agendar turno
                 </button>
               </div>
 
               {/* Cobertura Actual Card */}
               <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 flex flex-col justify-between">
                 <div>
-                  <h3 className="font-label-md text-slate-600 uppercase text-[10px] mb-xs font-bold">Cobertura Actual</h3>
+                  <h3 className="font-label-md text-slate-600 text-[10px] mb-xs font-semibold">Cobertura actual</h3>
                   <div className="flex items-end gap-sm mb-sm">
-                    <span className="font-display-lg text-2xl text-slate-900 font-bold">
+                    <span className="font-display-lg text-2xl text-slate-900 font-semibold">
                       {patientDoses.length > 0 
                         ? Math.round((patientDoses.filter(d => d.status === 'ok').length / patientDoses.length) * 100)
                         : 0}%
@@ -511,9 +601,9 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
           <div className="flex flex-col gap-md">
             <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 h-full">
               <div className="flex items-center justify-between mb-md">
-                <h2 className="font-headline-sm text-sm font-bold text-slate-900 flex items-center gap-xs">
+                <h2 className="font-headline-sm text-sm font-semibold text-slate-900 flex items-center gap-xs">
                   <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">campaign</span>
-                  Recordatorios de Vacunas
+                  Recordatorios de vacunas
                 </h2>
               </div>
 
@@ -524,7 +614,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                   </div>
                   <div className="flex-1 bg-purple-50/60 border border-purple-100 rounded-xl p-sm">
                     <div className="flex justify-between items-start mb-0.5">
-                      <span className="font-label-md text-xs text-slate-900 font-bold">Antirrábica</span>
+                      <span className="font-label-md text-xs text-slate-900 font-semibold">Antirrábica</span>
                       <span className="font-label-sm text-[10px] text-slate-500 font-medium">Hoy, 09:00</span>
                     </div>
                     <p className="font-body-md text-slate-700 text-[11px] mb-1 font-normal">
@@ -532,7 +622,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                     </p>
                     <div className="flex items-center gap-xs">
                       <span className="material-symbols-outlined text-[13px] text-[#9A7DB8]">done_all</span>
-                      <span className="font-label-sm text-[10px] text-[#5C3C7B] font-bold">Entregado</span>
+                      <span className="font-label-sm text-[10px] text-[#5C3C7B] font-semibold">Entregado</span>
                     </div>
                   </div>
                 </div>
@@ -547,8 +637,8 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
             <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
-              <h3 className="font-headline-sm text-slate-900 text-base font-bold">
-                Registrar Aplicación de Vacuna ({activePatient.name})
+              <h3 className="font-headline-sm text-slate-900 text-base font-semibold">
+                Registrar aplicación de vacuna ({activePatient.name})
               </h3>
               <button onClick={() => setShowRegisterModal(false)} className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer">
                 <span className="material-symbols-outlined text-[20px]">close</span>
@@ -557,7 +647,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
 
             <form onSubmit={handleRegisterDosis} className="flex flex-col gap-md text-xs">
               <div>
-                <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Seleccionar Vacuna *</label>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Seleccionar vacuna *</label>
                 <select
                   value={selectedVacId}
                   onChange={(e) => setSelectedVacId(e.target.value)}
@@ -572,7 +662,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
               </div>
 
               <div>
-                <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Fecha de Aplicación *</label>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Fecha de aplicación *</label>
                 <input
                   type="date"
                   value={appDate}
@@ -583,7 +673,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
               </div>
 
               <div>
-                <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Veterinario Actuante *</label>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Veterinario actuante *</label>
                 <input
                   type="text"
                   value={vetName}
@@ -597,16 +687,16 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowRegisterModal(false)}
-                  className="px-md py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-lg py-2.5 rounded-xl font-label-md text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-xs"
+                  className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[18px]">save</span>
-                  Guardar Dosis
+                  <span>Guardar dosis</span>
                 </button>
               </div>
             </form>

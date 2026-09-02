@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { Patient } from '../types';
 import { 
   getUniqueTutores, 
-  updateTutorAndPetInfo 
+  updateTutorAndPetInfo,
+  calculateTutorAccountMovements 
 } from './tutorService';
 
 describe('tutorService', () => {
@@ -70,5 +71,30 @@ describe('tutorService', () => {
     expect(p2.ownerName).toBe('Carlos E. Mendoza');
     expect(p2.ownerPhone).toBe('+5491199887766');
     expect(p2.name).toBe('Muna');
+  });
+
+  it('calculateTutorAccountMovements should calculate Debe, Haber and running Saldo for a tutor', () => {
+    const receipts = [
+      { id: 'r1', receiptNumber: 'FC-B-0001', date: '2026-08-01', clientName: 'Carlos Mendoza', total: 15000 },
+      { id: 'r2', receiptNumber: 'FC-B-0002', date: '2026-08-10', clientName: 'Carlos Mendoza', total: 5000 }
+    ];
+    const tutorPayments = [
+      { id: 'tp1', tutorName: 'Carlos Mendoza', date: '2026-08-05', amount: 10000, concept: 'Abono a cuenta' }
+    ];
+
+    const movements = calculateTutorAccountMovements('Carlos Mendoza', receipts as any, tutorPayments);
+
+    expect(movements.length).toBe(3);
+    // 1. FC-B-0001 (2026-08-01): Debe = 15000, Haber = 0, Saldo = 15000
+    expect(movements[0].debe).toBe(15000);
+    expect(movements[0].saldo).toBe(15000);
+
+    // 2. Abono tp1 (2026-08-05): Debe = 0, Haber = 10000, Saldo = 5000
+    expect(movements[1].haber).toBe(10000);
+    expect(movements[1].saldo).toBe(5000);
+
+    // 3. FC-B-0002 (2026-08-10): Debe = 5000, Haber = 0, Saldo = 10000
+    expect(movements[2].debe).toBe(5000);
+    expect(movements[2].saldo).toBe(10000);
   });
 });

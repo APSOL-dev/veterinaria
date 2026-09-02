@@ -26,9 +26,9 @@ export const Header: React.FC<HeaderProps> = React.memo(({
     switch (activeModule) {
       case 'proveedores':
         return [
-          { id: 'facturas', label: 'Registrar facturas', icon: 'receipt' },
+          { id: 'facturas', label: 'Resumen y Facturas', icon: 'receipt' },
           { id: 'presupuestos', label: 'Registrar gastos', icon: 'payments' },
-          { id: 'pagos', label: 'Pagos', icon: 'wallet' },
+          { id: 'cuentas', label: 'Cuentas corrientes', icon: 'account_balance' },
         ];
       case 'clinica':
         return [
@@ -53,8 +53,8 @@ export const Header: React.FC<HeaderProps> = React.memo(({
         ];
       case 'cobros':
         return [
-          { id: 'nueva-facturacion', label: 'Nueva Facturación', icon: 'point_of_sale' },
-          { id: 'historial-cobros', label: 'Historial de Cobros', icon: 'receipt_long' },
+          { id: 'nueva-facturacion', label: 'Nueva facturación', icon: 'point_of_sale' },
+          { id: 'historial-cobros', label: 'Historial de cobros', icon: 'receipt_long' },
         ];
       default:
         return [];
@@ -69,8 +69,8 @@ export const Header: React.FC<HeaderProps> = React.memo(({
       <div className={`h-full flex items-center border-r border-white/60 transition-all duration-300 ${
         isSidebarCollapsed ? 'w-16 justify-center px-xs' : 'w-64 px-md justify-start'
       } shrink-0`}>
-        <span className="font-headline-sm text-on-primary text-[19px] tracking-wider font-bold truncate">
-          {isSidebarCollapsed ? 'VS' : 'VETSOFT'}
+        <span className="font-headline-sm text-on-primary text-[19px] font-bold truncate">
+          {isSidebarCollapsed ? 'Vs' : 'Vetsoft'}
         </span>
       </div>
 
@@ -82,10 +82,10 @@ export const Header: React.FC<HeaderProps> = React.memo(({
             <button
               key={sub.id}
               onClick={() => setActiveSubmodule(sub.id)}
-              className={`px-md py-1.5 rounded-lg transition-all font-label-md text-xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              className={`px-3.5 py-2 rounded-lg transition-all font-label-md text-xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 isActive
-                  ? 'bg-secondary text-on-secondary shadow-md font-bold'
-                  : 'text-on-primary hover:bg-primary/40'
+                  ? 'bg-secondary text-on-secondary shadow-md font-semibold'
+                  : 'text-on-primary hover:bg-primary/40 font-medium'
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">{sub.icon}</span>

@@ -66,8 +66,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       {/* Header Title */}
       <div className={`p-md border-b border-outline-variant ${isCollapsed ? 'px-xs text-center' : 'px-lg'}`}>
         {!isCollapsed ? (
-          <h2 className="font-label-md text-on-surface-variant uppercase tracking-wider text-xs font-bold truncate">
-            Módulos del Sistema
+          <h2 className="font-label-md text-on-surface-variant text-xs font-semibold truncate">
+            Módulos del sistema
           </h2>
         ) : (
           <span className="material-symbols-outlined text-primary text-[20px]">widgets</span>
@@ -77,8 +77,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       {/* Navigation Buttons */}
       <nav className="flex-1 py-sm overflow-y-auto flex flex-col gap-xs px-xs">
         {!isCollapsed && (
-          <div className="px-md mb-xs text-on-surface-variant font-label-sm uppercase text-[10px] font-semibold">
-            Navegación Principal
+          <div className="px-md mb-xs text-on-surface-variant font-label-sm text-[10px] font-medium">
+            Navegación principal
           </div>
         )}
 
@@ -94,7 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
               } rounded-xl text-left transition-all font-body-md text-sm ${
                 isActive
                   ? 'bg-primary text-on-primary shadow-sm font-semibold'
-                  : 'text-on-surface hover:bg-surface-container-high'
+                  : 'text-on-surface hover:bg-surface-container-high font-medium'
               }`}
             >
               <span className={`material-symbols-outlined text-[20px] ${isActive ? 'text-on-primary' : 'text-primary'}`}>
@@ -112,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
           <>
             <div className="bg-surface-container text-on-surface-variant p-sm px-md rounded-xl text-[11px]">
               <p className="font-medium text-on-surface">Clínica Veterinaria San José</p>
-              <p className="font-bold text-primary">Turno Mañana</p>
+              <p className="font-medium text-primary">Turno mañana</p>
             </div>
 
             {/* User Card */}

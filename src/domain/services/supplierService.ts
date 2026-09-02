@@ -1,4 +1,5 @@
 import { SupplierBill, SupplierQuote, MonthlyExpenditureProjection, SupplierPayment } from '../types';
+import { getTotalPaidForBill } from './paymentService';
 
 export function createSupplierBillRecord(input: {
   supplierName: string;
@@ -304,8 +305,9 @@ export function calculateMonthlyExpenditureProjections(
   return sortedKeys.map(monthKey => {
     const [yearStr, monthStr] = monthKey.split('-');
     const monthIndex = parseInt(monthStr, 10) - 1;
-    const monthName = (!isNaN(monthIndex) && MONTH_NAMES[monthIndex]) ? MONTH_NAMES[monthIndex] : monthStr || monthKey;
-    const dateLabel = `${monthName}_${yearStr || '2026'}`;
+    const rawMonthName = (!isNaN(monthIndex) && MONTH_NAMES[monthIndex]) ? MONTH_NAMES[monthIndex] : monthStr || monthKey;
+    const capitalizedMonth = rawMonthName.charAt(0).toUpperCase() + rawMonthName.slice(1);
+    const dateLabel = `${capitalizedMonth} ${yearStr || '2026'}`;
 
     const data = aggregated[monthKey] || { totalAdeudado: 0, totalPagado: 0 };
     const totalAdeudado = data.totalAdeudado;
@@ -335,6 +337,224 @@ export function calculateMonthlyExpenditureProjections(
       statusLevel
     };
   });
+}
+
+import { YearlyExpenditureProjection, SupplierCreditTerm, SupplierAccountMovement } from '../types';
+
+export function calculateSupplierAccountMovements(
+  supplierName: string,
+  bills: SupplierBill[],
+  payments: SupplierPayment[] = []
+): SupplierAccountMovement[] {
+  const trimmed = (supplierName || '').trim().toLowerCase();
+
+  const filteredBills = trimmed
+    ? bills.filter(b => b.supplierName.trim().toLowerCase() === trimmed)
+    : bills;
+
+  const filteredPayments = trimmed
+    ? payments.filter(p => p.supplierName.trim().toLowerCase() === trimmed)
+    : payments;
+
+  interface RawMovement {
+    id: string;
+    type: 'bill' | 'payment';
+    supplierName: string;
+    date: string;
+    voucherNumber: string;
+    voucherUrl?: string;
+    voucherName?: string;
+    status?: string;
+    lineTag?: string;
+    debe: number;
+    haber: number;
+  }
+
+  const raw: RawMovement[] = [];
+
+  filteredBills.forEach(b => {
+    const totalPaid = getTotalPaidForBill(payments, b.id);
+    const rem = Math.max(0, (b.amount || 0) - totalPaid);
+    const isPaid = b.status === 'paid' || (totalPaid > 0 && rem === 0);
+    const isPartial = totalPaid > 0 && !isPaid;
+
+    raw.push({
+      id: b.id,
+      type: 'bill',
+      supplierName: b.supplierName || 'Proveedor',
+      date: b.date,
+      voucherNumber: formatInvoiceFullNumber(b),
+      voucherUrl: b.voucherUrl,
+      voucherName: b.voucherName,
+      status: isPaid ? 'Pagado' : isPartial ? 'Pago Parcial' : 'Pendiente',
+      lineTag: 'L2',
+      debe: b.amount || 0,
+      haber: 0
+    });
+  });
+
+  filteredPayments.forEach(p => {
+    raw.push({
+      id: p.id,
+      type: 'payment',
+      supplierName: p.supplierName || 'Proveedor',
+      date: p.date,
+      voucherNumber: p.billInvoiceNumber ? `RECI ${p.billInvoiceNumber}` : 'RECI-0001',
+      voucherUrl: p.voucherUrl,
+      voucherName: p.voucherName,
+      status: '-',
+      lineTag: 'L1',
+      debe: 0,
+      haber: p.amount || 0
+    });
+  });
+
+  raw.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    if (a.type !== b.type) return a.type === 'bill' ? -1 : 1;
+    return a.id.localeCompare(b.id);
+  });
+
+  let currentSaldo = 0;
+  return raw.map(m => {
+    currentSaldo += m.debe - m.haber;
+    return {
+      id: m.id,
+      type: m.type,
+      supplierName: m.supplierName,
+      voucherNumber: m.voucherNumber,
+      voucherUrl: m.voucherUrl,
+      voucherName: m.voucherName,
+      status: m.status,
+      lineTag: m.lineTag,
+      date: m.date,
+      debe: m.debe,
+      haber: m.haber,
+      saldo: currentSaldo
+    };
+  });
+}
+
+export function groupProjectionsByYear(projections: MonthlyExpenditureProjection[]): YearlyExpenditureProjection[] {
+  const groups: Record<number, MonthlyExpenditureProjection[]> = {};
+
+  projections.forEach(p => {
+    const yearStr = p.monthKey.split('-')[0];
+    const year = parseInt(yearStr, 10) || new Date().getFullYear();
+    if (!groups[year]) groups[year] = [];
+    groups[year].push(p);
+  });
+
+  const sortedYears = Object.keys(groups).map(Number).sort((a, b) => a - b);
+
+  return sortedYears.map(year => {
+    const yearProjections = groups[year];
+    const totalAdeudado = yearProjections.reduce((sum, p) => sum + p.totalAdeudado, 0);
+    const totalPagado = yearProjections.reduce((sum, p) => sum + p.totalPagado, 0);
+    const total = totalAdeudado + totalPagado;
+    const presupuestoTotal = yearProjections.reduce((sum, p) => sum + p.presupuestoTotal, 0);
+
+    const cumplimientoPercentage = presupuestoTotal > 0
+      ? Math.round((total / presupuestoTotal) * 100)
+      : 0;
+
+    let statusLevel: 'ok' | 'warning' | 'exceeded' = 'ok';
+    if (cumplimientoPercentage > 100) {
+      statusLevel = 'exceeded';
+    } else if (cumplimientoPercentage >= 90) {
+      statusLevel = 'warning';
+    }
+
+    return {
+      year,
+      totalAdeudado,
+      totalPagado,
+      total,
+      presupuestoTotal,
+      cumplimientoPercentage,
+      statusLevel,
+      projections: yearProjections
+    };
+  });
+}
+
+export function getTermDaysFromType(termType: SupplierCreditTerm['termType']): number {
+  switch (termType) {
+    case '15_dias': return 15;
+    case '30_dias': return 30;
+    case '60_dias': return 60;
+    case '90_dias': return 90;
+    case 'cuotas_30_60': return 30;
+    case 'cuotas_30_60_90': return 30;
+    case 'contado':
+    default: return 0;
+  }
+}
+
+export function formatTermLabel(termType: SupplierCreditTerm['termType']): string {
+  switch (termType) {
+    case 'contado': return 'Contado (0 días)';
+    case '15_dias': return '15 Días';
+    case '30_dias': return '30 Días';
+    case '60_dias': return '60 Días';
+    case '90_dias': return '90 Días';
+    case 'cuotas_30_60': return '30 y 60 Días (2 Cuotas)';
+    case 'cuotas_30_60_90': return '30, 60 y 90 Días (3 Cuotas)';
+    default: return 'Contado';
+  }
+}
+
+export function formatCreditTermSummary(term: SupplierCreditTerm): string {
+  const parts: string[] = [];
+  if (term.contadoPercent && term.contadoPercent > 0) parts.push(`${term.contadoPercent}% Contado`);
+  if (term.dias30Percent && term.dias30Percent > 0) parts.push(`${term.dias30Percent}% 30d`);
+  if (term.dias60Percent && term.dias60Percent > 0) parts.push(`${term.dias60Percent}% 60d`);
+  if (term.dias90Percent && term.dias90Percent > 0) parts.push(`${term.dias90Percent}% 90d`);
+
+  if (parts.length > 0) {
+    return parts.join(' / ');
+  }
+  return formatTermLabel(term.termType);
+}
+
+export function calculateDueDateFromTerm(invoiceDateStr: string, termDays: number): string {
+  if (!invoiceDateStr) return new Date().toISOString().split('T')[0];
+  const d = new Date(invoiceDateStr);
+  if (isNaN(d.getTime())) return invoiceDateStr;
+  d.setDate(d.getDate() + termDays);
+  return d.toISOString().split('T')[0];
+}
+
+const DEFAULT_SUPPLIER_TERMS: Record<string, SupplierCreditTerm> = {
+  'Distribuidora FarmaVet SA': { supplierName: 'Distribuidora FarmaVet SA', termType: '30_dias', termDays: 30, contadoPercent: 0, dias30Percent: 100, dias60Percent: 0, dias90Percent: 0 },
+  'Laboratorios Zoonosis SRL': { supplierName: 'Laboratorios Zoonosis SRL', termType: '60_dias', termDays: 60, contadoPercent: 0, dias30Percent: 0, dias60Percent: 100, dias90Percent: 0 },
+  'Insumos Médicos del Plata': { supplierName: 'Insumos Médicos del Plata', termType: 'cuotas_30_60', termDays: 30, installmentsCount: 2, contadoPercent: 0, dias30Percent: 50, dias60Percent: 50, dias90Percent: 0 },
+  'Distribuidora Veterinaria Sur': { supplierName: 'Distribuidora Veterinaria Sur', termType: 'contado', termDays: 0, contadoPercent: 100, dias30Percent: 0, dias60Percent: 0, dias90Percent: 0 }
+};
+
+export function getSupplierCreditTerms(supplierName: string, customTerms: SupplierCreditTerm[] = []): SupplierCreditTerm {
+  const trimmed = (supplierName || '').trim();
+  const custom = customTerms.find(t => t.supplierName.toLowerCase() === trimmed.toLowerCase());
+  if (custom) return custom;
+
+  if (DEFAULT_SUPPLIER_TERMS[trimmed]) {
+    return DEFAULT_SUPPLIER_TERMS[trimmed];
+  }
+
+  return {
+    supplierName: trimmed || 'Proveedor General',
+    termType: '30_dias',
+    termDays: 30,
+    contadoPercent: 0,
+    dias30Percent: 100,
+    dias60Percent: 0,
+    dias90Percent: 0
+  };
+}
+
+export function saveSupplierCreditTerm(term: SupplierCreditTerm, existingTerms: SupplierCreditTerm[] = []): SupplierCreditTerm[] {
+  const filtered = existingTerms.filter(t => t.supplierName.toLowerCase() !== term.supplierName.toLowerCase());
+  return [...filtered, { ...term, lastUpdated: new Date().toISOString().split('T')[0] }];
 }
 
 export function formatInvoiceFullNumber(bill: { documentType?: string; invoiceNumber: string }): string {

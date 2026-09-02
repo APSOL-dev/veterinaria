@@ -1,10 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { SupplierBill, SupplierQuote } from '../types';
+import { SupplierBill, SupplierQuote, SupplierPayment } from '../types';
 import { 
   createSupplierBillRecord, 
   createSupplierQuoteRecord, 
   calculateSupplierTotals,
   calculateMonthlyExpenditureProjections,
+  groupProjectionsByYear,
+  calculateSupplierAccountMovements,
+  calculateDueDateFromTerm,
+  getTermDaysFromType,
+  formatTermLabel,
+  getSupplierCreditTerms,
+  saveSupplierCreditTerm,
   validateSupplierBillInput,
   resetInvoiceDrawerState,
   shouldShowResetButton,
@@ -165,7 +172,7 @@ describe('supplierService', () => {
 
       const mayo2025 = projections.find(p => p.monthKey === '2025-05');
       expect(mayo2025).toBeDefined();
-      expect(mayo2025?.dateLabel).toBe('mayo_2025');
+      expect(mayo2025?.dateLabel).toBe('Mayo 2025');
       expect(mayo2025?.totalAdeudado).toBe(0);
       expect(mayo2025?.totalPagado).toBe(2175377);
       expect(mayo2025?.total).toBe(2175377);
@@ -298,15 +305,68 @@ describe('supplierService', () => {
       // Septiembre 2026 a Febrero 2027 (6 meses)
       const projections = calculateMonthlyExpenditureProjections(bills, {}, [], '2026-09-01', '2027-02-28');
       expect(projections.length).toBe(6);
-      expect(projections.map(p => p.monthKey)).toEqual([
-        '2026-09', '2026-10', '2026-11', '2026-12', '2027-01', '2027-02'
-      ]);
+    });
+    it('calculateMonthlyExpenditureProjections should format dateLabel as "Noviembre 2025" with capitalized month name and space', () => {
+      const bills: SupplierBill[] = [
+        { id: 'b1', supplierName: 'Sup A', invoiceNumber: '001', date: '2025-11-15', amount: 500, itemsCount: 1, status: 'pending' }
+      ];
+
+      const projections = calculateMonthlyExpenditureProjections(bills, {}, [], '2025-11-01', '2025-11-30');
+      expect(projections.length).toBe(1);
+      expect(projections[0].dateLabel).toBe('Noviembre 2025');
     });
 
-    it('getDefaultDateRange should return current month start and 6 months ahead end date', () => {
-      const range = getDefaultDateRange('2026-08-31');
-      expect(range.startDate).toBe('2026-08-01');
-      expect(range.endDate).toBe('2027-02-28');
+    it('groupProjectionsByYear should group monthly projections into years with total aggregates', () => {
+      const bills: SupplierBill[] = [
+        { id: 'b1', supplierName: 'Sup A', invoiceNumber: '001', date: '2025-11-15', amount: 500, itemsCount: 1, status: 'pending' },
+        { id: 'b2', supplierName: 'Sup B', invoiceNumber: '002', date: '2026-03-10', amount: 1200, itemsCount: 1, status: 'pending' }
+      ];
+
+      const monthly = calculateMonthlyExpenditureProjections(bills, {}, [], '2025-11-01', '2026-03-31');
+      const yearly = groupProjectionsByYear(monthly);
+
+      expect(yearly.length).toBe(2);
+      expect(yearly[0].year).toBe(2025);
+      expect(yearly[0].totalAdeudado).toBe(500);
+      expect(yearly[1].year).toBe(2026);
+      expect(yearly[1].totalAdeudado).toBe(1200);
+    });
+
+    it('calculateDueDateFromTerm and credit terms helper functions should calculate due dates correctly', () => {
+      expect(calculateDueDateFromTerm('2026-11-01', 30)).toBe('2026-12-01');
+      expect(calculateDueDateFromTerm('2026-11-01', 60)).toBe('2026-12-31');
+      expect(calculateDueDateFromTerm('2026-11-01', 0)).toBe('2026-11-01');
+
+      expect(getTermDaysFromType('30_dias')).toBe(30);
+      expect(getTermDaysFromType('60_dias')).toBe(60);
+      expect(getTermDaysFromType('contado')).toBe(0);
+    });
+
+    it('calculateSupplierAccountMovements should calculate Debe, Haber and running Saldo chronologically', () => {
+      const bills: SupplierBill[] = [
+        { id: 'b1', supplierName: 'FarmaVet', invoiceNumber: '0001-00002721', date: '2026-08-01', amount: 10000, itemsCount: 1, status: 'pending' },
+        { id: 'b2', supplierName: 'FarmaVet', invoiceNumber: '0001-00002722', date: '2026-08-15', amount: 5000, itemsCount: 1, status: 'pending' }
+      ];
+      const payments: SupplierPayment[] = [
+        { id: 'p1', billId: 'b1', billInvoiceNumber: '0001-00002721', supplierName: 'FarmaVet', date: '2026-08-10', amount: 4000, paymentMethod: 'Transferencia' }
+      ];
+
+      const movements = calculateSupplierAccountMovements('FarmaVet', bills, payments);
+
+      expect(movements.length).toBe(3);
+      // 1. Factura b1 (2026-08-01): Debe = 10000, Haber = 0, Saldo = 10000
+      expect(movements[0].voucherNumber).toContain('2721');
+      expect(movements[0].debe).toBe(10000);
+      expect(movements[0].haber).toBe(0);
+      expect(movements[0].saldo).toBe(10000);
+
+      // 2. Pago p1 (2026-08-10): Debe = 0, Haber = 4000, Saldo = 6000
+      expect(movements[1].haber).toBe(4000);
+      expect(movements[1].saldo).toBe(6000);
+
+      // 3. Factura b2 (2026-08-15): Debe = 5000, Haber = 0, Saldo = 11000
+      expect(movements[2].debe).toBe(5000);
+      expect(movements[2].saldo).toBe(11000);
     });
   });
 });

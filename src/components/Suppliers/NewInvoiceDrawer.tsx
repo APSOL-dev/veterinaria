@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { SupplierBill } from '../../domain/types';
+import { SupplierBill, SupplierCreditTerm } from '../../domain/types';
 import { sendInvoiceWebhook, parseN8nInvoiceResponse } from '../../domain/services/webhookService';
-import { resetInvoiceDrawerState, shouldShowResetButton } from '../../domain/services/supplierService';
+import { resetInvoiceDrawerState, shouldShowResetButton, getSupplierCreditTerms, calculateDueDateFromTerm } from '../../domain/services/supplierService';
 import { uploadInvoiceVoucherToSupabase } from '../../domain/services/supabaseService';
 
 interface NewInvoiceDrawerProps {
@@ -11,6 +11,7 @@ interface NewInvoiceDrawerProps {
   onUpdateBill?: (id: string, bill: Omit<SupplierBill, 'id'>) => void;
   editingBill?: SupplierBill | null;
   registeredSuppliers?: string[];
+  creditTerms?: SupplierCreditTerm[];
 }
 
 export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
@@ -19,7 +20,8 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
   onSaveBill,
   onUpdateBill,
   editingBill,
-  registeredSuppliers = ['Distribuidora FarmaVet SA', 'Laboratorios Zoonosis SRL', 'Insumos Médicos del Plata', 'Distribuidora Veterinaria Sur']
+  registeredSuppliers = ['Distribuidora FarmaVet SA', 'Laboratorios Zoonosis SRL', 'Insumos Médicos del Plata', 'Distribuidora Veterinaria Sur'],
+  creditTerms = []
 }) => {
   const [loadMode, setLoadMode] = useState<'automatic' | 'manual'>('automatic');
 
@@ -334,8 +336,14 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                     list="suppliers-list"
                     value={supplierName}
                     onChange={(e) => {
-                      setSupplierName(e.target.value);
-                      setRazonSocial(e.target.value);
+                      const name = e.target.value;
+                      setSupplierName(name);
+                      setRazonSocial(name);
+                      if (name.trim()) {
+                        const term = getSupplierCreditTerms(name, creditTerms);
+                        const calculated = calculateDueDateFromTerm(invoiceDate, term.termDays);
+                        setPaymentDate(calculated);
+                      }
                     }}
                     required
                     className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
@@ -360,24 +368,32 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Fecha factura * & Fecha de pago */}
+              {/* Fecha factura * & Fecha de vencimiento */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-md">
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-300">Fecha factura *</label>
                   <input
                     type="date"
                     value={invoiceDate}
-                    onChange={(e) => setInvoiceDate(e.target.value)}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setInvoiceDate(newDate);
+                      if (supplierName.trim()) {
+                        const term = getSupplierCreditTerms(supplierName, creditTerms);
+                        setPaymentDate(calculateDueDateFromTerm(newDate, term.termDays));
+                      }
+                    }}
                     required
                     className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-300">Fecha de pago</label>
+                  <label className="text-[11px] font-bold text-slate-300">Fecha de vencimiento *</label>
                   <input
                     type="date"
                     value={paymentDate}
                     onChange={(e) => setPaymentDate(e.target.value)}
+                    required
                     className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
                   />
                 </div>
@@ -386,16 +402,19 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
               {/* Documento * */}
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-bold text-slate-300">Documento *</label>
-                <select
-                  value={documentType}
-                  onChange={(e) => setDocumentType(e.target.value)}
-                  className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
-                >
-                  <option value="Factura A">Factura A</option>
-                  <option value="Factura B">Factura B</option>
-                  <option value="Factura C">Factura C</option>
-                  <option value="Remito">Remito</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={documentType}
+                    onChange={(e) => setDocumentType(e.target.value)}
+                    className="w-full appearance-none bg-[#160E1E] border border-purple-900/60 rounded-xl pr-8 pl-2.5 py-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] cursor-pointer"
+                  >
+                    <option value="Factura A">Factura A</option>
+                    <option value="Factura B">Factura B</option>
+                    <option value="Factura C">Factura C</option>
+                    <option value="Remito">Remito</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#CBB5E2] pointer-events-none text-[18px]">expand_more</span>
+                </div>
               </div>
 
               {/* Número de remito / factura * */}
@@ -448,14 +467,17 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-300">Moneda</label>
-                  <select
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                    className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
-                  >
-                    <option value="AR$ (Pesos)">AR$ (Pesos)</option>
-                    <option value="USD (Dólares)">USD (Dólares)</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                      className="w-full appearance-none bg-[#160E1E] border border-purple-900/60 rounded-xl pr-8 pl-2.5 py-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] cursor-pointer"
+                    >
+                      <option value="AR$ (Pesos)">AR$ (Pesos)</option>
+                      <option value="USD (Dólares)">USD (Dólares)</option>
+                    </select>
+                    <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#CBB5E2] pointer-events-none text-[18px]">expand_more</span>
+                  </div>
                 </div>
               </div>
 
@@ -475,14 +497,17 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
               {/* Estado Pago */}
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-bold text-slate-300">Estado de pago *</label>
-                <select
-                  value={billStatus}
-                  onChange={(e) => setBillStatus(e.target.value as any)}
-                  className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
-                >
-                  <option value="pending">PENDIENTE</option>
-                  <option value="paid">PAGADO</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={billStatus}
+                    onChange={(e) => setBillStatus(e.target.value as any)}
+                    className="w-full appearance-none bg-[#160E1E] border border-purple-900/60 rounded-xl pr-8 pl-2.5 py-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] cursor-pointer"
+                  >
+                    <option value="pending">PENDIENTE</option>
+                    <option value="paid">PAGADO</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#CBB5E2] pointer-events-none text-[18px]">expand_more</span>
+                </div>
               </div>
             </div>
           )}

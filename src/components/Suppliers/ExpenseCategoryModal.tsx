@@ -152,16 +152,16 @@ export const ExpenseCategoryModal: React.FC<ExpenseCategoryModalProps> = ({
                 <button
                   type="submit"
                   disabled={!newCategoryInput.trim()}
-                  className="bg-primary text-on-primary hover:bg-primary-container disabled:opacity-50 px-md py-2.5 rounded-xl font-semibold text-xs flex items-center gap-1 cursor-pointer transition-all shrink-0"
+                  className="bg-primary text-on-primary hover:bg-primary-container disabled:opacity-50 px-4 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-1 cursor-pointer transition-all shrink-0"
                 >
                   <span className="material-symbols-outlined text-[16px]">add</span>
-                  <span>Agregar Rubro</span>
+                  <span>Agregar rubro</span>
                 </button>
               </form>
 
               <div>
-                <h4 className="text-[11px] font-bold uppercase text-on-surface-variant mb-xs">
-                  Rubros y Categorías Disponibles ({allCategories.length})
+                <h4 className="text-[11px] font-semibold text-on-surface-variant mb-xs">
+                  Rubros y categorías disponibles ({allCategories.length})
                 </h4>
                 <div className="flex flex-wrap gap-2 max-h-60 overflow-y-auto p-1 bg-surface-container/30 rounded-xl border border-outline-variant/20">
                   {allCategories.map((cat) => {
@@ -208,16 +208,16 @@ export const ExpenseCategoryModal: React.FC<ExpenseCategoryModalProps> = ({
                 <button
                   type="submit"
                   disabled={!newAllocationInput.trim()}
-                  className="bg-primary text-on-primary hover:bg-primary-container disabled:opacity-50 px-md py-2.5 rounded-xl font-semibold text-xs flex items-center gap-1 cursor-pointer transition-all shrink-0"
+                  className="bg-primary text-on-primary hover:bg-primary-container disabled:opacity-50 px-4 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-1 cursor-pointer transition-all shrink-0"
                 >
                   <span className="material-symbols-outlined text-[16px]">add</span>
-                  <span>Agregar Asignación</span>
+                  <span>Agregar asignación</span>
                 </button>
               </form>
 
               <div>
-                <h4 className="text-[11px] font-bold uppercase text-on-surface-variant mb-xs">
-                  Asignaciones / Sedes Disponibles ({allAllocations.length})
+                <h4 className="text-[11px] font-semibold text-on-surface-variant mb-xs">
+                  Asignaciones / sedes disponibles ({allAllocations.length})
                 </h4>
                 <div className="flex flex-wrap gap-2 max-h-60 overflow-y-auto p-1 bg-surface-container/30 rounded-xl border border-outline-variant/20">
                   {allAllocations.map((alloc) => {
@@ -264,16 +264,16 @@ export const ExpenseCategoryModal: React.FC<ExpenseCategoryModalProps> = ({
                 <button
                   type="submit"
                   disabled={!newResponsibleInput.trim()}
-                  className="bg-primary text-on-primary hover:bg-primary-container disabled:opacity-50 px-md py-2.5 rounded-xl font-semibold text-xs flex items-center gap-1 cursor-pointer transition-all shrink-0"
+                  className="bg-primary text-on-primary hover:bg-primary-container disabled:opacity-50 px-4 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-1 cursor-pointer transition-all shrink-0"
                 >
                   <span className="material-symbols-outlined text-[16px]">add</span>
-                  <span>Agregar Responsable</span>
+                  <span>Agregar responsable</span>
                 </button>
               </form>
 
               <div>
-                <h4 className="text-[11px] font-bold uppercase text-on-surface-variant mb-xs">
-                  Responsables Disponibles ({allResponsibles.length})
+                <h4 className="text-[11px] font-semibold text-on-surface-variant mb-xs">
+                  Responsables disponibles ({allResponsibles.length})
                 </h4>
                 <div className="flex flex-wrap gap-2 max-h-60 overflow-y-auto p-1 bg-surface-container/30 rounded-xl border border-outline-variant/20">
                   {allResponsibles.map((resp) => {

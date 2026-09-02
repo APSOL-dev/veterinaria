@@ -47,16 +47,17 @@ import {
   SupplierQuote,
   SupplierPayment,
   ServiceCatalogItem,
-  ExpenseRecord
+  ExpenseRecord,
+  SupplierCreditTerm
 } from './domain/types';
 
 import { createDosisRecord } from './domain/services/vaccineService';
 import { getLowStockAlerts, recordStockEntry, recordStockAdjustment } from './domain/services/inventoryService';
 import { processCheckout } from './domain/services/billingService';
 import { createNewPatientRecord } from './domain/services/patientService';
-import { createSupplierBillRecord, createSupplierQuoteRecord } from './domain/services/supplierService';
+import { createSupplierBillRecord, createSupplierQuoteRecord, saveSupplierCreditTerm } from './domain/services/supplierService';
 import { createExpenseRecord } from './domain/services/expenseService';
-import { createPaymentRecord } from './domain/services/paymentService';
+import { createPaymentRecord, getTotalPaidForBill } from './domain/services/paymentService';
 import { resolveNavigationState } from './domain/services/navigationService';
 import { canAccessModule, getDefaultModuleForRole } from './domain/services/rbacService';
 import { 
@@ -124,6 +125,20 @@ export const App: React.FC = () => {
   const [monthlyBudgets, setMonthlyBudgets] = useState<Record<string, number>>(initialMonthlyBudgets);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>(initialExpenses);
   const [payments, setPayments] = useState<SupplierPayment[]>([]);
+  const [creditTerms, setCreditTerms] = useState<SupplierCreditTerm[]>(() => {
+    try {
+      const saved = localStorage.getItem('vetsoft_supplier_credit_terms');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const handleSaveCreditTerm = (term: SupplierCreditTerm) => {
+    setCreditTerms(prev => {
+      const updated = saveSupplierCreditTerm(term, prev);
+      localStorage.setItem('vetsoft_supplier_credit_terms', JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   React.useEffect(() => {
     const preventDefaultDrop = (e: DragEvent) => {
@@ -540,7 +555,25 @@ export const App: React.FC = () => {
 
   const handleAddPayment = (paymentData: Omit<SupplierPayment, 'id'>) => {
     const payment = createPaymentRecord(paymentData);
-    setPayments(prev => [payment, ...prev]);
+    setPayments(prevPayments => {
+      const updatedPayments = [payment, ...prevPayments];
+
+      // Update bill status if fully paid
+      if (payment.billId || payment.billInvoiceNumber) {
+        setSupplierBills(prevBills => prevBills.map(b => {
+          if (b.id === payment.billId || (payment.billInvoiceNumber && b.invoiceNumber.includes(payment.billInvoiceNumber))) {
+            const totalPaid = getTotalPaidForBill(updatedPayments, b.id);
+            const remaining = Math.max(0, (b.amount || 0) - totalPaid);
+            if (remaining === 0) {
+              return { ...b, status: 'paid' };
+            }
+          }
+          return b;
+        }));
+      }
+
+      return updatedPayments;
+    });
     insertSupplierPaymentToSupabase(payment);
     setNotifModal({
       isOpen: true,
@@ -637,8 +670,15 @@ export const App: React.FC = () => {
                   ? 'presupuestos'
                   : activeSubmodule === 'pagos'
                   ? 'pagos'
+                  : activeSubmodule === 'cuentas'
+                  ? 'cuentas'
+                  : activeSubmodule === 'plazos'
+                  ? 'plazos'
                   : 'facturas'
               }
+              creditTerms={creditTerms}
+              onSaveCreditTerm={handleSaveCreditTerm}
+              onNavigateSubModule={(sub) => setActiveSubmodule(sub)}
               onAddBill={handleAddSupplierBill}
               onUpdateBill={handleUpdateSupplierBill}
               onDeleteBill={handleDeleteSupplierBill}
@@ -729,6 +769,7 @@ export const App: React.FC = () => {
                     setActiveModuleState('clinica');
                     setActiveSubmodule('calendario-clinica');
                   }}
+                  onUpdatePatients={setPatients}
                 />
               )}
 
@@ -736,6 +777,7 @@ export const App: React.FC = () => {
                 <TutoresView
                   patients={patients}
                   onUpdatePatients={setPatients}
+                  receipts={receipts}
                 />
               )}
 
@@ -750,6 +792,9 @@ export const App: React.FC = () => {
                   onNavigateToTab={handleNavigateFromShortcut}
                   onAddPatient={handleAddPatient}
                   onUpdatePatients={setPatients}
+                  vaccineCatalog={vaccineCatalog}
+                  onRegisterDosis={handleRegisterDosis}
+                  onAddVaccineToCatalog={handleAddVaccineToCatalog}
                 />
               )}
             </>
@@ -781,6 +826,8 @@ export const App: React.FC = () => {
               receipts={receipts}
               activeSubmodule={activeSubmodule}
               initialItems={pendingBillingItems}
+              products={products}
+              servicesCatalog={servicesCatalog}
               onCheckout={handleCheckout}
               onNavigateToHistorial={() => setActiveSubmodule('historial-cobros')}
             />

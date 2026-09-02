@@ -36,8 +36,8 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
               <span className="material-symbols-outlined text-[20px]">warning</span>
             </div>
             <div className="flex flex-col">
-              <h2 className="font-headline-sm text-xs font-bold text-error leading-tight">
-                ¡Alerta de Stock Crítico!
+              <h2 className="font-headline-sm text-xs font-semibold text-error leading-tight">
+                Alerta de stock crítico
               </h2>
               <span className="text-[10px] text-on-surface-variant">
                 {lowStockProducts.length} {lowStockProducts.length === 1 ? 'producto requiere atención' : 'productos requieren atención'}
@@ -64,19 +64,19 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
                 className="bg-surface-container-low p-2 rounded-xl border border-outline-variant/40 flex items-center justify-between gap-xs hover:bg-surface-container transition-colors"
               >
                 <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-xs text-primary truncate">{p.name}</span>
+                  <span className="font-semibold text-xs text-primary truncate">{p.name}</span>
                   <span className="text-[10px] text-on-surface-variant font-mono">
                     SKU: {p.sku}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-xs shrink-0">
-                  <span className="font-extrabold text-[11px] text-error font-mono">
+                  <span className="font-semibold text-[11px] text-error font-mono">
                     {p.currentStock} / {p.minStock} u.
                   </span>
 
                   <span
-                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                    className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                       isOutOfStock
                         ? 'bg-error text-on-error'
                         : 'bg-error-container text-on-error-container'
@@ -94,17 +94,20 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
         <div className="flex items-center justify-between gap-xs pt-xs border-t border-outline-variant/30">
           <button
             onClick={onClose}
-            className="px-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-label-md text-[11px] font-semibold cursor-pointer"
+            className="px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container transition-colors font-label-md text-xs font-semibold cursor-pointer"
           >
             Descartar
           </button>
 
           <button
-            onClick={onGoToInventory}
-            className="px-md py-1.5 rounded-xl bg-primary text-on-primary hover:bg-primary-container transition-all font-label-md text-xs font-bold shadow-sm flex items-center justify-center gap-xs cursor-pointer"
+            onClick={() => {
+              onGoToInventory();
+              onClose();
+            }}
+            className="bg-primary hover:bg-primary-container text-on-primary px-4 py-2 rounded-xl font-label-md text-xs font-semibold shadow-xs flex items-center gap-1 transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">inventory_2</span>
-            <span>Ir a Inventario</span>
+            <span>Ver inventario</span>
           </button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { ActiveModule } from '../../components/Navigation/Sidebar';
 
 export const MODULE_SUBMODULE_MAP: Record<ActiveModule, string[]> = {
-  proveedores: ['facturas', 'presupuestos'],
+  proveedores: ['facturas', 'presupuestos', 'pagos', 'gastos', 'cuentas', 'plazos'],
   clinica: ['fichas-medicas', 'vacunas', 'calendario-clinica'],
   peluqueria: ['calendario-peluqueria'],
   pacientes: ['ficha-pacientes', 'tutores', 'control-vacunas'],

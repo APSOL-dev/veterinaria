@@ -159,7 +159,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
             className="flex items-center gap-xs bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-md py-1.5 rounded-full font-label-md text-xs transition-all shadow-sm font-bold cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
-            Nuevo Turno
+            Nuevo turno
           </button>
         </div>
       </div>
@@ -167,10 +167,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
       {/* Main Weekly Calendar Grid */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-300 flex-1 overflow-hidden flex flex-col">
         {/* Days Header Row */}
-        <div className="grid grid-cols-7 border-b-2 border-purple-200/90 text-center bg-[#F9F6FC] font-label-md text-xs uppercase py-2">
-          <div className="text-slate-700 font-bold border-r border-purple-200 flex items-center justify-center">Hora</div>
+        <div className="grid grid-cols-7 border-b-2 border-purple-200/90 text-center bg-[#F9F6FC] font-label-md text-xs py-2 font-semibold">
+          <div className="text-slate-700 font-semibold border-r border-purple-200 flex items-center justify-center">Hora</div>
           {daysOfWeek.map((day, idx) => (
-            <div key={idx} className={`font-bold border-r border-purple-200 flex items-center justify-center ${idx === 2 ? 'text-[#5C3C7B]' : 'text-slate-800'}`}>
+            <div key={idx} className={`font-semibold border-r border-purple-200 flex items-center justify-center ${idx === 2 ? 'text-[#5C3C7B]' : 'text-slate-800'}`}>
               {day}
             </div>
           ))}
@@ -181,7 +181,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
           {timeSlots.map((slot) => (
             <div key={slot} className="grid grid-cols-7 border-b border-dashed border-purple-300/60 min-h-[72px]">
               {/* Time Label Column */}
-              <div className="p-xs text-center font-mono text-xs font-bold text-slate-700 border-r border-purple-200 bg-[#FAF8FC]/50 flex items-center justify-center">
+              <div className="p-xs text-center font-mono text-xs font-semibold text-slate-700 border-r border-purple-200 bg-[#FAF8FC]/50 flex items-center justify-center">
                 {slot}
               </div>
 
@@ -197,18 +197,17 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                       {matchingApp && (
                         <div className="bg-[#FAF5FF] border border-[#9A7DB8]/60 rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs">
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-[#5C3C7B] truncate">{matchingApp.patientName}</span>
-                            <span className="font-mono text-[10px] bg-[#9A7DB8] text-white px-1.5 py-0.2 rounded font-bold">{matchingApp.time}</span>
+                            <span className="font-semibold text-[#5C3C7B] truncate">{matchingApp.patientName}</span>
                           </div>
                           <span className="text-[11px] text-slate-600 truncate font-medium">{matchingApp.species} ({matchingApp.breed})</span>
                           <span className="text-[10px] text-[#5C3C7B] font-semibold truncate">Dr. {matchingApp.vetName}</span>
                           <button
                             type="button"
                             onClick={() => onNavigateToBilling?.(matchingApp.patientId, 'Consulta Médica', 15000)}
-                            className="mt-1 bg-[#9A7DB8] text-white hover:bg-[#8362A5] px-2 py-1 rounded-lg text-[10px] font-bold flex items-center justify-center gap-0.5 shadow-xs transition-all cursor-pointer"
+                            className="mt-1 bg-[#9A7DB8] text-white hover:bg-[#8362A5] px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-0.5 shadow-xs transition-all cursor-pointer"
                           >
                             <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
-                            Cobrar Turno
+                            Cobrar turno
                           </button>
                         </div>
                       )}
@@ -220,20 +219,19 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   return (
                     <div key={dayIdx} className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative">
                       {matchingGroom && (
-                        <div className="bg-[#F4EBFC] border border-[#D2B3EA] rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs">
+                        <div className="bg-[#FFF8E7] border border-amber-300 rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs">
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-[#5C3C7B] truncate">{matchingGroom.patientName}</span>
-                            <span className="font-mono text-[10px] bg-[#8362A5] text-white px-1.5 py-0.2 rounded font-bold">{matchingGroom.time}</span>
+                            <span className="font-semibold text-amber-900 truncate">{matchingGroom.patientName}</span>
                           </div>
                           <span className="text-[11px] text-slate-700 truncate font-semibold">{matchingGroom.serviceName}</span>
                           <span className="text-[10px] text-slate-600 truncate font-medium">Propietario: {matchingGroom.ownerName}</span>
                           <button
                             type="button"
                             onClick={() => onNavigateToBilling?.(matchingGroom.patientId, matchingGroom.serviceName, matchingGroom.price || 12000)}
-                            className="mt-1 bg-[#8362A5] text-white hover:bg-[#6C4B8E] px-2 py-1 rounded-lg text-[10px] font-bold flex items-center justify-center gap-0.5 shadow-xs transition-all cursor-pointer"
+                            className="mt-1 bg-amber-600 text-white hover:bg-amber-700 px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-0.5 shadow-xs transition-all cursor-pointer"
                           >
                             <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
-                            Cobrar Turno
+                            Cobrar turno
                           </button>
                         </div>
                       )}
@@ -251,8 +249,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
             <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
-              <h3 className="font-headline-sm text-slate-900 text-base font-bold">
-                Agendar Turno ({activeMode === 'medica' ? 'Consulta Médica' : 'Peluquería'})
+              <h3 className="font-headline-sm text-slate-900 text-base font-semibold">
+                Agendar turno ({activeMode === 'medica' ? 'Consulta médica' : 'Peluquería'})
               </h3>
               <button onClick={() => setShowNewModal(false)} className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer">
                 <span className="material-symbols-outlined text-[20px]">close</span>
@@ -261,7 +259,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
             <form onSubmit={handleAddAppointment} className="flex flex-col gap-md text-xs">
               <div>
-                <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Paciente *</label>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Paciente *</label>
                 <select
                   value={selectedPatientId}
                   onChange={(e) => setSelectedPatientId(e.target.value)}
@@ -278,7 +276,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
               {activeMode === 'medica' ? (
                 <>
                   <div>
-                    <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Motivo de Consulta *</label>
+                    <label className="font-semibold text-xs text-slate-700 block mb-1">Motivo de consulta *</label>
                     <input
                       type="text"
                       value={reason}
@@ -290,7 +288,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   </div>
 
                   <div>
-                    <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Veterinario Asignado *</label>
+                    <label className="font-semibold text-xs text-slate-700 block mb-1">Veterinario asignado *</label>
                     <input
                       type="text"
                       value={vetName}
@@ -303,7 +301,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
               ) : (
                 <>
                   <div>
-                    <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Servicio de Estética *</label>
+                    <label className="font-semibold text-xs text-slate-700 block mb-1">Servicio de estética *</label>
                     <select
                       value={selectedGroomServiceId}
                       onChange={(e) => setSelectedGroomServiceId(e.target.value)}
@@ -321,7 +319,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
               <div className="grid grid-cols-2 gap-md">
                 <div>
-                  <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Fecha *</label>
+                  <label className="font-semibold text-xs text-slate-700 block mb-1">Fecha *</label>
                   <input
                     type="date"
                     value={appDate}
@@ -331,7 +329,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="font-label-md text-slate-700 uppercase text-[10px] font-bold block mb-1">Hora *</label>
+                  <label className="font-semibold text-xs text-slate-700 block mb-1">Hora *</label>
                   <select
                     value={appTime}
                     onChange={(e) => setAppTime(e.target.value)}
@@ -348,16 +346,16 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowNewModal(false)}
-                  className="px-md py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-lg py-2.5 rounded-xl font-label-md text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-xs"
+                  className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[18px]">calendar_add_on</span>
-                  Confirmar Turno
+                  <span>Confirmar turno</span>
                 </button>
               </div>
             </form>

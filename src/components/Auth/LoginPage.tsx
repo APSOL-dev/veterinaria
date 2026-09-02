@@ -58,7 +58,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Username Field */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2" htmlFor="username">
+              <label className="block text-xs font-semibold text-gray-700 mb-2" htmlFor="username">
                 Usuario
               </label>
               <div className="relative">
@@ -82,7 +82,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
             {/* Password Field */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2" htmlFor="password">
+              <label className="block text-xs font-semibold text-gray-700 mb-2" htmlFor="password">
                 Contraseña
               </label>
               <div className="relative">
@@ -118,12 +118,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-[#9A7DB8] hover:bg-[#8362A5] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#9A7DB8] transition-colors duration-200 cursor-pointer"
+                className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl text-sm font-semibold text-white bg-[#5C3C7B] hover:bg-[#4A2F66] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5C3C7B] shadow-md hover:shadow-lg transition-all cursor-pointer"
               >
-                <span>Ingresar al Sistema</span>
-                <svg className="ml-2 -mr-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M14 5l7 7m0 0l-7 7m7-7H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
-                </svg>
+                <span>Ingresar al sistema</span>
               </button>
             </div>
           </form>

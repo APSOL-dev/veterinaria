@@ -131,7 +131,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
       if (onUpdateServiceCatalogItem) {
         onUpdateServiceCatalogItem(selectedService.id, {
           name: serviceFormName,
-          category: serviceFormCategory,
+          category: serviceFormCategory as 'clinica' | 'peluqueria',
           description: serviceFormDesc,
           price: serviceFormPrice
         });
@@ -140,7 +140,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
       if (onAddServiceCatalogItem) {
         onAddServiceCatalogItem({
           name: serviceFormName,
-          category: serviceFormCategory,
+          category: serviceFormCategory as 'clinica' | 'peluqueria',
           description: serviceFormDesc,
           quantity: 1,
           isActive: true,
@@ -228,60 +228,58 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
           <div className="flex items-center gap-sm">
             <button
               onClick={() => setShowEntryModal(true)}
-              className="bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors px-md py-2 rounded-lg font-label-md text-xs uppercase tracking-wider flex items-center gap-xs shadow-sm font-bold cursor-pointer"
+              className="bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">inventory_2</span>
-              Entrada de Stock
+              <span>Entrada de stock</span>
             </button>
             <button
               onClick={() => setShowNewProductModal(true)}
-              className="bg-primary text-on-primary hover:bg-primary-container transition-all px-md py-2 rounded-lg font-label-md text-xs uppercase tracking-wider flex items-center gap-xs shadow-sm font-bold cursor-pointer"
+              className="bg-primary text-on-primary hover:bg-primary-container transition-all px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
-              Nuevo Producto
+              <span>Nuevo producto</span>
             </button>
           </div>
         ) : (
           <button
             onClick={handleOpenNewService}
-            className="bg-primary text-on-primary hover:bg-primary-container transition-all px-md py-2 rounded-lg font-label-md text-xs uppercase tracking-wider flex items-center gap-xs shadow-sm font-bold cursor-pointer"
+            className="bg-primary text-on-primary hover:bg-primary-container transition-all px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
-            Nuevo Servicio / Prestación
+            <span>Nuevo servicio / prestación</span>
           </button>
         )}
       </div>
 
-      {/* Main Content Area */}
-      <div className="bg-surface-container-lowest rounded-2xl shadow-sm p-md flex flex-col gap-md border border-outline-variant/30">
+      {/* Main Container */}
+      <div className="bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/30 flex-1 overflow-hidden p-md">
         {activeSubmodule === 'productos-fisicos' ? (
-          <>
-            {/* Search & Categories */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-md">
-              <div className="relative w-full max-w-md">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">
-                  search
-                </span>
+          <div className="flex flex-col gap-md h-full">
+            {/* Search & Categories Bar */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-sm">
+              <div className="bg-surface-container rounded-xl p-xs flex items-center w-full sm:w-80 border border-outline-variant/30">
+                <span className="material-symbols-outlined text-on-surface-variant ml-sm mr-xs text-[18px]">search</span>
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar por nombre, SKU o código..."
-                  className="w-full bg-surface-container-low text-on-surface placeholder:text-on-surface-variant font-body-md text-xs py-2 pl-9 pr-9 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-container transition-all"
+                  placeholder="Buscar por nombre, SKU..."
+                  className="bg-transparent text-xs text-on-surface outline-none w-full font-medium"
                 />
               </div>
 
-              <div className="flex items-center gap-xs overflow-x-auto pb-1 scrollbar-hide w-full md:w-auto">
+              <div className="flex items-center gap-xs overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
                 {categories.map((cat) => {
                   const isSelected = selectedCategory === cat;
                   return (
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-3 py-1 rounded-full font-label-md text-xs whitespace-nowrap transition-colors ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-primary text-on-primary shadow-sm font-semibold'
-                          : 'bg-surface-container text-on-surface hover:bg-surface-container-high'
+                          ? 'bg-primary text-on-primary shadow-xs'
+                          : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                       }`}
                     >
                       {cat}
@@ -295,11 +293,11 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse font-body-md text-xs">
                 <thead>
-                  <tr className="bg-surface-container-low text-on-surface-variant font-label-md uppercase text-[10px]">
-                    <th className="p-sm px-md rounded-tl-lg">SKU / Código</th>
+                  <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
+                    <th className="p-sm px-md rounded-tl-lg">SKU / código</th>
                     <th className="p-sm px-md">Producto</th>
                     <th className="p-sm px-md">Categoría</th>
-                    <th className="p-sm px-md text-right">Stock Actual</th>
+                    <th className="p-sm px-md text-right">Stock actual</th>
                     <th className="p-sm px-md text-right">Min.</th>
                     <th className="p-sm px-md text-right">Precio</th>
                     <th className="p-sm px-md text-center">Estado</th>
@@ -319,31 +317,31 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                           {p.barcode && <div className="text-[10px] text-on-surface-variant font-mono">BC: {p.barcode}</div>}
                         </td>
                         <td className="p-sm px-md">
-                          <span className="inline-flex items-center gap-1 bg-surface-container-high text-on-surface px-2 py-0.5 rounded text-[11px]">
+                          <span className="inline-flex items-center gap-1 bg-surface-container-high text-on-surface px-2 py-0.5 rounded text-[11px] font-medium">
                             {p.category}
                           </span>
                         </td>
-                        <td className={`p-sm px-md text-right font-bold ${
+                        <td className={`p-sm px-md text-right font-semibold ${
                           isOutOfStock ? 'text-error' : isLowStock ? 'text-[#E65100]' : 'text-on-surface'
                         }`}>
                           {p.currentStock}
                         </td>
                         <td className="p-sm px-md text-right text-on-surface-variant">{p.minStock}</td>
-                        <td className="p-sm px-md text-right">${p.price.toLocaleString('es-AR')}</td>
+                        <td className="p-sm px-md text-right font-medium">${p.price.toLocaleString('es-AR')}</td>
                         <td className="p-sm px-md text-center">
                           {!isLowStock && !isOutOfStock && (
-                            <span className="inline-flex px-2 py-0.5 bg-[#E8F5E9] text-[#1B5E20] rounded-full text-[10px] font-bold uppercase">
+                            <span className="inline-flex px-2.5 py-0.5 bg-[#E8F5E9] text-[#1B5E20] rounded-full text-[10px] font-semibold">
                               OK
                             </span>
                           )}
                           {isLowStock && (
-                            <span className="inline-flex px-2 py-0.5 bg-[#FFF3E0] text-[#E65100] rounded-full text-[10px] font-bold uppercase">
-                              Stock Bajo
+                            <span className="inline-flex px-2.5 py-0.5 bg-[#FFF3E0] text-[#E65100] rounded-full text-[10px] font-semibold">
+                              Stock bajo
                             </span>
                           )}
                           {isOutOfStock && (
-                            <span className="inline-flex px-2 py-0.5 bg-error-container text-on-error-container rounded-full text-[10px] font-bold uppercase">
-                              Sin Stock
+                            <span className="inline-flex px-2.5 py-0.5 bg-error-container text-on-error-container rounded-full text-[10px] font-semibold">
+                              Sin stock
                             </span>
                           )}
                         </td>
@@ -380,51 +378,51 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 </tbody>
               </table>
             </div>
-          </>
+          </div>
         ) : (
           /* Services Catalog Table */
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse font-body-md text-xs">
               <thead>
-                <tr className="bg-surface-container-low text-on-surface-variant font-label-md uppercase text-[10px]">
+                <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
                   <th className="p-sm px-md">Categoría</th>
                   <th className="p-sm px-md">Servicio</th>
                   <th className="p-sm px-md">Descripción</th>
                   <th className="p-sm px-md text-center">Cantidad</th>
                   <th className="p-sm px-md text-center">Estado</th>
-                  <th className="p-sm px-md text-right">Precio Actual</th>
-                  <th className="p-sm px-md text-center">Última Actualización</th>
-                  <th className="p-sm px-md text-center">Última Venta</th>
+                  <th className="p-sm px-md text-right">Precio actual</th>
+                  <th className="p-sm px-md text-center">Última actualización</th>
+                  <th className="p-sm px-md text-center">Última venta</th>
                   <th className="p-sm px-md text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="text-on-surface">
                 {servicesCatalog.map((srv) => (
                   <tr key={srv.id} className="bg-surface-container-lowest hover:bg-surface-container transition-colors group border-b border-surface-container-low">
-                    <td className="p-sm px-md font-bold text-primary capitalize">{srv.category}</td>
-                    <td className="p-sm px-md font-bold text-on-surface">{srv.name}</td>
+                    <td className="p-sm px-md font-medium text-primary capitalize">{srv.category}</td>
+                    <td className="p-sm px-md font-semibold text-on-surface">{srv.name}</td>
                     <td className="p-sm px-md text-on-surface-variant max-w-xs truncate">{srv.description}</td>
-                    <td className="p-sm px-md text-center font-bold">{srv.quantity}</td>
+                    <td className="p-sm px-md text-center font-medium">{srv.quantity}</td>
                     <td className="p-sm px-md text-center">
                       <button
                         onClick={() => handleToggleService(srv)}
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-all ${
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-all ${
                           srv.isActive ? 'bg-[#E8F5E9] text-[#27AE60]' : 'bg-[#FDEDEC] text-[#C0392B]'
                         }`}
                         title="Clic para cambiar estado Activo/Inactivo"
                       >
-                        {srv.isActive ? 'ACTIVO' : 'INACTIVO'}
+                        {srv.isActive ? 'Activo' : 'Inactivo'}
                       </button>
                     </td>
-                    <td className="p-sm px-md text-right font-bold text-primary">${srv.price.toLocaleString('es-AR')}</td>
+                    <td className="p-sm px-md text-right font-semibold text-primary">${srv.price.toLocaleString('es-AR')}</td>
                     <td className="p-sm px-md text-center text-on-surface-variant">{srv.priceLastUpdated}</td>
                     <td className="p-sm px-md text-center text-on-surface-variant">{srv.lastSoldAt || 'Sin ventas'}</td>
                     <td className="p-sm px-md text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => handleOpenEditService(srv)}
-                          className="px-2 py-1 bg-surface-container-high hover:bg-primary hover:text-white rounded-lg text-[11px] font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer"
-                          title="Editar Servicio / Precio"
+                          className="px-2.5 py-1.5 bg-surface-container-high hover:bg-primary hover:text-white rounded-lg text-[11px] font-semibold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                          title="Editar servicio / precio"
                         >
                           <span className="material-symbols-outlined text-[14px]">edit</span>
                           <span>Editar</span>
@@ -432,8 +430,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                         {onDeleteServiceCatalogItem && (
                           <button
                             onClick={() => setDeleteConfirm({ isOpen: true, type: 'service', id: srv.id, name: srv.name })}
-                            className="p-1.5 bg-red-50 text-error hover:bg-red-100 rounded-lg text-[11px] font-bold transition-all shadow-sm cursor-pointer"
-                            title="Eliminar Servicio del Catálogo"
+                            className="p-1.5 bg-red-50 text-error hover:bg-red-100 rounded-lg text-[11px] font-semibold transition-all shadow-2xs cursor-pointer"
+                            title="Eliminar servicio del catálogo"
                           >
                             <span className="material-symbols-outlined text-[16px]">delete</span>
                           </button>
@@ -453,18 +451,18 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
-              <h3 className="font-headline-sm text-primary text-base font-bold">Registrar Entrada de Mercadería</h3>
-              <button onClick={() => setShowEntryModal(false)} className="text-on-surface-variant hover:text-error">
+              <h3 className="font-headline-sm text-primary text-base font-semibold">Registrar entrada de mercadería</h3>
+              <button onClick={() => setShowEntryModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
             <form onSubmit={handleStockEntrySubmit} className="flex flex-col gap-xs text-xs">
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px]">Seleccionar Producto</label>
+              <label className="font-semibold text-xs text-slate-700 block">Seleccionar producto</label>
               <select
                 value={entryProductId}
                 onChange={(e) => setEntryProductId(e.target.value)}
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
               >
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -473,18 +471,18 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 ))}
               </select>
 
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Cantidad Recibida</label>
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Cantidad recibida</label>
               <input
                 type="number"
                 value={entryQty}
                 onChange={(e) => setEntryQty(Number(e.target.value))}
                 min={1}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <button type="submit" className="bg-primary text-on-primary py-2 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container">
-                Confirmar Ingreso
+              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary-container cursor-pointer shadow-sm">
+                Confirmar ingreso
               </button>
             </form>
           </div>
@@ -495,27 +493,27 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
-              <h3 className="font-headline-sm text-primary text-base font-bold">Ajuste Manual de Stock</h3>
-              <button onClick={() => setShowAdjustModal(false)} className="text-on-surface-variant hover:text-error">
+              <h3 className="font-headline-sm text-primary text-base font-semibold">Ajuste manual de stock</h3>
+              <button onClick={() => setShowAdjustModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
             <form onSubmit={handleAdjustSubmit} className="flex flex-col gap-xs text-xs">
-              <p className="font-body-md text-on-surface font-bold text-sm">{selectedProduct.name}</p>
+              <p className="font-body-md text-on-surface font-semibold text-sm">{selectedProduct.name}</p>
 
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Nuevo Stock</label>
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Nuevo stock</label>
               <input
                 type="number"
                 value={adjustNewStock}
                 onChange={(e) => setAdjustNewStock(Number(e.target.value))}
                 min={0}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <button type="submit" className="bg-secondary text-on-secondary py-2 rounded-xl font-label-md text-xs mt-md hover:bg-primary">
-                Guardar Ajuste
+              <button type="submit" className="bg-secondary text-on-secondary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary cursor-pointer shadow-sm">
+                Guardar ajuste
               </button>
             </form>
           </div>
@@ -526,28 +524,28 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
-              <h3 className="font-headline-sm text-primary text-base font-bold">Actualizar Precio de Servicio</h3>
-              <button onClick={() => setShowPriceModal(false)} className="text-on-surface-variant hover:text-error">
+              <h3 className="font-headline-sm text-primary text-base font-semibold">Actualizar precio de servicio</h3>
+              <button onClick={() => setShowPriceModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
             <form onSubmit={handleUpdatePriceSubmit} className="flex flex-col gap-xs text-xs">
-              <p className="font-body-md text-on-surface font-bold text-sm">{selectedService.name}</p>
-              <p className="font-body-md text-on-surface-variant text-xs">{selectedService.description}</p>
+              <p className="font-body-md text-on-surface font-semibold text-sm">{selectedService.name}</p>
+              <p className="font-body-md text-on-surface-variant text-xs font-medium">{selectedService.description}</p>
 
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Nuevo Precio ($)</label>
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Nuevo precio ($)</label>
               <input
                 type="number"
                 value={newServicePrice}
                 onChange={(e) => setNewServicePrice(Number(e.target.value))}
                 min={1}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-bold text-base"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-semibold text-base"
               />
 
-              <button type="submit" className="bg-primary text-on-primary py-2 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm cursor-pointer">
-                Guardar Precio y Actualizar Fecha
+              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary-container shadow-sm cursor-pointer">
+                Guardar precio y actualizar fecha
               </button>
             </form>
           </div>
@@ -559,35 +557,35 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
-              <h3 className="font-headline-sm text-primary text-base font-bold">Editar Producto del Inventario</h3>
+              <h3 className="font-headline-sm text-primary text-base font-semibold">Editar producto del inventario</h3>
               <button onClick={() => setShowEditProductModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
             <form onSubmit={handleEditProductSubmit} className="flex flex-col gap-xs text-xs">
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px]">Código SKU</label>
+              <label className="font-semibold text-xs text-slate-700 block">Código SKU</label>
               <input
                 type="text"
                 value={editSku}
                 onChange={(e) => setEditSku(e.target.value)}
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Nombre del Producto *</label>
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Nombre del producto *</label>
               <input
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Categoría *</label>
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Categoría *</label>
               <select
                 value={editCategory}
                 onChange={(e) => setEditCategory(e.target.value as ProductCategory)}
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
               >
                 <option value="Medicamentos">Medicamentos</option>
                 <option value="Alimentación">Alimentación</option>
@@ -595,28 +593,28 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 <option value="Insumos Clínicos">Insumos Clínicos</option>
               </select>
 
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Precio de Venta ($) *</label>
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Precio de venta ($) *</label>
               <input
                 type="number"
                 value={editPrice}
                 onChange={(e) => setEditPrice(Number(e.target.value))}
                 min={0}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Stock Mínimo (Alerta)</label>
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Stock mínimo (Alerta)</label>
               <input
                 type="number"
                 value={editMinStock}
                 onChange={(e) => setEditMinStock(Number(e.target.value))}
                 min={0}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm cursor-pointer">
-                Guardar Cambios del Producto
+              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary-container shadow-sm cursor-pointer">
+                Guardar cambios del producto
               </button>
             </form>
           </div>
@@ -628,8 +626,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
-              <h3 className="font-headline-sm text-primary text-base font-bold">
-                {selectedService ? 'Editar Servicio / Prestación' : 'Nuevo Servicio / Prestación'}
+              <h3 className="font-headline-sm text-primary text-base font-semibold">
+                {selectedService ? 'Editar servicio / prestación' : 'Nuevo servicio / prestación'}
               </h3>
               <button onClick={() => setShowServiceModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
                 <span className="material-symbols-outlined">close</span>
@@ -637,21 +635,21 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
             </div>
 
             <form onSubmit={handleServiceFormSubmit} className="flex flex-col gap-xs text-xs">
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px]">Nombre del Servicio *</label>
+              <label className="font-semibold text-xs text-slate-700 block">Nombre del servicio *</label>
               <input
                 type="text"
                 value={serviceFormName}
                 onChange={(e) => setServiceFormName(e.target.value)}
                 placeholder="Ej. Consulta Especialista, Baño Perros Grandes..."
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Categoría *</label>
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Categoría *</label>
               <select
                 value={serviceFormCategory}
                 onChange={(e) => setServiceFormCategory(e.target.value)}
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
               >
                 <option value="clinica">Clínica</option>
                 <option value="cirugia">Cirugía</option>
@@ -660,23 +658,23 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 <option value="ecografia">Ecografía / Rayos</option>
               </select>
 
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Descripción</label>
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Descripción</label>
               <textarea
                 value={serviceFormDesc}
                 onChange={(e) => setServiceFormDesc(e.target.value)}
                 rows={2}
                 placeholder="Detalle o requisitos de la prestación..."
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <label className="font-label-md text-on-surface-variant uppercase text-[11px] mt-xs">Precio ($) *</label>
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Precio ($) *</label>
               <input
                 type="number"
                 value={serviceFormPrice}
                 onChange={(e) => setServiceFormPrice(Number(e.target.value))}
                 min={0}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-bold text-base"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-semibold text-base"
               />
 
               <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm cursor-pointer">

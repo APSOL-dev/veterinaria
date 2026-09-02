@@ -15,6 +15,15 @@ export interface WeightRecord {
   weightKg: number;
 }
 
+export interface PatientRequiredVaccine {
+  id: string;
+  vaccineName: string;
+  suggestedDate: string; // YYYY-MM-DD
+  status: 'pendiente' | 'aplicada';
+  appliedDate?: string;
+  notes?: string;
+}
+
 export interface Patient {
   id: string;
   ownerId: string;
@@ -30,6 +39,7 @@ export interface Patient {
   weightKg?: number;
   alerts?: string[];
   weightHistory?: WeightRecord[];
+  requiredVaccines?: PatientRequiredVaccine[];
 }
 
 export interface ClinicalNote {
@@ -37,9 +47,22 @@ export interface ClinicalNote {
   patientId: string;
   date: string; // ISO string
   vetName: string;
+  vetLicenseNumber?: string;
   notes: string;
   attachments?: string[];
+  attachmentUrls?: string[];
   prescription?: string;
+  prescriptionUrl?: string;
+}
+
+export interface TutorAccountMovement {
+  id: string;
+  tutorName: string;
+  date: string; // YYYY-MM-DD
+  concept: string;
+  debe: number;
+  haber: number;
+  saldo: number;
 }
 
 export interface VaccineCatalogItem {
@@ -184,6 +207,46 @@ export interface MonthlyExpenditureProjection {
   statusLevel: 'ok' | 'warning' | 'exceeded';
 }
 
+export interface YearlyExpenditureProjection {
+  year: number;
+  totalAdeudado: number;
+  totalPagado: number;
+  total: number;
+  presupuestoTotal: number;
+  cumplimientoPercentage: number;
+  statusLevel: 'ok' | 'warning' | 'exceeded';
+  projections: MonthlyExpenditureProjection[];
+}
+
+export interface SupplierCreditTerm {
+  supplierName: string;
+  cuit?: string;
+  termType: 'contado' | '15_dias' | '30_dias' | '60_dias' | '90_dias' | 'cuotas_30_60' | 'cuotas_30_60_90';
+  termDays: number;
+  installmentsCount?: number;
+  contadoPercent?: number;
+  dias30Percent?: number;
+  dias60Percent?: number;
+  dias90Percent?: number;
+  notes?: string;
+  lastUpdated?: string;
+}
+
+export interface SupplierAccountMovement {
+  id: string;
+  type: 'bill' | 'payment';
+  supplierName: string;
+  voucherNumber: string;
+  voucherUrl?: string;
+  voucherName?: string;
+  status?: string;
+  lineTag?: string;
+  date: string;
+  debe: number;
+  haber: number;
+  saldo: number;
+}
+
 export interface ExpenseRecord {
   id: string;
   date: string; // YYYY-MM-DD
@@ -209,7 +272,7 @@ export interface StockMovement {
 }
 
 export type DocumentType = 'factura-a' | 'factura-b' | 'factura-c' | 'remito';
-export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia';
+export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia' | 'cuenta-corriente';
 
 export interface BillItem {
   id: string;
@@ -250,6 +313,7 @@ export interface BillReceipt {
   patientId?: string;
   patientName?: string;
   ownerName?: string;
+  clientName?: string;
   paymentMethod: PaymentMethod;
   items: BillItem[];
   subtotal: number;

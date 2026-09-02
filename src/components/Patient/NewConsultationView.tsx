@@ -4,6 +4,8 @@ import { formatAttachmentFileList } from '../../domain/services/patientService';
 import { uploadConsultationAttachmentToSupabase, uploadPrescriptionToSupabase } from '../../domain/services/supabaseService';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 
+import { PrescriptionModal } from './PrescriptionModal';
+
 interface NewConsultationViewProps {
   patients: Patient[];
   selectedPatient: Patient;
@@ -11,6 +13,7 @@ interface NewConsultationViewProps {
   onSaveConsultation: (data: {
     patientId: string;
     vetName: string;
+    vetLicenseNumber?: string;
     notes: string;
     prescription?: string;
     prescriptionUrl?: string;
@@ -27,6 +30,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
 }) => {
   const [targetPatientId, setTargetPatientId] = useState<string>(selectedPatient.id);
   const [vetName, setVetName] = useState('Dr. J. Silva');
+  const [vetLicenseNumber, setVetLicenseNumber] = useState('MP 8472-VET');
   const [notes, setNotes] = useState('');
   const [showPrescription, setShowPrescription] = useState(false);
   const [prescriptionText, setPrescriptionText] = useState('');
@@ -34,6 +38,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
   const [rawAttachedFiles, setRawAttachedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -128,6 +133,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
     onSaveConsultation({
       patientId: currentPatient.id,
       vetName,
+      vetLicenseNumber,
       notes,
       prescription: finalPrescription,
       prescriptionUrl: finalPrescriptionUrl,
@@ -135,12 +141,16 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
       attachmentUrls: uploadedAttachmentUrls.length > 0 ? uploadedAttachmentUrls : undefined
     });
 
-    setNotes('');
-    setPrescriptionText('');
-    setShowPrescription(false);
-    setAttachedFiles([]);
-    setRawAttachedFiles([]);
-    onCancel();
+    if (finalPrescription) {
+      setShowPrescriptionModal(true);
+    } else {
+      setNotes('');
+      setPrescriptionText('');
+      setShowPrescription(false);
+      setAttachedFiles([]);
+      setRawAttachedFiles([]);
+      onCancel();
+    }
   };
 
   const handleCloseNotif = () => {
@@ -152,25 +162,25 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
       {/* Top Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md mb-md">
         <div>
-          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
-            Clínica — Nueva Consulta ({currentPatient.name})
+          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">
+            Clínica — Nueva consulta ({currentPatient.name})
           </h1>
           <p className="font-body-md text-xs text-slate-600 font-medium flex flex-wrap items-center gap-2 mt-0.5">
             <span>{currentPatient.species} • {currentPatient.breed}</span>
             <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-            <span>Propietario: <strong className="text-slate-900 font-bold">{currentPatient.ownerName}</strong></span>
+            <span>Propietario: <strong className="text-slate-900 font-semibold">{currentPatient.ownerName}</strong></span>
             <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-            <span className="text-[#5C3C7B] font-bold">{currentDateFormatted}</span>
+            <span className="text-[#5C3C7B] font-semibold">{currentDateFormatted}</span>
           </p>
         </div>
 
         <div className="flex items-center gap-sm bg-surface-container-low p-xs px-md rounded-xl border border-outline-variant/40 self-stretch md:self-auto justify-between">
           <div className="flex flex-col">
-            <label className="font-label-sm text-on-surface-variant uppercase text-[10px]">Cambiar Paciente</label>
+            <label className="font-label-sm text-on-surface-variant text-[10px] font-medium">Cambiar paciente</label>
             <select
               value={targetPatientId}
               onChange={(e) => setTargetPatientId(e.target.value)}
-              className="bg-transparent text-primary font-bold text-xs outline-none cursor-pointer"
+              className="bg-transparent text-primary font-semibold text-xs outline-none cursor-pointer"
             >
               {patients.map(p => (
                 <option key={p.id} value={p.id}>{p.name} ({p.species} - {p.ownerName})</option>
@@ -187,24 +197,36 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
             <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
               description
             </span>
-            <h2 className="font-headline-sm text-base text-primary font-bold">Registro de Ficha Médica</h2>
+            <h2 className="font-headline-sm text-base text-primary font-semibold">Registro de ficha médica</h2>
           </div>
 
-          <div className="flex items-center gap-xs">
-            <label className="font-label-md text-on-surface-variant uppercase text-[11px]">Veterinario Actuante:</label>
-            <input
-              type="text"
-              value={vetName}
-              onChange={(e) => setVetName(e.target.value)}
-              className="bg-surface-container border border-outline-variant/80 rounded-lg py-1 px-3 text-on-surface font-semibold text-xs outline-none focus:ring-2 focus:ring-secondary shadow-xs"
-            />
+          <div className="flex items-center gap-md flex-wrap">
+            <div className="flex items-center gap-xs">
+              <label className="font-label-md text-on-surface-variant text-[10px] font-medium">Veterinario asignado:</label>
+              <input
+                type="text"
+                value={vetName}
+                onChange={(e) => setVetName(e.target.value)}
+                className="bg-surface-container border border-outline-variant/80 rounded-lg py-1 px-3 text-on-surface font-semibold text-xs outline-none focus:ring-2 focus:ring-secondary shadow-xs"
+              />
+            </div>
+            <div className="flex items-center gap-xs">
+              <label className="font-label-md text-on-surface-variant text-[10px] font-medium">Matrícula:</label>
+              <input
+                type="text"
+                value={vetLicenseNumber}
+                onChange={(e) => setVetLicenseNumber(e.target.value)}
+                placeholder="Ej. MP 8472-VET"
+                className="bg-surface-container border border-outline-variant/80 rounded-lg py-1 px-2.5 text-on-surface font-semibold text-xs outline-none focus:ring-2 focus:ring-secondary shadow-xs w-32"
+              />
+            </div>
           </div>
         </div>
 
         {/* Clinical Notes Textarea (Compact / Fixed Height Shrink-0) */}
         <div className="shrink-0 flex flex-col gap-1">
-          <label className="font-label-md text-xs text-primary font-bold uppercase tracking-wider">
-            Notas Clínicas, Anamnesis y Diagnóstico
+          <label className="font-label-md text-xs text-primary font-semibold">
+            Notas clínicas, anamnesis y diagnóstico
           </label>
           <textarea
             value={notes}
@@ -218,9 +240,9 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
         {/* Prescription section (Optional toggle) */}
         {showPrescription && (
           <div className="shrink-0 flex flex-col gap-1 bg-surface-container-low p-md rounded-xl border border-secondary/50 shadow-xs">
-            <label className="font-label-md text-secondary font-bold uppercase text-[11px] flex items-center gap-xs">
+            <label className="font-label-md text-secondary font-semibold text-[11px] flex items-center gap-xs">
               <span className="material-symbols-outlined text-[16px]">prescriptions</span>
-              Indicaciones de Receta Médica
+              Indicaciones de receta médica
             </label>
             <textarea
               value={prescriptionText}
@@ -234,8 +256,8 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
 
         {/* Drag & Drop File Upload Zone */}
         <div className="flex-1 flex flex-col min-h-0 gap-xs">
-          <label className="shrink-0 font-label-md text-on-surface-variant uppercase text-[11px]">
-            Archivos Adjuntos (Estudios, Radiografías, Análisis de Laboratorio)
+          <label className="shrink-0 font-label-md text-on-surface-variant text-[11px] font-medium">
+            Archivos adjuntos (Estudios, radiografías, análisis de laboratorio)
           </label>
           
           <input
@@ -261,8 +283,8 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
             <div className="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm">
               <span className="material-symbols-outlined text-[28px]">cloud_upload</span>
             </div>
-            <span className="font-headline-sm text-sm font-bold text-on-surface text-center">
-              Subir o Arrastrar Archivos o Imágenes
+            <span className="font-headline-sm text-sm font-semibold text-on-surface text-center">
+              Subir o arrastrar archivos o imágenes
             </span>
             <span className="font-body-md text-xs text-on-surface-variant text-center max-w-sm">
               Arrastra tus estudios aquí o haz clic para seleccionar del equipo (.JPG, .PNG, .PDF, .DOC).
@@ -296,7 +318,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="px-lg py-2 rounded-lg bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors font-label-md text-xs shadow-sm"
+            className="px-4 py-2.5 rounded-xl bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors font-label-md text-xs font-semibold shadow-sm cursor-pointer"
           >
             Cancelar
           </button>
@@ -304,30 +326,30 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
           <button
             type="button"
             onClick={() => setShowPrescription(!showPrescription)}
-            className="px-lg py-2 rounded-lg bg-secondary-container text-on-secondary-container hover:bg-secondary hover:text-on-secondary transition-colors font-label-md text-xs shadow-sm flex items-center justify-center gap-1.5"
+            className="px-4 py-2.5 rounded-xl bg-secondary-container text-on-secondary-container hover:bg-secondary hover:text-on-secondary transition-colors font-label-md text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">prescriptions</span>
-            {showPrescription ? 'Quitar Receta' : 'Generar Receta'}
+            {showPrescription ? 'Quitar receta' : 'Generar receta'}
           </button>
 
           <button
             type="button"
             onClick={() => handleSave(false)}
-            className="px-lg py-2 rounded-lg bg-primary text-on-primary hover:bg-primary-container transition-all font-label-md text-xs shadow-sm flex items-center justify-center gap-1.5"
+            className="px-4 py-2.5 rounded-xl bg-primary text-on-primary hover:bg-primary-container transition-all font-label-md text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
               save
             </span>
-            Guardar Consulta
+            Guardar consulta
           </button>
 
           <button
             type="button"
             onClick={() => handleSave(true)}
-            className="px-lg py-2 rounded-lg bg-[#27AE60] text-white hover:bg-[#1E8449] transition-all font-label-md text-xs shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-[#27AE60] text-white hover:bg-[#1E8449] transition-all font-label-md text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">check_circle</span>
-            Guardar y Generar Receta
+            Guardar y generar receta
           </button>
         </div>
       </div>
@@ -337,6 +359,23 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
         message={modalNotif.message}
         type={modalNotif.type}
         onClose={handleCloseNotif}
+      />
+
+      <PrescriptionModal
+        isOpen={showPrescriptionModal}
+        onClose={() => {
+          setShowPrescriptionModal(false);
+          setNotes('');
+          setPrescriptionText('');
+          setShowPrescription(false);
+          setAttachedFiles([]);
+          setRawAttachedFiles([]);
+          onCancel();
+        }}
+        patient={currentPatient}
+        vetName={vetName}
+        vetLicenseNumber={vetLicenseNumber}
+        prescriptionText={prescriptionText || 'Indicaciones registradas en la consulta médica.'}
       />
     </div>
   );
