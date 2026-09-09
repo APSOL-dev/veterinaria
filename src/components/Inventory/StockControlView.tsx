@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Product, ProductCategory, ServiceCatalogItem } from '../../domain/types';
-import { updateServicePrice, toggleServiceStatus } from '../../domain/services/serviceCatalogService';
+import { Product, ProductCategory, ServiceCatalogItem, SupplierBill } from '../../domain/types';
+import { updateServicePrice, toggleServiceStatus, getPriceUpdateStatusInfo } from '../../domain/services/serviceCatalogService';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
+import { NewInvoiceDrawer } from '../Suppliers/NewInvoiceDrawer';
 
 interface StockControlViewProps {
   products: Product[];
@@ -16,6 +17,7 @@ interface StockControlViewProps {
   onDeleteServiceCatalogItem?: (id: string) => void;
   onAdjustStock: (productId: string, newStock: number, reason: string) => void;
   onUpdateServicesCatalog: (services: ServiceCatalogItem[]) => void;
+  onAddBill?: (bill: Omit<SupplierBill, 'id'>) => void;
 }
 
 export const StockControlView: React.FC<StockControlViewProps> = ({
@@ -30,11 +32,13 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   onUpdateServiceCatalogItem,
   onDeleteServiceCatalogItem,
   onAdjustStock,
-  onUpdateServicesCatalog
+  onUpdateServicesCatalog,
+  onAddBill
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [searchQuery, setSearchQuery] = useState('');
   const [showEntryModal, setShowEntryModal] = useState(false);
+  const [showInvoiceDrawer, setShowInvoiceDrawer] = useState(false);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
   const [showEditProductModal, setShowEditProductModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
@@ -56,6 +60,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   const [serviceFormCategory, setServiceFormCategory] = useState('clinica');
   const [serviceFormDesc, setServiceFormDesc] = useState('');
   const [serviceFormPrice, setServiceFormPrice] = useState(10000);
+  const [serviceFormFrequency, setServiceFormFrequency] = useState<number>(30);
 
   // Edit product form state
   const [editSku, setEditSku] = useState('');
@@ -112,6 +117,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
     setServiceFormCategory('clinica');
     setServiceFormDesc('');
     setServiceFormPrice(10000);
+    setServiceFormFrequency(30);
     setShowServiceModal(true);
   };
 
@@ -121,6 +127,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
     setServiceFormCategory(srv.category);
     setServiceFormDesc(srv.description || '');
     setServiceFormPrice(srv.price);
+    setServiceFormFrequency(srv.updateFrequencyDays || 30);
     setShowServiceModal(true);
   };
 
@@ -131,20 +138,22 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
       if (onUpdateServiceCatalogItem) {
         onUpdateServiceCatalogItem(selectedService.id, {
           name: serviceFormName,
-          category: serviceFormCategory as 'clinica' | 'peluqueria',
+          category: serviceFormCategory as any,
           description: serviceFormDesc,
-          price: serviceFormPrice
+          price: serviceFormPrice,
+          updateFrequencyDays: serviceFormFrequency
         });
       }
     } else {
       if (onAddServiceCatalogItem) {
         onAddServiceCatalogItem({
           name: serviceFormName,
-          category: serviceFormCategory as 'clinica' | 'peluqueria',
+          category: serviceFormCategory as any,
           description: serviceFormDesc,
           quantity: 1,
           isActive: true,
           price: serviceFormPrice,
+          updateFrequencyDays: serviceFormFrequency,
           priceLastUpdated: new Date().toISOString().substring(0, 10)
         });
       }
@@ -231,7 +240,14 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               className="bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">inventory_2</span>
-              <span>Entrada de stock</span>
+              <span>Entrada manual</span>
+            </button>
+            <button
+              onClick={() => setShowInvoiceDrawer(true)}
+              className="bg-[#5C3C7B] text-white hover:bg-[#4A2F66] transition-colors px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]">receipt_long</span>
+              <span>Entrada con factura</span>
             </button>
             <button
               onClick={() => setShowNewProductModal(true)}
@@ -392,30 +408,49 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   <th className="p-sm px-md text-center">Estado</th>
                   <th className="p-sm px-md text-right">Precio actual</th>
                   <th className="p-sm px-md text-center">Última actualización</th>
+                  <th className="p-sm px-md text-center">Frecuencia / Vencimiento</th>
                   <th className="p-sm px-md text-center">Última venta</th>
                   <th className="p-sm px-md text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="text-on-surface">
-                {servicesCatalog.map((srv) => (
-                  <tr key={srv.id} className="bg-surface-container-lowest hover:bg-surface-container transition-colors group border-b border-surface-container-low">
-                    <td className="p-sm px-md font-medium text-primary capitalize">{srv.category}</td>
-                    <td className="p-sm px-md font-semibold text-on-surface">{srv.name}</td>
-                    <td className="p-sm px-md text-on-surface-variant max-w-xs truncate">{srv.description}</td>
-                    <td className="p-sm px-md text-center font-medium">{srv.quantity}</td>
-                    <td className="p-sm px-md text-center">
-                      <button
-                        onClick={() => handleToggleService(srv)}
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-all ${
-                          srv.isActive ? 'bg-[#E8F5E9] text-[#27AE60]' : 'bg-[#FDEDEC] text-[#C0392B]'
-                        }`}
-                        title="Clic para cambiar estado Activo/Inactivo"
-                      >
-                        {srv.isActive ? 'Activo' : 'Inactivo'}
-                      </button>
-                    </td>
-                    <td className="p-sm px-md text-right font-semibold text-primary">${srv.price.toLocaleString('es-AR')}</td>
-                    <td className="p-sm px-md text-center text-on-surface-variant">{srv.priceLastUpdated}</td>
+                {servicesCatalog.map((srv) => {
+                  const statusInfo = getPriceUpdateStatusInfo(srv.priceLastUpdated, srv.updateFrequencyDays || 30);
+                  return (
+                    <tr key={srv.id} className="bg-surface-container-lowest hover:bg-surface-container transition-colors group border-b border-surface-container-low">
+                      <td className="p-sm px-md font-medium text-primary capitalize">{srv.category}</td>
+                      <td className="p-sm px-md font-semibold text-on-surface">{srv.name}</td>
+                      <td className="p-sm px-md text-on-surface-variant max-w-xs truncate">{srv.description}</td>
+                      <td className="p-sm px-md text-center font-medium">{srv.quantity}</td>
+                      <td className="p-sm px-md text-center">
+                        <button
+                          onClick={() => handleToggleService(srv)}
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-all ${
+                            srv.isActive ? 'bg-[#E8F5E9] text-[#27AE60]' : 'bg-[#FDEDEC] text-[#C0392B]'
+                          }`}
+                          title="Clic para cambiar estado Activo/Inactivo"
+                        >
+                          {srv.isActive ? 'Activo' : 'Inactivo'}
+                        </button>
+                      </td>
+                      <td className="p-sm px-md text-right font-semibold text-primary">${srv.price.toLocaleString('es-AR')}</td>
+                      <td className="p-sm px-md text-center text-on-surface-variant">{srv.priceLastUpdated}</td>
+                      <td className="p-sm px-md text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            Cada {srv.updateFrequencyDays || 30} días
+                          </span>
+                          {statusInfo.isExpired ? (
+                            <span className="inline-flex px-2 py-0.5 bg-[#FDEDEC] text-[#C0392B] border border-red-200 rounded-full text-[10px] font-semibold" title={`Vencido (hoy > última actualización + ${srv.updateFrequencyDays || 30} días)`}>
+                              Vencido ({statusInfo.daysDifference}d)
+                            </span>
+                          ) : (
+                            <span className="inline-flex px-2 py-0.5 bg-[#E8F5E9] text-[#27AE60] border border-green-200 rounded-full text-[10px] font-semibold" title="Precio actualizado dentro de la frecuencia recomendada">
+                              Vigente
+                            </span>
+                          )}
+                        </div>
+                      </td>
                     <td className="p-sm px-md text-center text-on-surface-variant">{srv.lastSoldAt || 'Sin ventas'}</td>
                     <td className="p-sm px-md text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -439,7 +474,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                       </div>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           </div>
@@ -677,6 +713,20 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-semibold text-base"
               />
 
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización del precio *</label>
+              <select
+                value={serviceFormFrequency}
+                onChange={(e) => setServiceFormFrequency(Number(e.target.value))}
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
+              >
+                <option value={15}>Cada 15 días</option>
+                <option value={30}>Cada 30 días (1 mes)</option>
+                <option value={60}>Cada 60 días (2 meses)</option>
+                <option value={90}>Cada 90 días (3 meses)</option>
+                <option value={180}>Cada 180 días (6 meses)</option>
+                <option value={365}>Cada 365 días (1 año)</option>
+              </select>
+
               <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm cursor-pointer">
                 {selectedService ? 'Guardar Cambios del Servicio' : 'Crear Servicio'}
               </button>
@@ -707,6 +757,19 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         }}
         onCancel={() => setDeleteConfirm({ isOpen: false, type: 'product', id: '', name: '' })}
       />
+
+      {/* Drawer de Entrada con Factura */}
+      {showInvoiceDrawer && (
+        <NewInvoiceDrawer
+          isOpen={showInvoiceDrawer}
+          onClose={() => setShowInvoiceDrawer(false)}
+          onSaveBill={(billData) => {
+            if (onAddBill) onAddBill(billData);
+            setShowInvoiceDrawer(false);
+          }}
+          products={products}
+        />
+      )}
     </div>
   );
 };

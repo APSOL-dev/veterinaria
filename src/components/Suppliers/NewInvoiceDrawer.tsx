@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { SupplierBill, SupplierCreditTerm } from '../../domain/types';
+import { SupplierBill, SupplierBillItem, SupplierCreditTerm, Product } from '../../domain/types';
 import { sendInvoiceWebhook, parseN8nInvoiceResponse } from '../../domain/services/webhookService';
 import { resetInvoiceDrawerState, shouldShowResetButton, getSupplierCreditTerms, calculateDueDateFromTerm } from '../../domain/services/supplierService';
 import { uploadInvoiceVoucherToSupabase } from '../../domain/services/supabaseService';
+import { initialProducts } from '../../data/mockData';
 
 interface NewInvoiceDrawerProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface NewInvoiceDrawerProps {
   editingBill?: SupplierBill | null;
   registeredSuppliers?: string[];
   creditTerms?: SupplierCreditTerm[];
+  products?: Product[];
 }
 
 export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
@@ -21,8 +23,10 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
   onUpdateBill,
   editingBill,
   registeredSuppliers = ['Distribuidora FarmaVet SA', 'Laboratorios Zoonosis SRL', 'Insumos Médicos del Plata', 'Distribuidora Veterinaria Sur'],
-  creditTerms = []
+  creditTerms = [],
+  products = []
 }) => {
+  const availableProducts = products && products.length > 0 ? products : initialProducts;
   const [loadMode, setLoadMode] = useState<'automatic' | 'manual'>('automatic');
 
   // Supplier & Company info
@@ -42,10 +46,74 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
   const [currency, setCurrency] = useState<string>('AR$ (Pesos)');
   const [totalAmount, setTotalAmount] = useState<number | ''>('');
   const [billStatus, setBillStatus] = useState<'paid' | 'pending'>('pending');
+  const [billItems, setBillItems] = useState<SupplierBillItem[]>([]);
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isProcessed, setIsProcessed] = useState<boolean>(false);
   const [isSubmittingWebhook, setIsSubmittingWebhook] = useState<boolean>(false);
+
+  const updateTotalsFromItems = (items: SupplierBillItem[], currentTax: number | '', currentPerceptions: number | '') => {
+    if (items.length === 0) return;
+    const itemsSubtotal = items.reduce((acc, curr) => acc + (curr.subtotal || 0), 0);
+    setSubtotal(itemsSubtotal);
+    const tax = Number(currentTax) || 0;
+    const perc = Number(currentPerceptions) || 0;
+    setTotalAmount(itemsSubtotal + tax + perc);
+  };
+
+  const handleAddBillItem = () => {
+    const defaultProduct = availableProducts.length > 0 ? availableProducts[0] : null;
+    const newItem: SupplierBillItem = {
+      id: 'item-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      productId: defaultProduct?.id || '',
+      productName: defaultProduct?.name || '',
+      category: defaultProduct?.category,
+      quantity: 1,
+      unitCost: defaultProduct?.price || 0,
+      subtotal: defaultProduct?.price || 0,
+      updateCatalogPrice: false
+    };
+    const updated = [...billItems, newItem];
+    setBillItems(updated);
+    updateTotalsFromItems(updated, taxAmount, perceptions);
+  };
+
+  const handleRemoveBillItem = (id: string) => {
+    const updated = billItems.filter(item => item.id !== id);
+    setBillItems(updated);
+    updateTotalsFromItems(updated, taxAmount, perceptions);
+  };
+
+  const handleBillItemChange = (id: string, field: keyof SupplierBillItem, value: any) => {
+    const updated = billItems.map(item => {
+      if (item.id !== id) return item;
+
+      let updatedItem = { ...item, [field]: value };
+
+      if (field === 'productId') {
+        const selectedProd = availableProducts.find(p => p.id === value);
+        if (selectedProd) {
+          updatedItem.productName = selectedProd.name;
+          updatedItem.category = selectedProd.category;
+          updatedItem.unitCost = selectedProd.price;
+          updatedItem.subtotal = item.quantity * selectedProd.price;
+        } else {
+          updatedItem.productId = undefined;
+        }
+      }
+
+      if (field === 'quantity' || field === 'unitCost') {
+        const qty = field === 'quantity' ? Number(value) : item.quantity;
+        const cost = field === 'unitCost' ? Number(value) : item.unitCost;
+        updatedItem.subtotal = (qty || 0) * (cost || 0);
+      }
+
+      return updatedItem;
+    });
+
+    setBillItems(updated);
+    updateTotalsFromItems(updated, taxAmount, perceptions);
+  };
 
   const handleResetForm = () => {
     const fresh = resetInvoiceDrawerState();
@@ -64,6 +132,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
     setCurrency(fresh.currency);
     setTotalAmount(fresh.totalAmount);
     setBillStatus(fresh.billStatus);
+    setBillItems([]);
     setIsProcessing(fresh.isProcessing);
     setIsProcessed(fresh.isProcessed);
   };
@@ -84,6 +153,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
       setCurrency(editingBill.currency || 'AR$ (Pesos)');
       setTotalAmount(editingBill.amount !== undefined ? editingBill.amount : '');
       setBillStatus(editingBill.status || 'pending');
+      setBillItems(editingBill.items || []);
       setIsProcessed(true);
     } else {
       handleResetForm();
@@ -191,10 +261,11 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
       perceptions: Number(perceptions) || 0,
       currency,
       amount: finalAmount,
-      itemsCount: 1,
+      itemsCount: billItems.length || 1,
       status: billStatus,
       voucherName,
-      voucherUrl
+      voucherUrl,
+      items: billItems
     };
 
     setIsSubmittingWebhook(true);
@@ -221,7 +292,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex justify-end animate-fade-in">
-      <div className="w-full max-w-md md:max-w-lg bg-[#1D1426] text-slate-100 h-full flex flex-col shadow-2xl border-l border-purple-900/50 font-body-md text-xs">
+      <div className="w-full max-w-lg md:max-w-xl lg:max-w-2xl bg-[#1D1426] text-slate-100 h-full flex flex-col shadow-2xl border-l border-purple-900/50 font-body-md text-xs">
         {/* Header */}
         <div className="flex justify-between items-center px-lg py-md border-b border-purple-900/40 bg-[#2B1D3A]">
           <div className="flex items-center gap-xs font-bold text-sm text-white">
@@ -447,10 +518,117 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                     type="number"
                     step="0.01"
                     value={taxAmount}
-                    onChange={(e) => setTaxAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                    onChange={(e) => {
+                      const newTax = e.target.value === '' ? '' : Number(e.target.value);
+                      setTaxAmount(newTax);
+                      updateTotalsFromItems(billItems, newTax, perceptions);
+                    }}
                     className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
                   />
                 </div>
+              </div>
+
+              {/* Mercadería Recibida / Productos */}
+              <div className="flex flex-col gap-xs p-md bg-[#160E1E] rounded-xl border border-purple-900/60 mt-xs">
+                <div className="flex justify-between items-center border-b border-purple-900/40 pb-2 mb-xs">
+                  <label className="text-xs font-semibold text-[#CBB5E2] flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px]">inventory_2</span>
+                    <span>Productos / Mercadería recibida</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAddBillItem}
+                    className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">add</span>
+                    <span>Agregar ítem</span>
+                  </button>
+                </div>
+
+                {billItems.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 italic text-center py-2">
+                    No hay productos vinculados. Haz clic en "+ Agregar ítem" para asociar la entrada de stock a esta factura.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {billItems.map((item) => (
+                      <div key={item.id} className="p-3 bg-[#251733] rounded-xl border border-purple-900/40 flex flex-col gap-2 shadow-xs">
+                        <div className="flex items-center gap-2 w-full">
+                          <select
+                            value={item.productId || ''}
+                            onChange={(e) => handleBillItemChange(item.id, 'productId', e.target.value)}
+                            className="flex-1 min-w-0 bg-[#160E1E] border border-purple-900/60 rounded-lg p-2 text-xs text-white outline-none focus:border-[#9A7DB8] cursor-pointer truncate"
+                          >
+                            <option value="">-- Ingreso libre / Seleccionar producto --</option>
+                            {availableProducts.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} (Stock actual: {p.currentStock})
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBillItem(item.id)}
+                            className="shrink-0 bg-[#160E1E] hover:bg-red-950/60 text-slate-400 hover:text-red-400 border border-purple-900/60 hover:border-red-900/60 p-2 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                            title="Eliminar ítem"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
+
+                        {!item.productId && (
+                          <input
+                            type="text"
+                            placeholder="Nombre del producto / ítem"
+                            value={item.productName}
+                            onChange={(e) => handleBillItemChange(item.id, 'productName', e.target.value)}
+                            className="bg-[#160E1E] border border-purple-900/60 rounded-lg p-1.5 text-xs text-white outline-none"
+                          />
+                        )}
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-[10px] text-slate-300 block">Cant. recibida</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => handleBillItemChange(item.id, 'quantity', e.target.value)}
+                              className="w-full bg-[#160E1E] border border-purple-900/60 rounded-lg p-1.5 text-xs text-white text-center outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-300 block">Costo unit. ($)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={item.unitCost}
+                              onChange={(e) => handleBillItemChange(item.id, 'unitCost', e.target.value)}
+                              className="w-full bg-[#160E1E] border border-purple-900/60 rounded-lg p-1.5 text-xs text-white text-right outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-300 block">Subtotal ($)</label>
+                            <div className="p-1.5 text-right font-semibold text-[#CBB5E2]">
+                              ${(item.subtotal || 0).toLocaleString('es-AR')}
+                            </div>
+                          </div>
+                        </div>
+
+                        <label className="flex items-center gap-1.5 text-[10px] text-purple-200 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!!item.updateCatalogPrice}
+                            onChange={(e) => handleBillItemChange(item.id, 'updateCatalogPrice', e.target.checked)}
+                            className="rounded accent-[#9A7DB8]"
+                          />
+                          <span>Actualizar precio en el catálogo</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Perceptions & Currency */}

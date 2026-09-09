@@ -13,5 +13,11 @@ El módulo **Proveedores** integra el control de facturas comerciales de compra,
    - **Libro Diario:** Muestra Nº Comprobante, Comprobante Adjunto, Estado, Proveedor, Fecha, Debe, Haber y Saldo.
    - **Botón "Configurar Plazos":** Permite acceder al submódulo de Plazos.
 
+3. **Entrada de Stock Unificada con Carga de Factura:**
+   - **Formulario Multilínea (`NewInvoiceDrawer`):** Permite registrar la factura del proveedor asociando $N$ productos del catálogo de inventario con sus cantidades recibidas y precios de costo unitarios.
+   - **Actualización Automática de Inventario:** Al guardar la factura, el sistema actualiza de manera simultánea el stock físico (`currentStock += cantidad`) y opcionalmente el precio de catálogo de cada producto, registrando el comprobante en Cuentas Corrientes.
+   - **Doble Acceso:** Disponible desde el botón *"Cargar Nueva Factura"* en Proveedores y desde *"Entrada con factura"* en Inventario.
+
 **Casos borde conocidos:**
 - **Saldado de Facturas en Tiempo Real:** Al registrar el pago desde Cuentas Corrientes, el saldo corriente del proveedor y el estado del comprobante se actualizan de forma inmediata a "Pagado" o "Pago Parcial".
+- **Entrada de Mercadería sin Productos Vinculados:** Si una factura no posee ítems seleccionados del catálogo (ej. gastos generales o servicios), se registra únicamente el comprobante en Cuentas Corrientes sin afectar existencias físicas.

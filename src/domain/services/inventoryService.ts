@@ -1,4 +1,4 @@
-import { Product, StockMovement } from '../types';
+import { Product, StockMovement, SupplierBill } from '../types';
 
 export function recordStockEntry(
   product: Product,
@@ -92,4 +92,43 @@ export function findProductByBarcode(products: Product[], barcode: string): Prod
 
 export function getLowStockAlerts(products: Product[]): Product[] {
   return products.filter(p => p.currentStock <= p.minStock);
+}
+
+export function processStockReceiptFromBill(bill: SupplierBill, products: Product[]): Product[] {
+  if (!bill.items || bill.items.length === 0) {
+    return products;
+  }
+
+  const productMap = new Map<string, { quantityToAdd: number; newPrice?: number }>();
+
+  for (const item of bill.items) {
+    if (item.quantity <= 0) continue;
+    
+    // Match by productId if provided, or fallback to exact name matching
+    const matched = item.productId 
+      ? products.find(p => p.id === item.productId)
+      : products.find(p => p.name.toLowerCase() === item.productName.toLowerCase());
+
+    if (matched) {
+      const existing = productMap.get(matched.id) || { quantityToAdd: 0 };
+      const nextQuantity = existing.quantityToAdd + item.quantity;
+      const nextPrice = item.updateCatalogPrice && item.unitCost > 0 ? item.unitCost : existing.newPrice;
+      productMap.set(matched.id, { quantityToAdd: nextQuantity, newPrice: nextPrice });
+    }
+  }
+
+  if (productMap.size === 0) {
+    return products;
+  }
+
+  return products.map(p => {
+    const updateInfo = productMap.get(p.id);
+    if (!updateInfo) return p;
+
+    return {
+      ...p,
+      currentStock: p.currentStock + updateInfo.quantityToAdd,
+      price: updateInfo.newPrice !== undefined ? updateInfo.newPrice : p.price
+    };
+  });
 }

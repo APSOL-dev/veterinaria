@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { SupplierBill, SupplierQuote, ExpenseRecord, SupplierPayment, SupplierPaymentMethod, SupplierCreditTerm } from '../../domain/types';
+import { SupplierBill, SupplierQuote, ExpenseRecord, SupplierPayment, SupplierPaymentMethod, SupplierCreditTerm, Product } from '../../domain/types';
 import { calculateSupplierTotals, calculateMonthlyExpenditureProjections, groupProjectionsByYear, formatInvoiceFullNumber, filterBillsByDateRange, filterPaymentsByDateRange, getDefaultDateRange } from '../../domain/services/supplierService';
 import { filterExpenseRecords, calculateExpenseTotals } from '../../domain/services/expenseService';
 import { getTotalPaidForBill, getRemainingBalance } from '../../domain/services/paymentService';
@@ -18,6 +18,7 @@ interface SuppliersViewProps {
   payments?: SupplierPayment[];
   creditTerms?: SupplierCreditTerm[];
   monthlyBudgets?: Record<string, number>;
+  products?: Product[];
   activeSubModule: 'facturas' | 'presupuestos' | 'pagos' | 'cuentas' | 'plazos';
   onAddBill: (bill: Omit<SupplierBill, 'id'>) => void;
   onUpdateBill?: (id: string, bill: Omit<SupplierBill, 'id'>) => void;
@@ -40,6 +41,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   payments = [],
   creditTerms = [],
   monthlyBudgets = {},
+  products = [],
   activeSubModule,
   onAddBill,
   onUpdateBill,
@@ -1027,6 +1029,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
         onUpdateBill={onUpdateBill}
         editingBill={editingBill}
         creditTerms={creditTerms}
+        products={products}
       />
 
       {/* Register / Edit Expense Modal */}

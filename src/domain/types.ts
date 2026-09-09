@@ -163,7 +163,19 @@ export interface ServiceCatalogItem {
   isActive: boolean;
   price: number;
   priceLastUpdated: string; // YYYY-MM-DD
+  updateFrequencyDays?: number; // Frecuencia de actualización recomendada en días
   lastSoldAt?: string; // YYYY-MM-DD
+}
+
+export interface SupplierBillItem {
+  id: string;
+  productId?: string;
+  productName: string;
+  category?: ProductCategory;
+  quantity: number;
+  unitCost: number;
+  subtotal: number;
+  updateCatalogPrice?: boolean;
 }
 
 export interface SupplierBill {
@@ -185,6 +197,7 @@ export interface SupplierBill {
   status: 'paid' | 'pending';
   voucherName?: string;
   voucherUrl?: string;
+  items?: SupplierBillItem[];
 }
 
 export interface SupplierQuote {

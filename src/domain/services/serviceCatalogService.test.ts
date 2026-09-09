@@ -3,7 +3,9 @@ import { ServiceCatalogItem } from '../types';
 import { 
   updateServicePrice, 
   toggleServiceStatus, 
-  recordServiceSale 
+  recordServiceSale,
+  isPriceUpdateExpired,
+  getPriceUpdateStatusInfo
 } from './serviceCatalogService';
 
 const mockService: ServiceCatalogItem = {
@@ -36,5 +38,27 @@ describe('serviceCatalogService', () => {
   it('recordServiceSale should update lastSoldAt', () => {
     const sold = recordServiceSale(mockService, '2026-08-26');
     expect(sold.lastSoldAt).toBe('2026-08-26');
+  });
+
+  describe('isPriceUpdateExpired & getPriceUpdateStatusInfo', () => {
+    it('detects when price update is expired based on frequency days', () => {
+      // Last updated 2026-08-01, frequency 30 days -> Due 2026-08-31. Today 2026-09-09 -> EXPIRED
+      const isExpired = isPriceUpdateExpired('2026-08-01', 30, '2026-09-09');
+      expect(isExpired).toBe(true);
+
+      const status = getPriceUpdateStatusInfo('2026-08-01', 30, '2026-09-09');
+      expect(status.isExpired).toBe(true);
+      expect(status.statusLabel).toBe('Vencido');
+    });
+
+    it('detects when price update is still valid', () => {
+      // Last updated 2026-09-01, frequency 30 days -> Due 2026-10-01. Today 2026-09-09 -> VALID
+      const isExpired = isPriceUpdateExpired('2026-09-01', 30, '2026-09-09');
+      expect(isExpired).toBe(false);
+
+      const status = getPriceUpdateStatusInfo('2026-09-01', 30, '2026-09-09');
+      expect(status.isExpired).toBe(false);
+      expect(status.statusLabel).toBe('Vigente');
+    });
   });
 });

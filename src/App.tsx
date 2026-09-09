@@ -52,7 +52,7 @@ import {
 } from './domain/types';
 
 import { createDosisRecord } from './domain/services/vaccineService';
-import { getLowStockAlerts, recordStockEntry, recordStockAdjustment } from './domain/services/inventoryService';
+import { getLowStockAlerts, recordStockEntry, recordStockAdjustment, processStockReceiptFromBill } from './domain/services/inventoryService';
 import { processCheckout } from './domain/services/billingService';
 import { createNewPatientRecord } from './domain/services/patientService';
 import { createSupplierBillRecord, createSupplierQuoteRecord, saveSupplierCreditTerm } from './domain/services/supplierService';
@@ -444,6 +444,11 @@ export const App: React.FC = () => {
   const handleAddSupplierBill = async (billData: Omit<SupplierBill, 'id'>) => {
     const bill = createSupplierBillRecord(billData);
     setSupplierBills([bill, ...supplierBills]);
+
+    if (bill.items && bill.items.length > 0) {
+      setProducts(prevProducts => processStockReceiptFromBill(bill, prevProducts));
+    }
+
     const res = await insertSupplierBillToSupabase(bill);
     setNotifModal({
       isOpen: true,
@@ -457,6 +462,12 @@ export const App: React.FC = () => {
 
   const handleUpdateSupplierBill = async (id: string, billData: Omit<SupplierBill, 'id'>) => {
     setSupplierBills(prev => prev.map(b => b.id === id ? { ...billData, id } : b));
+    
+    const updatedBill = { ...billData, id };
+    if (updatedBill.items && updatedBill.items.length > 0) {
+      setProducts(prevProducts => processStockReceiptFromBill(updatedBill, prevProducts));
+    }
+
     const res = await updateSupplierBillInSupabase(id, billData);
     setNotifModal({
       isOpen: true,
@@ -665,6 +676,7 @@ export const App: React.FC = () => {
               expenses={expenses}
               payments={payments}
               monthlyBudgets={monthlyBudgets}
+              products={products}
               activeSubModule={
                 activeSubmodule === 'presupuestos'
                   ? 'presupuestos'
@@ -815,6 +827,7 @@ export const App: React.FC = () => {
               onDeleteServiceCatalogItem={handleDeleteServiceFromCatalog}
               onAdjustStock={handleAdjustStock}
               onUpdateServicesCatalog={setServicesCatalog}
+              onAddBill={handleAddSupplierBill}
             />
           )}
 
