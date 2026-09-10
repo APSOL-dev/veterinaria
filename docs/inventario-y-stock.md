@@ -9,6 +9,8 @@ Permite administrar tanto el inventario de productos físicos (medicamentos, ali
 - **Productos Físicos:** 
   - Control de stock actual, mínimo y alertas de reposición.
   - Registro de entrada de mercadería de proveedores.
+  - Registro de entrada manual de mercadería y entrada con factura de proveedores.
+  - Sincronización inmediata de cambios de stock y alta de productos con la base de datos Supabase (`vetsoft_productos`).
   - Ajuste manual de stock por roturas o consumos internos.
 - **Catálogo de Servicios:**
   - Clasificación de servicios por categoría (`Clínica`, `Cirugía`, `Peluquería`, `Laboratorio`, `Ecografía / Rayos`).
@@ -21,6 +23,8 @@ Permite administrar tanto el inventario de productos físicos (medicamentos, ali
 **Casos borde conocidos:**
 - Intento de facturación de servicios inactivos: El sistema alerta y requiere activación previa en el catálogo.
 - Precios con frecuencia vencida: Se resalta visualmente en la tabla con la cantidad de días transcurridos desde el vencimiento para recordar la actualización de tarifas.
+- Selección por omisión en Entrada Manual: Al abrir la entrada manual de mercadería, se precarga automáticamente el primer producto si no se ha cambiado el selector para asegurar la confirmación del ingreso.
+- Coincidencia de nombres en facturas: La recepción por factura realiza una comparación limpia (eliminando espacios al inicio y final) para actualizar el stock del producto correcto en el inventario.
 
 **Restricciones o supuestos:**
 - La actualización de precios de servicios actualiza automáticamente la fecha del registro al día actual y resetea el ciclo de vigencia.

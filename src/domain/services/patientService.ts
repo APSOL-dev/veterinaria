@@ -113,3 +113,19 @@ export function updatePatientRecord(
     };
   });
 }
+
+export function shouldAutoTriggerPdfOnSave(
+  generatePdfFlag?: boolean, 
+  prescriptionText?: string
+): boolean {
+  return Boolean(generatePdfFlag || (prescriptionText && prescriptionText.trim().length > 0));
+}
+
+export function formatConsultationPdfTitle(
+  patientName: string, 
+  documentType: string = 'Receta'
+): string {
+  const sanitizedName = (patientName || 'Paciente').replace(/\s+/g, '_');
+  const sanitizedType = (documentType || 'Documento').replace(/\s+/g, '_');
+  return `Receta_${sanitizedType}_${sanitizedName}.pdf`;
+}

@@ -170,4 +170,24 @@ describe('webhookService', () => {
     expect(parsed.supplierName).toBe('FEDERAL EXPRESS CORP.');
     expect(parsed.cuit).toBe('30594494187');
   });
+
+  it('parseN8nInvoiceResponse should parse items array from payload if present', () => {
+    const webhookOutputWithItems = {
+      success: true,
+      supplierName: 'FarmaVet SA',
+      items: [
+        { productName: 'Meloxicam Inyectable 50ml', quantity: 10, unitCost: 18200 },
+        { productName: 'Royal Canin Gastrointestinal 2kg', quantity: 15, unitCost: 24990 }
+      ]
+    };
+
+    const parsed = parseN8nInvoiceResponse(webhookOutputWithItems);
+
+    expect(parsed.items).toBeDefined();
+    expect(parsed.items).toHaveLength(2);
+    expect(parsed.items![0].productName).toBe('Meloxicam Inyectable 50ml');
+    expect(parsed.items![0].quantity).toBe(10);
+    expect(parsed.items![1].productName).toBe('Royal Canin Gastrointestinal 2kg');
+    expect(parsed.items![1].quantity).toBe(15);
+  });
 });

@@ -9,7 +9,9 @@ import {
   mapRowToGroomingAppointment,
   mapRowToSupplierPayment,
   mapRowToVaccineCatalogItem,
-  mapRowToServiceCatalogItem
+  mapRowToServiceCatalogItem,
+  mapRowToVaccineDosis,
+  mapRowToSupplierQuote
 } from './supabaseService';
 
 describe('supabaseService row mappers', () => {
@@ -219,4 +221,46 @@ describe('supabaseService row mappers', () => {
     expect(srv.price).toBe(15000);
     expect(srv.isActive).toBe(true);
   });
+
+  it('should map DB row to VaccineDosis domain model', () => {
+    const rawRow = {
+      id: 'dosis-1',
+      patientId: 'pat-1',
+      vaccineId: 'vac-1',
+      vaccineName: 'Antirrábica',
+      applicationDate: '2026-09-01',
+      expirationDate: '2027-09-01',
+      vetName: 'Dr. Silva',
+      batch: 'LOTE-123',
+      status: 'ok'
+    };
+
+    const dosis = mapRowToVaccineDosis(rawRow);
+
+    expect(dosis.id).toBe('dosis-1');
+    expect(dosis.patientId).toBe('pat-1');
+    expect(dosis.vaccineName).toBe('Antirrábica');
+    expect(dosis.applicationDate).toBe('2026-09-01');
+    expect(dosis.batch).toBe('LOTE-123');
+  });
+
+  it('should map DB row to SupplierQuote domain model', () => {
+    const rawRow = {
+      id: 'quote-1',
+      supplierName: 'Distribuidora Pet',
+      title: 'Presupuesto Alimento',
+      date: '2026-09-05',
+      amount: 150000,
+      status: 'draft'
+    };
+
+    const quote = mapRowToSupplierQuote(rawRow);
+
+    expect(quote.id).toBe('quote-1');
+    expect(quote.supplierName).toBe('Distribuidora Pet');
+    expect(quote.title).toBe('Presupuesto Alimento');
+    expect(quote.amount).toBe(150000);
+    expect(quote.status).toBe('draft');
+  });
 });
+

@@ -1,5 +1,16 @@
-import { SupplierBill, SupplierQuote, MonthlyExpenditureProjection, SupplierPayment } from '../types';
-import { getTotalPaidForBill } from './paymentService';
+import { 
+  SupplierBill, 
+  SupplierBillItem, 
+  SupplierQuote, 
+  MonthlyExpenditureProjection, 
+  SupplierPayment, 
+  YearlyExpenditureProjection, 
+  SupplierCreditTerm, 
+  SupplierAccountMovement,
+  ExpenseRecord,
+  ExpenseBreakdownItem
+} from '../types';
+import { getTotalPaidForBill, getRemainingBalance } from './paymentService';
 
 export function createSupplierBillRecord(input: {
   supplierName: string;
@@ -17,6 +28,9 @@ export function createSupplierBillRecord(input: {
   amount: number;
   itemsCount: number;
   status: 'paid' | 'pending';
+  voucherName?: string;
+  voucherUrl?: string;
+  items?: SupplierBillItem[];
 }): SupplierBill {
   const safeAmount = Number(input.amount) || Number(input.subtotal) || 0;
   return {
@@ -34,8 +48,11 @@ export function createSupplierBillRecord(input: {
     perceptions: Number(input.perceptions) || 0,
     currency: input.currency || 'AR$ (Pesos)',
     amount: isNaN(safeAmount) ? 0 : safeAmount,
-    itemsCount: Number(input.itemsCount) || 1,
-    status: input.status || 'pending'
+    itemsCount: Number(input.itemsCount) || (input.items ? input.items.length : 1),
+    status: input.status || 'pending',
+    voucherName: input.voucherName,
+    voucherUrl: input.voucherUrl,
+    items: input.items
   };
 }
 
@@ -58,8 +75,11 @@ export function validateSupplierBillInput(input: Partial<SupplierBill>): {
     perceptions: input.perceptions,
     currency: input.currency,
     amount: Number(input.amount) || Number(input.subtotal) || 0,
-    itemsCount: Number(input.itemsCount) || 1,
-    status: input.status || 'pending'
+    itemsCount: Number(input.itemsCount) || (input.items ? input.items.length : 1),
+    status: input.status || 'pending',
+    voucherName: input.voucherName,
+    voucherUrl: input.voucherUrl,
+    items: input.items
   });
 
   return {
@@ -220,19 +240,34 @@ const MONTH_NAMES = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
 ];
 
+
+
 export function calculateMonthlyExpenditureProjections(
   bills: SupplierBill[],
   monthlyBudgets: Record<string, number> = {},
   payments: SupplierPayment[] = [],
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  creditTerms: SupplierCreditTerm[] = [],
+  expenses: ExpenseRecord[] = []
 ): MonthlyExpenditureProjection[] {
-  const aggregated: Record<string, { totalAdeudado: number; totalPagado: number }> = {};
+  const aggregated: Record<string, { totalAdeudado: number; totalPagado: number; totalGastos: number }> = {};
+  const supplierAggregated: Record<string, Record<string, { totalAdeudado: number; totalPagado: number }>> = {};
+  const expenseCategoryAggregated: Record<string, Record<string, number>> = {};
 
   const ensureMonthKey = (key: string) => {
     if (!aggregated[key]) {
-      aggregated[key] = { totalAdeudado: 0, totalPagado: 0 };
+      aggregated[key] = { totalAdeudado: 0, totalPagado: 0, totalGastos: 0 };
     }
+  };
+
+  const ensureSupplierMonth = (key: string, suppName?: string) => {
+    const supp = (suppName && suppName.trim()) || 'Proveedor General';
+    if (!supplierAggregated[key]) supplierAggregated[key] = {};
+    if (!supplierAggregated[key][supp]) {
+      supplierAggregated[key][supp] = { totalAdeudado: 0, totalPagado: 0 };
+    }
+    return supplierAggregated[key][supp];
   };
 
   // Process payments
@@ -242,28 +277,77 @@ export function calculateMonthlyExpenditureProjections(
       const monthKey = payment.date.slice(0, 7);
       ensureMonthKey(monthKey);
       aggregated[monthKey].totalPagado += payment.amount;
+      ensureSupplierMonth(monthKey, payment.supplierName).totalPagado += payment.amount;
+    });
+  }
+
+  // Process expenses (egresos operativos)
+  if (expenses.length > 0) {
+    expenses.forEach(exp => {
+      if (!exp.date) return;
+      const monthKey = exp.date.slice(0, 7);
+      ensureMonthKey(monthKey);
+      aggregated[monthKey].totalGastos += exp.amount;
+
+      const cat = (exp.category && exp.category.trim()) || 'Gastos Varios';
+      if (!expenseCategoryAggregated[monthKey]) expenseCategoryAggregated[monthKey] = {};
+      if (!expenseCategoryAggregated[monthKey][cat]) expenseCategoryAggregated[monthKey][cat] = 0;
+      expenseCategoryAggregated[monthKey][cat] += exp.amount;
     });
   }
 
   // Process bills
   bills.forEach(bill => {
-    const relevantDate = (bill.paymentDate && bill.paymentDate.trim()) || bill.date;
-    if (!relevantDate) return;
-    const monthKey = relevantDate.slice(0, 7);
-    ensureMonthKey(monthKey);
-
+    let paidForBill = 0;
     if (payments.length > 0) {
-      const paidForBill = payments.filter(p => p.billId === bill.id).reduce((s, p) => s + p.amount, 0);
-      const remaining = Math.max(0, bill.amount - paidForBill);
-      if (remaining > 0) {
-        aggregated[monthKey].totalAdeudado += remaining;
+      paidForBill = payments.filter(p => p.billId === bill.id).reduce((s, p) => s + p.amount, 0);
+    } else if (bill.status === 'paid') {
+      paidForBill = bill.amount || 0;
+      const paidDate = (bill.paymentDate && bill.paymentDate.trim()) || bill.date;
+      if (paidDate) {
+        const monthKey = paidDate.slice(0, 7);
+        ensureMonthKey(monthKey);
+        aggregated[monthKey].totalPagado += bill.amount || 0;
+        ensureSupplierMonth(monthKey, bill.supplierName).totalPagado += bill.amount || 0;
       }
+    }
+
+    const remaining = Math.max(0, (bill.amount || 0) - paidForBill);
+    if (remaining <= 0) return;
+
+    const term = getSupplierCreditTerms(bill.supplierName, creditTerms);
+    const nonZeroPercents = [
+      term.contadoPercent || 0,
+      term.dias30Percent || 0,
+      term.dias60Percent || 0,
+      term.dias90Percent || 0
+    ].filter(p => p > 0);
+
+    const hasSplit = nonZeroPercents.length > 1;
+
+    if (hasSplit && bill.date) {
+      const splits = [
+        { percent: term.contadoPercent || 0, days: 0 },
+        { percent: term.dias30Percent || 0, days: 30 },
+        { percent: term.dias60Percent || 0, days: 60 },
+        { percent: term.dias90Percent || 0, days: 90 }
+      ].filter(s => s.percent > 0);
+
+      splits.forEach(s => {
+        const portionAmount = remaining * (s.percent / 100);
+        const dueDate = calculateDueDateFromTerm(bill.date, s.days);
+        const monthKey = dueDate.slice(0, 7);
+        ensureMonthKey(monthKey);
+        aggregated[monthKey].totalAdeudado += portionAmount;
+        ensureSupplierMonth(monthKey, bill.supplierName).totalAdeudado += portionAmount;
+      });
     } else {
-      if (bill.status === 'pending') {
-        aggregated[monthKey].totalAdeudado += bill.amount;
-      } else if (bill.status === 'paid') {
-        aggregated[monthKey].totalPagado += bill.amount;
-      }
+      const relevantDate = (bill.paymentDate && bill.paymentDate.trim()) || bill.date;
+      if (!relevantDate) return;
+      const monthKey = relevantDate.slice(0, 7);
+      ensureMonthKey(monthKey);
+      aggregated[monthKey].totalAdeudado += remaining;
+      ensureSupplierMonth(monthKey, bill.supplierName).totalAdeudado += remaining;
     }
   });
 
@@ -309,10 +393,11 @@ export function calculateMonthlyExpenditureProjections(
     const capitalizedMonth = rawMonthName.charAt(0).toUpperCase() + rawMonthName.slice(1);
     const dateLabel = `${capitalizedMonth} ${yearStr || '2026'}`;
 
-    const data = aggregated[monthKey] || { totalAdeudado: 0, totalPagado: 0 };
+    const data = aggregated[monthKey] || { totalAdeudado: 0, totalPagado: 0, totalGastos: 0 };
     const totalAdeudado = data.totalAdeudado;
     const totalPagado = data.totalPagado;
-    const total = totalAdeudado + totalPagado;
+    const totalGastos = data.totalGastos;
+    const total = totalAdeudado + totalPagado + totalGastos;
     const presupuestoTotal = monthlyBudgets[monthKey] ?? 0;
 
     const cumplimientoPercentage = presupuestoTotal > 0
@@ -326,20 +411,38 @@ export function calculateMonthlyExpenditureProjections(
       statusLevel = 'warning';
     }
 
+    const suppMap = supplierAggregated[monthKey] || {};
+    const supplierBreakdown = Object.entries(suppMap)
+      .map(([supplierName, sData]) => ({
+        supplierName,
+        totalAdeudado: sData.totalAdeudado,
+        totalPagado: sData.totalPagado,
+        total: sData.totalAdeudado + sData.totalPagado
+      }))
+      .filter(item => item.total > 0 || item.totalAdeudado > 0 || item.totalPagado > 0)
+      .sort((a, b) => b.total - a.total);
+
+    const expMap = expenseCategoryAggregated[monthKey] || {};
+    const expenseBreakdown: ExpenseBreakdownItem[] = Object.entries(expMap)
+      .map(([category, amount]) => ({ category, amount }))
+      .filter(item => item.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+
     return {
       monthKey,
       dateLabel,
       totalAdeudado,
       totalPagado,
+      totalGastos,
       total,
       presupuestoTotal,
       cumplimientoPercentage,
-      statusLevel
+      statusLevel,
+      supplierBreakdown,
+      expenseBreakdown
     };
   });
 }
-
-import { YearlyExpenditureProjection, SupplierCreditTerm, SupplierAccountMovement } from '../types';
 
 export function calculateSupplierAccountMovements(
   supplierName: string,
@@ -370,44 +473,45 @@ export function calculateSupplierAccountMovements(
     haber: number;
   }
 
-  const raw: RawMovement[] = [];
-
-  filteredBills.forEach(b => {
-    const totalPaid = getTotalPaidForBill(payments, b.id);
-    const rem = Math.max(0, (b.amount || 0) - totalPaid);
-    const isPaid = b.status === 'paid' || (totalPaid > 0 && rem === 0);
-    const isPartial = totalPaid > 0 && !isPaid;
-
-    raw.push({
-      id: b.id,
-      type: 'bill',
-      supplierName: b.supplierName || 'Proveedor',
-      date: b.date,
-      voucherNumber: formatInvoiceFullNumber(b),
-      voucherUrl: b.voucherUrl,
-      voucherName: b.voucherName,
-      status: isPaid ? 'Pagado' : isPartial ? 'Pago Parcial' : 'Pendiente',
-      lineTag: 'L2',
-      debe: b.amount || 0,
-      haber: 0
-    });
-  });
-
-  filteredPayments.forEach(p => {
-    raw.push({
+  const raw: RawMovement[] = [
+    ...filteredBills.map(b => {
+      const remaining = getRemainingBalance(b, payments);
+      const totalPaid = getTotalPaidForBill(payments, b.id);
+      let statusLabel = 'Pendiente';
+      const bStatus = (b.status as string);
+      if (remaining === 0 || bStatus === 'paid' || bStatus === 'Pagado') {
+        statusLabel = 'Pagado';
+      } else if (totalPaid > 0 || bStatus === 'partial' || bStatus === 'Pago parcial') {
+        statusLabel = 'Pago parcial';
+      }
+      return {
+        id: b.id,
+        type: 'bill' as const,
+        supplierName: b.supplierName,
+        date: b.date,
+        voucherNumber: formatInvoiceFullNumber(b),
+        voucherUrl: b.voucherUrl,
+        voucherName: b.voucherName,
+        status: statusLabel,
+        lineTag: 'Factura de Compra',
+        debe: b.amount,
+        haber: 0
+      };
+    }),
+    ...filteredPayments.map(p => ({
       id: p.id,
-      type: 'payment',
-      supplierName: p.supplierName || 'Proveedor',
+      type: 'payment' as const,
+      supplierName: p.supplierName,
       date: p.date,
-      voucherNumber: p.billInvoiceNumber ? `RECI ${p.billInvoiceNumber}` : 'RECI-0001',
+      voucherNumber: p.billInvoiceNumber ? `Pago Fact. ${p.billInvoiceNumber}` : 'Orden de Pago',
       voucherUrl: p.voucherUrl,
       voucherName: p.voucherName,
-      status: '-',
-      lineTag: 'L1',
+      status: 'Pagado',
+      lineTag: `Pago (${p.paymentMethod})`,
       debe: 0,
-      haber: p.amount || 0
-    });
-  });
+      haber: p.amount
+    }))
+  ];
 
   raw.sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date);
@@ -451,7 +555,8 @@ export function groupProjectionsByYear(projections: MonthlyExpenditureProjection
     const yearProjections = groups[year];
     const totalAdeudado = yearProjections.reduce((sum, p) => sum + p.totalAdeudado, 0);
     const totalPagado = yearProjections.reduce((sum, p) => sum + p.totalPagado, 0);
-    const total = totalAdeudado + totalPagado;
+    const totalGastos = yearProjections.reduce((sum, p) => sum + (p.totalGastos || 0), 0);
+    const total = totalAdeudado + totalPagado + totalGastos;
     const presupuestoTotal = yearProjections.reduce((sum, p) => sum + p.presupuestoTotal, 0);
 
     const cumplimientoPercentage = presupuestoTotal > 0
@@ -469,6 +574,7 @@ export function groupProjectionsByYear(projections: MonthlyExpenditureProjection
       year,
       totalAdeudado,
       totalPagado,
+      totalGastos,
       total,
       presupuestoTotal,
       cumplimientoPercentage,
@@ -608,5 +714,39 @@ export function getDefaultDateRange(referenceDateStr?: string): { startDate: str
   const endDate = `${endY}-${endM}-${endD}`;
 
   return { startDate, endDate };
+}
+
+export function calculateInvoiceSubtotalAndTax(
+  items: { subtotal?: number }[],
+  applyIva: boolean = true,
+  ivaRate: number = 0.21,
+  perceptions: number = 0
+): {
+  itemsSum: number;
+  totalAmount: number;
+  subtotal: number;
+  taxAmount: number;
+} {
+  const itemsSum = items.reduce((acc, curr) => acc + (curr.subtotal || 0), 0);
+  const totalAmount = itemsSum + (Number(perceptions) || 0);
+
+  if (!applyIva) {
+    return {
+      itemsSum,
+      totalAmount,
+      subtotal: totalAmount,
+      taxAmount: 0
+    };
+  }
+
+  const subtotal = Math.round((totalAmount / (1 + ivaRate)) * 100) / 100;
+  const taxAmount = Math.round((totalAmount - subtotal) * 100) / 100;
+
+  return {
+    itemsSum,
+    totalAmount,
+    subtotal,
+    taxAmount
+  };
 }
 

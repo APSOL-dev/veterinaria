@@ -132,10 +132,23 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
   const handleSaveConsultation = () => {
     if (!newNoteText.trim()) return;
-    onAddClinicalNote({
+    const noteData = {
       notes: newNoteText,
       prescription: showPrescriptionInput ? newPrescriptionText : undefined
-    });
+    };
+    onAddClinicalNote(noteData);
+
+    if (showPrescriptionInput && newPrescriptionText.trim()) {
+      setActivePrescriptionNote({
+        id: 'temp-' + Date.now(),
+        patientId: selectedPatient.id,
+        date: new Date().toISOString(),
+        vetName: 'Dr. J. Silva',
+        notes: newNoteText,
+        prescription: newPrescriptionText
+      });
+    }
+
     setNewNoteText('');
     setNewPrescriptionText('');
     setShowPrescriptionInput(false);
@@ -835,6 +848,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
       {activePrescriptionNote && (
         <PrescriptionModal
           isOpen={true}
+          autoPrint={false}
           onClose={() => setActivePrescriptionNote(null)}
           patient={selectedPatient}
           vetName={activePrescriptionNote.vetName}

@@ -15,4 +15,5 @@ Este documento define el flujo de visualización y edición directa de los datos
    - Peso actual en kg (actualiza automáticamente el historial de evolución ponderal si cambia)
    - Alertas médicas y alergias conocidas
 3. **Persistencia y Actualización:**
-   - La función `updatePatientRecord` en `patientService.ts` procesa la modificación y refresca la lista global de pacientes y el estado de la vista en tiempo real.
+   - La función `updatePatientRecord` en `patientService.ts` procesa la modificación y refresca la lista global de pacientes.
+   - La función `updatePatientInSupabase` en `supabaseService.ts` persiste automáticamente en la tabla `vetsoft_pacientes` y `vetsoft_tutores` todos los cambios de datos personales, peso, historial ponderal y alertas clínicas.

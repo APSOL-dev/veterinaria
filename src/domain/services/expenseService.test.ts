@@ -14,7 +14,7 @@ import {
 } from './expenseService';
 
 describe('expenseService', () => {
-  it('createExpenseRecord should create a valid ExpenseRecord', () => {
+  it('createExpenseRecord should create a valid ExpenseRecord with voucherFile and voucherUrl', () => {
     const expense = createExpenseRecord({
       date: '2026-08-25',
       responsible: 'alberto',
@@ -23,13 +23,17 @@ describe('expenseService', () => {
       paymentMethod: 'Caja administración, Mercado Pago',
       description: 'CARGO JOAQUIN CON...',
       amount: 78000,
-      note: 'LA TRANSF HZ...'
+      note: 'LA TRANSF HZ...',
+      voucherFile: 'comprobante_nafta_2026.pdf',
+      voucherUrl: 'https://example.com/comprobante_nafta_2026.pdf'
     });
 
     expect(expense.id).toBeDefined();
     expect(expense.responsible).toBe('alberto');
     expect(expense.amount).toBe(78000);
     expect(expense.category).toBe('Combustible');
+    expect(expense.voucherFile).toBe('comprobante_nafta_2026.pdf');
+    expect(expense.voucherUrl).toBe('https://example.com/comprobante_nafta_2026.pdf');
   });
 
   it('filterExpenseRecords should filter expenses by multiple criteria', () => {

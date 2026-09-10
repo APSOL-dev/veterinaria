@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   MedicalAppointment, 
   GroomingAppointment, 
   GroomingService, 
   Patient 
 } from '../../domain/types';
+import { 
+  calculateEndTime, 
+  formatTimeRange, 
+  isSlotOccupiedByAppointment,
+  getWeekDays,
+  formatWeekRangeHeader,
+  shiftWeek,
+  formatDateToISO
+} from '../../domain/services/agendaService';
 
 interface AgendaViewProps {
   patients: Patient[];
@@ -16,6 +25,13 @@ interface AgendaViewProps {
   onNavigateToBilling?: (patientId: string, serviceName: string, amount: number) => void;
   fixedMode?: 'medica' | 'peluqueria';
 }
+
+const extendedTimeSlots = [
+  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+  '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
+  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+  '17:00', '17:30', '18:00', '18:30', '19:00'
+];
 
 export const AgendaView: React.FC<AgendaViewProps> = ({
   patients,
@@ -29,18 +45,34 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 }) => {
   const [agendaMode, setAgendaMode] = useState<'medica' | 'peluqueria'>(fixedMode || 'medica');
   const [showNewModal, setShowNewModal] = useState(false);
+  const [refDate, setRefDate] = useState<Date>(() => new Date());
 
   const activeMode = fixedMode || agendaMode;
+  const todayISO = useMemo(() => formatDateToISO(new Date()), []);
+  const weekDays = useMemo(() => getWeekDays(refDate), [refDate]);
+  const weekHeaderLabel = useMemo(() => formatWeekRangeHeader(refDate), [refDate]);
 
-  // New Medical Appointment state
+  // New Medical / Grooming Appointment form state
   const [selectedPatientId, setSelectedPatientId] = useState(patients[0]?.id || '');
   const [vetName, setVetName] = useState('Dr. J. Silva');
-  const [appDate, setAppDate] = useState('2026-08-26');
+  const [appDate, setAppDate] = useState(() => formatDateToISO(new Date()));
   const [appTime, setAppTime] = useState('10:00');
+  const [appEndTime, setAppEndTime] = useState('11:00');
   const [reason, setReason] = useState('Consulta General');
 
   // New Grooming Appointment state
   const [selectedGroomServiceId, setSelectedGroomServiceId] = useState(groomingServices[0]?.id || '');
+
+  // Auto update endTime when appTime or service changes
+  useEffect(() => {
+    if (activeMode === 'peluqueria') {
+      const srv = groomingServices.find(s => s.id === selectedGroomServiceId);
+      const duration = srv ? srv.durationMinutes : 60;
+      setAppEndTime(calculateEndTime(appTime, duration));
+    } else {
+      setAppEndTime(calculateEndTime(appTime, 60));
+    }
+  }, [appTime, selectedGroomServiceId, activeMode, groomingServices]);
 
   const handleAddAppointment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +89,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
         vetName,
         date: appDate,
         time: appTime,
+        endTime: appEndTime,
         reason,
         status: 'confirmed'
       });
@@ -73,6 +106,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
         serviceName: srv.name,
         date: appDate,
         time: appTime,
+        endTime: appEndTime,
         durationMinutes: srv.durationMinutes,
         price: srv.price,
         status: 'confirmed'
@@ -83,8 +117,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
     setShowNewModal(false);
   };
 
-  const daysOfWeek = ['Lun 24', 'Mar 25', 'Mié 26', 'Jue 27', 'Vie 28', 'Sáb 29'];
-  const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+  const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
 
   return (
     <div className="flex flex-col w-full h-full gap-md font-body-md text-slate-800">
@@ -106,16 +139,30 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-md bg-white p-sm px-md rounded-2xl shadow-sm border border-slate-200">
         <div className="flex items-center gap-sm">
           <div className="flex items-center gap-xs bg-purple-50/80 p-1 rounded-xl border border-purple-100">
-            <button className="p-xs text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer">
+            <button 
+              onClick={() => setRefDate(prev => shiftWeek(prev, -1))}
+              title="Semana anterior"
+              className="p-xs text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
+            >
               <span className="material-symbols-outlined text-[18px]">chevron_left</span>
             </button>
-            <button className="px-sm py-0.5 text-slate-800 hover:bg-purple-100 rounded-lg transition-colors font-label-md text-xs font-bold cursor-pointer">Hoy</button>
-            <button className="p-xs text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer">
+            <button 
+              onClick={() => setRefDate(new Date())}
+              title="Ir a la semana actual"
+              className="px-sm py-0.5 text-slate-800 hover:bg-purple-100 rounded-lg transition-colors font-label-md text-xs font-bold cursor-pointer"
+            >
+              Hoy
+            </button>
+            <button 
+              onClick={() => setRefDate(prev => shiftWeek(prev, 1))}
+              title="Semana siguiente"
+              className="p-xs text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
+            >
               <span className="material-symbols-outlined text-[18px]">chevron_right</span>
             </button>
           </div>
 
-          <span className="font-headline-sm text-sm text-slate-900 font-bold ml-xs">Semana del 24 al 29 de Agosto</span>
+          <span className="font-headline-sm text-sm text-slate-900 font-bold ml-xs">{weekHeaderLabel}</span>
         </div>
 
         <div className="flex items-center gap-md">
@@ -169,11 +216,20 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
         {/* Days Header Row */}
         <div className="grid grid-cols-7 border-b-2 border-purple-200/90 text-center bg-[#F9F6FC] font-label-md text-xs py-2 font-semibold">
           <div className="text-slate-700 font-semibold border-r border-purple-200 flex items-center justify-center">Hora</div>
-          {daysOfWeek.map((day, idx) => (
-            <div key={idx} className={`font-semibold border-r border-purple-200 flex items-center justify-center ${idx === 2 ? 'text-[#5C3C7B]' : 'text-slate-800'}`}>
-              {day}
-            </div>
-          ))}
+          {weekDays.map((dayObj) => {
+            const isToday = dayObj.dateStr === todayISO;
+            return (
+              <div 
+                key={dayObj.dateStr} 
+                className={`font-semibold border-r border-purple-200 flex items-center justify-center gap-1.5 ${
+                  isToday ? 'text-[#5C3C7B] font-bold bg-purple-100/60 py-0.5 rounded-md' : 'text-slate-800'
+                }`}
+              >
+                <span>{dayObj.fullLabel}</span>
+                {isToday && <span className="w-2 h-2 rounded-full bg-[#8362A5] inline-block" title="Hoy"></span>}
+              </div>
+            );
+          })}
         </div>
 
         {/* Calendar Time Slots Grid */}
@@ -186,55 +242,110 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
               </div>
 
               {/* Days Columns */}
-              {daysOfWeek.map((_, dayIdx) => {
-                const isWednesday = dayIdx === 2; // Demo data for Wed 26th
-
+              {weekDays.map((dayObj) => {
                 if (activeMode === 'medica') {
-                  const matchingApp = isWednesday ? medicalAppointments.find(a => a.time === slot) : undefined;
+                  const dayApps = medicalAppointments.filter(app => app.date === dayObj.dateStr);
+                  
+                  // Check if any app occupies this slot
+                  const matchingOccupations = dayApps.map(app => ({
+                    app,
+                    ...isSlotOccupiedByAppointment(slot, app.time, app.endTime, 60)
+                  })).filter(res => res.isOccupied);
 
                   return (
-                    <div key={dayIdx} className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative">
-                      {matchingApp && (
-                        <div className="bg-[#FAF5FF] border border-[#9A7DB8]/60 rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-[#5C3C7B] truncate">{matchingApp.patientName}</span>
-                          </div>
-                          <span className="text-[11px] text-slate-600 truncate font-medium">{matchingApp.species} ({matchingApp.breed})</span>
-                          <span className="text-[10px] text-[#5C3C7B] font-semibold truncate">Dr. {matchingApp.vetName}</span>
-                          <button
-                            type="button"
-                            onClick={() => onNavigateToBilling?.(matchingApp.patientId, 'Consulta Médica', 15000)}
-                            className="mt-1 bg-[#9A7DB8] text-white hover:bg-[#8362A5] px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-0.5 shadow-xs transition-all cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
-                            Cobrar turno
-                          </button>
-                        </div>
-                      )}
+                    <div key={dayObj.dateStr} className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1">
+                      {matchingOccupations.map(({ app, isStart }) => {
+                        const timeRangeText = formatTimeRange(app.time, app.endTime, 60);
+
+                        if (isStart) {
+                          return (
+                            <div key={app.id} className="bg-[#FAF5FF] border border-[#9A7DB8]/60 rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-[#5C3C7B] truncate">{app.patientName}</span>
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-purple-100 text-[#5C3C7B] rounded-md font-mono flex items-center gap-0.5">
+                                  <span className="material-symbols-outlined text-[10px]">schedule</span>
+                                  {timeRangeText}
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-slate-600 truncate font-medium">{app.species} ({app.breed})</span>
+                              <span className="text-[10px] text-[#5C3C7B] font-semibold truncate">Dr. {app.vetName}</span>
+                              <button
+                                type="button"
+                                onClick={() => onNavigateToBilling?.(app.patientId, 'Consulta Médica', 15000)}
+                                className="mt-1 bg-[#9A7DB8] text-white hover:bg-[#8362A5] px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-0.5 shadow-xs transition-all cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
+                                Cobrar turno
+                              </button>
+                            </div>
+                          );
+                        } else {
+                          // Continuation slot
+                          return (
+                            <div key={app.id} className="bg-[#FAF5FF]/70 border border-dashed border-[#9A7DB8]/40 rounded-xl p-1.5 flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-1 text-[#5C3C7B] font-medium truncate text-[11px]">
+                                <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                <span className="font-semibold truncate">↳ {app.patientName}</span>
+                              </div>
+                              <span className="text-[9px] font-mono text-purple-700 bg-purple-100/60 px-1 py-0.5 rounded">
+                                hasta {app.endTime || 'fin'}
+                              </span>
+                            </div>
+                          );
+                        }
+                      })}
                     </div>
                   );
                 } else {
-                  const matchingGroom = isWednesday ? groomingAppointments.find(g => g.time === slot) : undefined;
+                  const dayGrooms = groomingAppointments.filter(g => g.date === dayObj.dateStr);
+
+                  const matchingOccupations = dayGrooms.map(g => ({
+                    g,
+                    ...isSlotOccupiedByAppointment(slot, g.time, g.endTime, g.durationMinutes)
+                  })).filter(res => res.isOccupied);
 
                   return (
-                    <div key={dayIdx} className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative">
-                      {matchingGroom && (
-                        <div className="bg-[#FFF8E7] border border-amber-300 rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-amber-900 truncate">{matchingGroom.patientName}</span>
-                          </div>
-                          <span className="text-[11px] text-slate-700 truncate font-semibold">{matchingGroom.serviceName}</span>
-                          <span className="text-[10px] text-slate-600 truncate font-medium">Propietario: {matchingGroom.ownerName}</span>
-                          <button
-                            type="button"
-                            onClick={() => onNavigateToBilling?.(matchingGroom.patientId, matchingGroom.serviceName, matchingGroom.price || 12000)}
-                            className="mt-1 bg-amber-600 text-white hover:bg-amber-700 px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-0.5 shadow-xs transition-all cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
-                            Cobrar turno
-                          </button>
-                        </div>
-                      )}
+                    <div key={dayObj.dateStr} className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1">
+                      {matchingOccupations.map(({ g, isStart }) => {
+                        const timeRangeText = formatTimeRange(g.time, g.endTime, g.durationMinutes);
+
+                        if (isStart) {
+                          return (
+                            <div key={g.id} className="bg-[#FFF8E7] border border-amber-300 rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-semibold text-amber-900 truncate">{g.patientName}</span>
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-900 rounded-md font-mono flex items-center gap-0.5">
+                                  <span className="material-symbols-outlined text-[10px]">schedule</span>
+                                  {timeRangeText}
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-slate-700 truncate font-semibold">{g.serviceName}</span>
+                              <span className="text-[10px] text-slate-600 truncate font-medium">Propietario: {g.ownerName}</span>
+                              <button
+                                type="button"
+                                onClick={() => onNavigateToBilling?.(g.patientId, g.serviceName, g.price || 12000)}
+                                className="mt-1 bg-amber-600 text-white hover:bg-amber-700 px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-0.5 shadow-xs transition-all cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
+                                Cobrar turno
+                              </button>
+                            </div>
+                          );
+                        } else {
+                          // Continuation slot
+                          return (
+                            <div key={g.id} className="bg-[#FFF8E7]/70 border border-dashed border-amber-300 rounded-xl p-1.5 flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-1 text-amber-900 font-medium truncate text-[11px]">
+                                <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                <span className="font-semibold truncate">↳ {g.patientName}</span>
+                              </div>
+                              <span className="text-[9px] font-mono text-amber-800 bg-amber-100/60 px-1 py-0.5 rounded">
+                                hasta {g.endTime || 'fin'}
+                              </span>
+                            </div>
+                          );
+                        }
+                      })}
                     </div>
                   );
                 }
@@ -317,25 +428,38 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                 </>
               )}
 
+              <div>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Fecha *</label>
+                <input
+                  type="date"
+                  value={appDate}
+                  onChange={(e) => setAppDate(e.target.value)}
+                  required
+                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-md">
                 <div>
-                  <label className="font-semibold text-xs text-slate-700 block mb-1">Fecha *</label>
-                  <input
-                    type="date"
-                    value={appDate}
-                    onChange={(e) => setAppDate(e.target.value)}
-                    required
-                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-xs text-slate-700 block mb-1">Hora *</label>
+                  <label className="font-semibold text-xs text-slate-700 block mb-1">Hora inicio *</label>
                   <select
                     value={appTime}
                     onChange={(e) => setAppTime(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
                   >
-                    {timeSlots.map(slot => (
+                    {extendedTimeSlots.map(slot => (
+                      <option key={slot} value={slot}>{slot}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-semibold text-xs text-slate-700 block mb-1">Hora fin *</label>
+                  <select
+                    value={appEndTime}
+                    onChange={(e) => setAppEndTime(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
+                  >
+                    {extendedTimeSlots.map(slot => (
                       <option key={slot} value={slot}>{slot}</option>
                     ))}
                   </select>

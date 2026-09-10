@@ -1,4 +1,4 @@
-import { SupplierBill } from '../types';
+import { SupplierBill, SupplierBillItem } from '../types';
 
 export const INVOICE_WEBHOOK_URL = 'https://bots.apsol-consultora.com.ar/webhook/0ca257f9-31f1-4639-ba17-b096d1c95a66';
 
@@ -185,6 +185,29 @@ export function parseN8nInvoiceResponse(data: any): Partial<SupplierBill> {
   const extractedCuit = payload['Cuit proveedor'] || payload.cuit || payload.cuit_proveedor || payload.cuitProveedor || undefined;
   const extractedRazonSocial = payload['Razon social'] || payload.razon_social || payload.razonSocial || extractedSupplier;
 
+  const rawItems = payload.items || payload.productos || payload.line_items || payload.detalles || payload.items_factura;
+  let items: SupplierBillItem[] | undefined = undefined;
+
+  if (Array.isArray(rawItems)) {
+    items = rawItems.map((raw: any, idx: number) => {
+      const productName = raw.productName || raw.nombre || raw.descripcion || raw.producto || raw.desc || `Producto ${idx + 1}`;
+      const quantity = parseNum(raw.quantity ?? raw.cantidad ?? raw.cant) ?? 1;
+      const unitCost = parseNum(raw.unitCost ?? raw.precio_unitario ?? raw.precioUnitario ?? raw.costo_unitario ?? raw.costo) ?? 0;
+      const subtotal = parseNum(raw.subtotal ?? raw.total) ?? (quantity * unitCost);
+      const updateCatalogPrice = raw.updateCatalogPrice !== undefined ? Boolean(raw.updateCatalogPrice) : true;
+
+      return {
+        id: raw.id || `bill-item-${idx + 1}-${Date.now()}`,
+        productId: raw.productId || raw.product_id || undefined,
+        productName,
+        quantity,
+        unitCost,
+        subtotal,
+        updateCatalogPrice
+      };
+    });
+  }
+
   return {
     supplierName: extractedSupplier,
     cuit: extractedCuit,
@@ -197,6 +220,7 @@ export function parseN8nInvoiceResponse(data: any): Partial<SupplierBill> {
     taxAmount: parseNum(payload.iva ?? payload.taxAmount ?? payload.tax_amount),
     perceptions: parseNum(payload.percepciones ?? payload.perceptions),
     currency,
-    amount: parseNum(payload.importe ?? payload.totalAmount ?? payload.amount ?? payload.total)
+    amount: parseNum(payload.importe ?? payload.totalAmount ?? payload.amount ?? payload.total),
+    items
   };
 }

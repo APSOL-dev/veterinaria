@@ -180,5 +180,99 @@ describe('inventoryService', () => {
       const updatedCatalog = processStockReceiptFromBill(billNoItems, catalog);
       expect(updatedCatalog).toEqual(catalog);
     });
+
+    it('creates new product entry in catalog if bill item has no matching existing product', () => {
+      const billNewProduct = {
+        id: 'bill-102',
+        supplierName: 'Distribuidora FarmaVet SA',
+        invoiceNumber: '0001-00009999',
+        date: '2026-09-10',
+        amount: 30000,
+        itemsCount: 1,
+        status: 'pending' as const,
+        items: [
+          {
+            id: 'item-new-1',
+            productName: 'Vacuna ParvovirusCanino 10ml',
+            quantity: 8,
+            unitCost: 3750,
+            subtotal: 30000,
+            updateCatalogPrice: true
+          }
+        ]
+      };
+
+      const updatedCatalog = processStockReceiptFromBill(billNewProduct, catalog);
+      expect(updatedCatalog.length).toBe(catalog.length + 1);
+
+      const created = updatedCatalog.find(p => p.name === 'Vacuna ParvovirusCanino 10ml');
+      expect(created).toBeDefined();
+      expect(created?.currentStock).toBe(8);
+      expect(created?.price).toBe(3750);
+    });
+
+    it('matches existing catalog product when productName has leading/trailing whitespace or case differences', () => {
+      const billWithWhitespace = {
+        id: 'bill-103',
+        supplierName: 'Distribuidora FarmaVet SA',
+        invoiceNumber: '0001-00008888',
+        date: '2026-09-10',
+        amount: 249.9,
+        itemsCount: 1,
+        status: 'pending' as const,
+        items: [
+          {
+            id: 'item-ws-1',
+            productName: '  Royal Canin Gastrointestinal 2kg ',
+            quantity: 6,
+            unitCost: 24.99,
+            subtotal: 149.94
+          }
+        ]
+      };
+
+      const updatedCatalog = processStockReceiptFromBill(billWithWhitespace, catalog);
+      expect(updatedCatalog.length).toBe(catalog.length);
+      const prod = updatedCatalog.find(p => p.id === 'prod-2');
+      expect(prod?.currentStock).toBe(10); // 4 + 6
+    });
+
+    it('performs numeric addition when quantity or currentStock are string numbers (preventing string concatenation)', () => {
+      const billWithStringQty = {
+        id: 'bill-104',
+        supplierName: 'Distribuidora FarmaVet SA',
+        invoiceNumber: '0001-00007777',
+        date: '2026-09-10',
+        amount: 249.9,
+        itemsCount: 1,
+        status: 'pending' as const,
+        items: [
+          {
+            id: 'item-str-1',
+            productId: 'prod-2',
+            productName: 'Royal Canin Gastrointestinal 2kg',
+            quantity: '17' as any,
+            unitCost: 24.99,
+            subtotal: 424.83
+          }
+        ]
+      };
+
+      const catalogWithStrStock: Product[] = [
+        {
+          id: 'prod-2',
+          sku: 'VET-ALM-042',
+          name: 'Royal Canin Gastrointestinal 2kg',
+          category: 'Alimentación',
+          currentStock: '4' as any,
+          minStock: 5,
+          price: 24.99
+        }
+      ];
+
+      const updatedCatalog = processStockReceiptFromBill(billWithStringQty, catalogWithStrStock);
+      const prod = updatedCatalog.find(p => p.id === 'prod-2');
+      expect(prod?.currentStock).toBe(21); // 4 + 17 = 21, NOT '417'
+    });
   });
 });

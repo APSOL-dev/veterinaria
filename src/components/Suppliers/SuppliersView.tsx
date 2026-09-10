@@ -7,6 +7,7 @@ import { NewInvoiceDrawer } from './NewInvoiceDrawer';
 import { PaymentDrawer } from './PaymentDrawer';
 import { PowerBIDateRangeFilter } from './PowerBIDateRangeFilter';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
+import { uploadVoucherToSupabase } from '../../domain/services/supabaseService';
 import { ExpenseCategoryModal } from './ExpenseCategoryModal';
 import { SupplierCreditTermsView } from './SupplierCreditTermsView';
 import { SupplierCurrentAccountView } from './SupplierCurrentAccountView';
@@ -97,8 +98,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   const filteredBills = useMemo(() => filterBillsByDateRange(bills, filterStartDate, filterEndDate), [bills, filterStartDate, filterEndDate]);
   const filteredPayments = useMemo(() => filterPaymentsByDateRange(payments, filterStartDate, filterEndDate), [payments, filterStartDate, filterEndDate]);
 
-  const totals = useMemo(() => calculateSupplierTotals(filteredBills, quotes, filteredPayments, '2026-08-31'), [filteredBills, quotes, filteredPayments]);
-  const projections = useMemo(() => calculateMonthlyExpenditureProjections(bills, monthlyBudgets, payments, filterStartDate, filterEndDate), [bills, monthlyBudgets, payments, filterStartDate, filterEndDate]);
+  const totals = useMemo(() => calculateSupplierTotals(filteredBills, quotes, filteredPayments), [filteredBills, quotes, filteredPayments]);
+  const projections = useMemo(() => calculateMonthlyExpenditureProjections(bills, monthlyBudgets, payments, filterStartDate, filterEndDate, creditTerms, expenses), [bills, monthlyBudgets, payments, filterStartDate, filterEndDate, creditTerms, expenses]);
 
   const yearlyProjections = useMemo(() => {
     return groupProjectionsByYear(projections);
@@ -111,6 +112,12 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
   const toggleYearExpand = (year: number) => {
     setExpandedYears(prev => ({ ...prev, [year]: !prev[year] }));
+  };
+
+  const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
+
+  const toggleMonthExpand = (monthKey: string) => {
+    setExpandedMonths(prev => ({ ...prev, [monthKey]: !prev[monthKey] }));
   };
 
   // Submodule: Pagos — drawer de registro de pago
@@ -133,6 +140,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   const [expDescription, setExpDescription] = useState<string>('');
   const [expAmount, setExpAmount] = useState<number>(1000);
   const [expNote, setExpNote] = useState<string>('');
+  const [expVoucherFile, setExpVoucherFile] = useState<File | null>(null);
+  const [expVoucherFileName, setExpVoucherFileName] = useState<string>('');
+  const [expVoucherUrl, setExpVoucherUrl] = useState<string>('');
 
   // Modal para crear nuevas asignaciones y categorías de gastos
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -299,6 +309,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
     setExpDescription('');
     setExpAmount(1000);
     setExpNote('');
+    setExpVoucherFile(null);
+    setExpVoucherFileName('');
+    setExpVoucherUrl('');
     setShowModal(true);
   };
 
@@ -312,6 +325,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
     setExpDescription(exp.description);
     setExpAmount(exp.amount);
     setExpNote(exp.note || '');
+    setExpVoucherFile(null);
+    setExpVoucherFileName(exp.voucherFile || exp.note || '');
+    setExpVoucherUrl(exp.voucherUrl || '');
     setShowModal(true);
   };
 
@@ -325,12 +341,31 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
     setExpDescription(exp.description);
     setExpAmount(exp.amount);
     setExpNote(exp.note || '');
+    setExpVoucherFile(null);
+    setExpVoucherFileName(exp.voucherFile || exp.note || '');
+    setExpVoucherUrl(exp.voucherUrl || '');
     setShowModal(true);
   };
 
-  const handleSubmitExpense = (e: React.FormEvent) => {
+  const handleSubmitExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!expDescription.trim() || expAmount <= 0) return;
+    let finalVoucherName = expVoucherFileName || (expVoucherFile ? expVoucherFile.name : '');
+    let finalVoucherUrl = expVoucherUrl;
+
+    if (expVoucherFile) {
+      const uploadRes = await uploadVoucherToSupabase(expVoucherFile);
+      if (uploadRes) {
+        finalVoucherName = uploadRes.voucherName;
+        finalVoucherUrl = uploadRes.voucherUrl;
+      } else {
+        finalVoucherUrl = URL.createObjectURL(expVoucherFile);
+      }
+    }
+
+    if (!expDescription.trim() || expAmount <= 0 || !finalVoucherName) {
+      alert('Por favor completa todos los campos requeridos, incluyendo el comprobante adjunto.');
+      return;
+    }
 
     if (editingExpenseId && onUpdateExpense) {
       onUpdateExpense(editingExpenseId, {
@@ -341,7 +376,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
         paymentMethod: expPaymentMethod,
         description: expDescription.trim(),
         amount: Number(expAmount),
-        note: expNote.trim() || '-'
+        note: expNote.trim() || undefined,
+        voucherFile: finalVoucherName,
+        voucherUrl: finalVoucherUrl || undefined
       });
     } else if (onAddExpense) {
       onAddExpense({
@@ -352,7 +389,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
         paymentMethod: expPaymentMethod,
         description: expDescription.trim(),
         amount: Number(expAmount),
-        note: expNote.trim() || '-'
+        note: expNote.trim() || undefined,
+        voucherFile: finalVoucherName,
+        voucherUrl: finalVoucherUrl || undefined
       });
     }
     setShowModal(false);
@@ -524,12 +563,13 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   <table className="w-full text-left font-body-md text-xs border-collapse">
                     <thead className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
                       <tr>
-                        <th className="p-sm px-md">Año / mes de pago</th>
-                        <th className="p-sm px-md text-right">Total adeudado</th>
-                        <th className="p-sm px-md text-right">Total pagado</th>
+                        <th className="p-sm px-md">Año/Mes</th>
+                        <th className="p-sm px-md text-right">Total Adeudado</th>
+                        <th className="p-sm px-md text-right">Total Pagado</th>
+                        <th className="p-sm px-md text-right">Gastos</th>
                         <th className="p-sm px-md text-right">Total</th>
                         <th className="p-sm px-md text-right">Presupuesto total</th>
-                        <th className="p-sm px-md text-center">Cumplimiento</th>
+                        <th className="p-sm px-md text-center">Cumplimiento %</th>
                       </tr>
                     </thead>
                     <tbody className="text-on-surface">
@@ -562,6 +602,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                               <td className="p-sm px-md text-right font-semibold text-[#27AE60]">
                                 $ {yearGroup.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
+                              <td className="p-sm px-md text-right font-semibold text-purple-700">
+                                $ {(yearGroup.totalGastos || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
                               <td className="p-sm px-md text-right font-semibold text-slate-900">
                                 $ {yearGroup.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
@@ -582,79 +625,164 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             </tr>
 
                             {/* Monthly child rows inside year */}
-                            {isExpanded && yearGroup.projections.map((proj) => (
-                              <tr key={proj.monthKey} className="border-b border-surface-container-low hover:bg-surface-container/40 transition-colors">
-                                <td className="p-sm px-md font-medium text-slate-700 pl-8">
-                                  <span className="inline-block w-2 h-2 rounded-full bg-slate-300 mr-2"></span>
-                                  {proj.dateLabel}
-                                </td>
-                                <td className="p-sm px-md text-right">
-                                  {proj.totalAdeudado > 0 ? (
-                                    <span className="inline-flex items-center gap-1 font-semibold text-[#C0392B]">
-                                      {proj.totalAdeudado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </span>
-                                  ) : (
-                                    <span className="text-on-surface-variant/60">0.00</span>
+                            {isExpanded && yearGroup.projections.map((proj) => {
+                              const isMonthExpanded = !!expandedMonths[proj.monthKey];
+                              const hasSupplierBreakdown = proj.supplierBreakdown && proj.supplierBreakdown.length > 0;
+                              const hasExpenseBreakdown = proj.expenseBreakdown && proj.expenseBreakdown.length > 0;
+                              const hasAnyBreakdown = hasSupplierBreakdown || hasExpenseBreakdown;
+                              const totalItemsCount = (hasSupplierBreakdown ? proj.supplierBreakdown!.length : 0) + (hasExpenseBreakdown ? proj.expenseBreakdown!.length : 0);
+
+                              return (
+                                <React.Fragment key={proj.monthKey}>
+                                  <tr className="border-b border-surface-container-low hover:bg-surface-container/40 transition-colors">
+                                    <td className="p-sm px-md font-medium text-slate-700 pl-8">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleMonthExpand(proj.monthKey)}
+                                        className="inline-flex items-center gap-1.5 text-slate-800 hover:text-[#5C3C7B] font-semibold text-xs cursor-pointer select-none"
+                                      >
+                                        <span className="material-symbols-outlined text-[16px] text-slate-500">
+                                          {isMonthExpanded ? 'expand_more' : 'chevron_right'}
+                                        </span>
+                                        <span>{proj.dateLabel}</span>
+                                        {hasAnyBreakdown && (
+                                          <span className="text-[10px] font-normal text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full ml-1">
+                                            {totalItemsCount} {totalItemsCount === 1 ? 'desglose' : 'desgloses'}
+                                          </span>
+                                        )}
+                                      </button>
+                                    </td>
+                                    <td className="p-sm px-md text-right">
+                                      {proj.totalAdeudado > 0 ? (
+                                        <span className="inline-flex items-center gap-1 font-semibold text-[#C0392B]">
+                                          $ {proj.totalAdeudado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                      ) : (
+                                        <span className="text-on-surface-variant/60">0.00</span>
+                                      )}
+                                    </td>
+                                    <td className="p-sm px-md text-right">
+                                      {proj.totalPagado > 0 ? (
+                                        <span className="inline-flex items-center gap-1 font-semibold text-[#27AE60]">
+                                          $ {proj.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                      ) : (
+                                        <span className="text-on-surface-variant/60">0.00</span>
+                                      )}
+                                    </td>
+                                    <td className="p-sm px-md text-right">
+                                      {proj.totalGastos > 0 ? (
+                                        <span className="inline-flex items-center gap-1 font-semibold text-purple-700">
+                                          $ {proj.totalGastos.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                      ) : (
+                                        <span className="text-on-surface-variant/60">0.00</span>
+                                      )}
+                                    </td>
+                                    <td className="p-sm px-md text-right font-medium text-on-surface">
+                                      {proj.total > 0
+                                        ? `$ ${proj.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                        : '0.00'}
+                                    </td>
+                                    <td className="p-sm px-md text-right">
+                                      {editingBudgetMonth === proj.monthKey ? (
+                                        <div className="flex items-center justify-end gap-1">
+                                          <input
+                                            type="number"
+                                            value={tempBudgetInput}
+                                            onChange={(e) => setTempBudgetInput(e.target.value)}
+                                            className="w-28 p-1 text-right text-xs rounded border border-primary outline-none"
+                                            autoFocus
+                                          />
+                                          <button onClick={() => handleSaveBudget(proj.monthKey)} className="text-[#27AE60] font-semibold px-1">✓</button>
+                                        </div>
+                                      ) : (
+                                        <div className="group inline-flex items-center gap-1 cursor-pointer" onClick={() => {
+                                          setEditingBudgetMonth(proj.monthKey);
+                                          setTempBudgetInput(proj.presupuestoTotal.toString());
+                                        }}>
+                                          <span>{proj.presupuestoTotal > 0 ? `$ ${proj.presupuestoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '0.00'}</span>
+                                          <span className="material-symbols-outlined text-[12px] text-primary">edit</span>
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="p-sm px-md text-center">
+                                      {proj.statusLevel === 'exceeded' && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FDEDEC] text-[#C0392B]">
+                                          <span className="material-symbols-outlined text-[14px]">cancel</span>
+                                          {proj.cumplimientoPercentage}%
+                                        </span>
+                                      )}
+                                      {proj.statusLevel === 'warning' && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FEF9E7] text-[#D35400]">
+                                          <span className="material-symbols-outlined text-[14px]">warning</span>
+                                          {proj.cumplimientoPercentage}%
+                                        </span>
+                                      )}
+                                      {proj.statusLevel === 'ok' && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#E8F5E9] text-[#27AE60]">
+                                          <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                          {proj.cumplimientoPercentage}%
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+
+                                  {/* Supplier & Expense Breakdown child rows */}
+                                  {isMonthExpanded && (
+                                    hasAnyBreakdown ? (
+                                      <>
+                                        {hasSupplierBreakdown && proj.supplierBreakdown!.map((sb) => (
+                                          <tr key={`${proj.monthKey}-supp-${sb.supplierName}`} className="bg-purple-50/40 border-b border-purple-100/70 text-[11px]">
+                                            <td className="p-2 px-md pl-16 font-medium text-slate-700 flex items-center gap-2">
+                                              <span className="material-symbols-outlined text-[15px] text-[#8362A5]">store</span>
+                                              <span className="font-semibold text-[#5C3C7B]">{sb.supplierName}</span>
+                                            </td>
+                                            <td className="p-2 px-md text-right font-medium text-[#C0392B]">
+                                              {sb.totalAdeudado > 0 ? `$ ${sb.totalAdeudado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '0.00'}
+                                            </td>
+                                            <td className="p-2 px-md text-right font-medium text-[#27AE60]">
+                                              {sb.totalPagado > 0 ? `$ ${sb.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '0.00'}
+                                            </td>
+                                            <td className="p-2 px-md text-right text-slate-400">-</td>
+                                            <td className="p-2 px-md text-right font-semibold text-slate-900">
+                                              $ {sb.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="p-2 px-md text-right text-slate-400">-</td>
+                                            <td className="p-2 px-md text-center text-slate-400">-</td>
+                                          </tr>
+                                        ))}
+
+                                        {hasExpenseBreakdown && proj.expenseBreakdown!.map((eb) => (
+                                          <tr key={`${proj.monthKey}-exp-${eb.category}`} className="bg-[#FAF5FF] border-b border-purple-100/80 text-[11px]">
+                                            <td className="p-2 px-md pl-16 font-medium text-slate-700 flex items-center gap-2">
+                                              <span className="material-symbols-outlined text-[15px] text-purple-600">receipt_long</span>
+                                              <span className="font-semibold text-purple-900">{eb.category}</span>
+                                            </td>
+                                            <td className="p-2 px-md text-right text-slate-400">-</td>
+                                            <td className="p-2 px-md text-right text-slate-400">-</td>
+                                            <td className="p-2 px-md text-right font-medium text-purple-700">
+                                              $ {eb.amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="p-2 px-md text-right font-semibold text-purple-900">
+                                              $ {eb.amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="p-2 px-md text-right text-slate-400">-</td>
+                                            <td className="p-2 px-md text-center text-slate-400">-</td>
+                                          </tr>
+                                        ))}
+                                      </>
+                                    ) : (
+                                      <tr key={`${proj.monthKey}-empty`} className="bg-purple-50/30 border-b border-purple-100/50 text-[11px]">
+                                        <td colSpan={7} className="p-2 px-md pl-16 text-slate-400 italic font-normal">
+                                          Sin facturas, pagos ni gastos registrados en este mes.
+                                        </td>
+                                      </tr>
+                                    )
                                   )}
-                                </td>
-                                <td className="p-sm px-md text-right">
-                                  {proj.totalPagado > 0 ? (
-                                    <span className="inline-flex items-center gap-1 font-semibold text-[#27AE60]">
-                                      {proj.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </span>
-                                  ) : (
-                                    <span className="text-on-surface-variant/60">0.00</span>
-                                  )}
-                                </td>
-                                <td className="p-sm px-md text-right font-medium text-on-surface">
-                                  {proj.total > 0
-                                    ? proj.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                                    : '0.00'}
-                                </td>
-                                <td className="p-sm px-md text-right">
-                                  {editingBudgetMonth === proj.monthKey ? (
-                                    <div className="flex items-center justify-end gap-1">
-                                      <input
-                                        type="number"
-                                        value={tempBudgetInput}
-                                        onChange={(e) => setTempBudgetInput(e.target.value)}
-                                        className="w-28 p-1 text-right text-xs rounded border border-primary outline-none"
-                                        autoFocus
-                                      />
-                                      <button onClick={() => handleSaveBudget(proj.monthKey)} className="text-[#27AE60] font-semibold px-1">✓</button>
-                                    </div>
-                                  ) : (
-                                    <div className="group inline-flex items-center gap-1 cursor-pointer" onClick={() => {
-                                      setEditingBudgetMonth(proj.monthKey);
-                                      setTempBudgetInput(proj.presupuestoTotal.toString());
-                                    }}>
-                                      <span>{proj.presupuestoTotal > 0 ? proj.presupuestoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</span>
-                                      <span className="material-symbols-outlined text-[12px] text-primary">edit</span>
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="p-sm px-md text-center">
-                                  {proj.statusLevel === 'exceeded' && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FDEDEC] text-[#C0392B]">
-                                      <span className="material-symbols-outlined text-[14px]">cancel</span>
-                                      {proj.cumplimientoPercentage}%
-                                    </span>
-                                  )}
-                                  {proj.statusLevel === 'warning' && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FEF9E7] text-[#D35400]">
-                                      <span className="material-symbols-outlined text-[14px]">warning</span>
-                                      {proj.cumplimientoPercentage}%
-                                    </span>
-                                  )}
-                                  {proj.statusLevel === 'ok' && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#E8F5E9] text-[#27AE60]">
-                                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                                      {proj.cumplimientoPercentage}%
-                                    </span>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
+                                </React.Fragment>
+                              );
+                            })}
                           </React.Fragment>
                         );
                       })}
@@ -865,72 +993,87 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-xs flex-1">
               <div className="flex flex-col gap-0.5">
                 <label className="text-[11px] font-medium text-on-surface-variant">Responsable</label>
-                <select
-                  value={filterResponsible}
-                  onChange={(e) => setFilterResponsible(e.target.value)}
-                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
-                >
-                  <option value="all">Todos</option>
-                  {uniqueResponsibles.map(r => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={filterResponsible}
+                    onChange={(e) => setFilterResponsible(e.target.value)}
+                    className="w-full appearance-none bg-surface-container pr-7 pl-2 p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
+                  >
+                    <option value="all">Todos</option>
+                    {uniqueResponsibles.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[16px]">expand_more</span>
+                </div>
               </div>
 
               <div className="flex flex-col gap-0.5">
                 <label className="text-[11px] font-medium text-on-surface-variant">Período</label>
-                <select
-                  value={filterPeriod}
-                  onChange={(e) => setFilterPeriod(e.target.value)}
-                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
-                >
-                  <option value="all">Todos</option>
-                  <option value="current_month">Mes actual</option>
-                  <option value="last_month">Mes anterior</option>
-                  <option value="year_2026">Año 2026</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={filterPeriod}
+                    onChange={(e) => setFilterPeriod(e.target.value)}
+                    className="w-full appearance-none bg-surface-container pr-7 pl-2 p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
+                  >
+                    <option value="all">Todos</option>
+                    <option value="current_month">Mes actual</option>
+                    <option value="last_month">Mes anterior</option>
+                    <option value="year_2026">Año 2026</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[16px]">expand_more</span>
+                </div>
               </div>
 
               <div className="flex flex-col gap-0.5">
                 <label className="text-[11px] font-medium text-on-surface-variant">Rubro</label>
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
-                >
-                  <option value="all">Todos</option>
-                  {uniqueCategories.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="w-full appearance-none bg-surface-container pr-7 pl-2 p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
+                  >
+                    <option value="all">Todos</option>
+                    {uniqueCategories.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[16px]">expand_more</span>
+                </div>
               </div>
 
               <div className="flex flex-col gap-0.5">
                 <label className="text-[11px] font-medium text-on-surface-variant">Asignación</label>
-                <select
-                  value={filterAllocation}
-                  onChange={(e) => setFilterAllocation(e.target.value)}
-                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
-                >
-                  <option value="all">Todas</option>
-                  {uniqueAllocations.map(a => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={filterAllocation}
+                    onChange={(e) => setFilterAllocation(e.target.value)}
+                    className="w-full appearance-none bg-surface-container pr-7 pl-2 p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
+                  >
+                    <option value="all">Todas</option>
+                    {uniqueAllocations.map(a => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[16px]">expand_more</span>
+                </div>
               </div>
 
               <div className="flex flex-col gap-0.5">
                 <label className="text-[11px] font-medium text-on-surface-variant">Método pago</label>
-                <select
-                  value={filterPaymentMethod}
-                  onChange={(e) => setFilterPaymentMethod(e.target.value)}
-                  className="bg-surface-container p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
-                >
-                  <option value="all">Todos</option>
-                  {uniquePaymentMethods.map(p => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={filterPaymentMethod}
+                    onChange={(e) => setFilterPaymentMethod(e.target.value)}
+                    className="w-full appearance-none bg-surface-container pr-7 pl-2 p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
+                  >
+                    <option value="all">Todos</option>
+                    {uniquePaymentMethods.map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[16px]">expand_more</span>
+                </div>
               </div>
             </div>
 
@@ -963,6 +1106,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     <th className="p-sm px-md">Asignación</th>
                     <th className="p-sm px-md">Método pago</th>
                     <th className="p-sm px-md">Descripción</th>
+                    <th className="p-sm px-md">Comprobante</th>
                     <th className="p-sm px-md text-right">Monto ($)</th>
                     <th className="p-sm px-md text-center">Acciones</th>
                   </tr>
@@ -976,6 +1120,29 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                       <td className="p-sm px-md">{exp.allocation}</td>
                       <td className="p-sm px-md">{exp.paymentMethod}</td>
                       <td className="p-sm px-md font-medium">{exp.description}</td>
+                      <td className="p-sm px-md">
+                        {exp.voucherUrl || exp.voucherFile ? (
+                          <a
+                            href={exp.voucherUrl || '#'}
+                            target={exp.voucherUrl ? "_blank" : undefined}
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                              if (!exp.voucherUrl) {
+                                e.preventDefault();
+                                alert(`Comprobante adjunto: ${exp.voucherFile || 'Archivo'}\n(Cargado sin enlace público)`);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 hover:text-emerald-700 border border-emerald-500/30 transition-all cursor-pointer shadow-2xs group"
+                            title="Haz clic para ver/abrir el comprobante adjunto"
+                          >
+                            <span className="material-symbols-outlined text-[14px] group-hover:scale-110 transition-transform">visibility</span>
+                            <span className="truncate max-w-[120px]">{exp.voucherFile || 'Ver comprobante'}</span>
+                            <span className="material-symbols-outlined text-[12px] opacity-75">open_in_new</span>
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-medium">—</span>
+                        )}
+                      </td>
                       <td className="p-sm px-md text-right font-semibold text-on-surface">${exp.amount.toLocaleString('es-AR')}</td>
                       <td className="p-sm px-md text-center">
                         <div className="flex items-center justify-center gap-1">
@@ -1156,13 +1323,103 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                 />
               </div>
 
+              {/* Comprobante (Obligatorio) - Dropzone / File input */}
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-medium text-on-surface-variant">Nota / comprobante (opcional)</label>
+                <label className="text-[11px] font-medium text-on-surface-variant flex items-center justify-between">
+                  <span>Comprobante (adjunto obligatorio) *</span>
+                  {!expVoucherFile && !expVoucherFileName && (
+                    <span className="text-[10px] text-error font-medium">Requerido</span>
+                  )}
+                </label>
+
+                <label
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      setExpVoucherFile(e.dataTransfer.files[0]);
+                      setExpVoucherFileName(e.dataTransfer.files[0].name);
+                    }
+                  }}
+                  className={`border-2 rounded-xl transition-all cursor-pointer ${
+                    expVoucherFileName || expVoucherFile
+                      ? 'border-solid border-emerald-500/60 bg-emerald-500/5 p-2.5'
+                      : 'border-dashed border-outline-variant/60 hover:border-primary bg-surface-container p-3 flex flex-col items-center justify-center text-center'
+                  }`}
+                >
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setExpVoucherFile(e.target.files[0]);
+                        setExpVoucherFileName(e.target.files[0].name);
+                      }
+                    }}
+                    className="hidden"
+                  />
+
+                  {expVoucherFileName || expVoucherFile ? (
+                    <div className="flex items-center justify-between gap-2 w-full">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-600 flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-lg">description</span>
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-xs text-on-surface truncate" title={expVoucherFileName}>
+                            {expVoucherFileName}
+                          </span>
+                          <span className="text-[10px] text-emerald-600 font-medium">Comprobante adjuntado</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {(expVoucherUrl || expVoucherFile) && (
+                          <a
+                            href={expVoucherUrl || (expVoucherFile ? URL.createObjectURL(expVoucherFile) : '#')}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-2 py-1 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-700 hover:bg-emerald-500/30 flex items-center gap-1 cursor-pointer transition-colors"
+                            title="Abrir comprobante en nueva pestaña"
+                          >
+                            <span className="material-symbols-outlined text-[13px]">visibility</span>
+                            <span>Ver</span>
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setExpVoucherFile(null);
+                            setExpVoucherFileName('');
+                            setExpVoucherUrl('');
+                          }}
+                          className="p-1 text-slate-400 hover:text-error rounded-lg hover:bg-surface-container-high cursor-pointer"
+                          title="Quitar archivo"
+                        >
+                          <span className="material-symbols-outlined text-base">close</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="material-symbols-outlined text-xl text-primary">cloud_upload</span>
+                      <span className="font-semibold text-xs text-primary">Adjuntar comprobante *</span>
+                      <span className="text-[10px] text-on-surface-variant">Seleccionar o arrastrar PDF, PNG o JPG desde tu equipo</span>
+                    </div>
+                  )}
+                </label>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-medium text-on-surface-variant">Nota u observación (opcional)</label>
                 <input
                   type="text"
                   value={expNote}
                   onChange={(e) => setExpNote(e.target.value)}
-                  placeholder="ej. Ticket 0001-4451"
+                  placeholder="ej. Ticket N° 0001-4451"
                   className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
                 />
               </div>
@@ -1177,7 +1434,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-md py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary-container text-on-primary shadow-sm transition-all cursor-pointer"
+                  disabled={!expDescription.trim() || expAmount <= 0 || (!expVoucherFile && !expVoucherFileName)}
+                  className="px-md py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary-container text-on-primary shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingExpenseId ? 'Guardar Cambios' : 'Registrar Gasto'}
                 </button>

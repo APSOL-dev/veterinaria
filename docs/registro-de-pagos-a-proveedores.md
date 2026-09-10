@@ -23,7 +23,7 @@
 - Los pagos se persisten automáticamente en la base de datos de Supabase en la tabla física `vetsoft_pagos_proveedores` y se consultan a través de la vista `vetsoft_vw_pagos_proveedores`.
 - Los archivos adjuntos de comprobantes (PDF/Imágenes) se suben al bucket público `veterinaria-archivos` de Supabase Storage en la carpeta `comprobantes/`. La URL pública generada (`voucher_url`) permite visualizar y descargar el archivo directamente desde la tabla de pagos.
 - No hay eliminación de pagos registrados en esta versión.
-- El campo "Estado" del badge se calcula dinámicamente en base a los pagos, sin modificar el campo `status` de `SupplierBill`.
+- Cuando el saldo acumulado pagado salda por completo el total de una factura ($0 restante), la aplicación actualiza el estado `status` de la factura a `'paid'` tanto en el estado reactivo como en la base de datos Supabase (`updateSupplierBillInSupabase`).
 
 **Campos del formulario de pago (Panel Lateral / PaymentDrawer):**
 - **Factura** (dropdown con saldo restante visible): requerido.

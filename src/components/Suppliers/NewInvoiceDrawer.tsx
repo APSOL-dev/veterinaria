@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SupplierBill, SupplierBillItem, SupplierCreditTerm, Product } from '../../domain/types';
 import { sendInvoiceWebhook, parseN8nInvoiceResponse } from '../../domain/services/webhookService';
-import { resetInvoiceDrawerState, shouldShowResetButton, getSupplierCreditTerms, calculateDueDateFromTerm } from '../../domain/services/supplierService';
+import { resetInvoiceDrawerState, shouldShowResetButton, getSupplierCreditTerms, calculateDueDateFromTerm, calculateInvoiceSubtotalAndTax } from '../../domain/services/supplierService';
 import { uploadInvoiceVoucherToSupabase } from '../../domain/services/supabaseService';
 import { initialProducts } from '../../data/mockData';
 
@@ -48,17 +48,47 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
   const [billStatus, setBillStatus] = useState<'paid' | 'pending'>('pending');
   const [billItems, setBillItems] = useState<SupplierBillItem[]>([]);
 
+  const [applyIva, setApplyIva] = useState<boolean>(true);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isProcessed, setIsProcessed] = useState<boolean>(false);
   const [isSubmittingWebhook, setIsSubmittingWebhook] = useState<boolean>(false);
 
-  const updateTotalsFromItems = (items: SupplierBillItem[], currentTax: number | '', currentPerceptions: number | '') => {
-    if (items.length === 0) return;
-    const itemsSubtotal = items.reduce((acc, curr) => acc + (curr.subtotal || 0), 0);
-    setSubtotal(itemsSubtotal);
-    const tax = Number(currentTax) || 0;
+  const updateTotalsFromItems = (
+    items: SupplierBillItem[], 
+    currentPerceptions: number | '', 
+    useIva: boolean = applyIva
+  ) => {
     const perc = Number(currentPerceptions) || 0;
-    setTotalAmount(itemsSubtotal + tax + perc);
+    if (items.length > 0) {
+      const { totalAmount: newTotal, subtotal: newSubtotal, taxAmount: newTax } = calculateInvoiceSubtotalAndTax(
+        items,
+        useIva,
+        0.21,
+        perc
+      );
+      setTotalAmount(newTotal);
+      setSubtotal(newSubtotal);
+      setTaxAmount(newTax);
+    } else {
+      const tot = Number(totalAmount) || Number(subtotal) || 0;
+      if (tot > 0) {
+        const { subtotal: newSubtotal, taxAmount: newTax } = calculateInvoiceSubtotalAndTax(
+          [{ subtotal: tot - perc }],
+          useIva,
+          0.21,
+          perc
+        );
+        setTotalAmount(tot);
+        setSubtotal(newSubtotal);
+        setTaxAmount(newTax);
+      }
+    }
+  };
+
+  const handleToggleIva = () => {
+    const nextApply = !applyIva;
+    setApplyIva(nextApply);
+    updateTotalsFromItems(billItems, perceptions, nextApply);
   };
 
   const handleAddBillItem = () => {
@@ -75,13 +105,13 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
     };
     const updated = [...billItems, newItem];
     setBillItems(updated);
-    updateTotalsFromItems(updated, taxAmount, perceptions);
+    updateTotalsFromItems(updated, perceptions, applyIva);
   };
 
   const handleRemoveBillItem = (id: string) => {
     const updated = billItems.filter(item => item.id !== id);
     setBillItems(updated);
-    updateTotalsFromItems(updated, taxAmount, perceptions);
+    updateTotalsFromItems(updated, perceptions, applyIva);
   };
 
   const handleBillItemChange = (id: string, field: keyof SupplierBillItem, value: any) => {
@@ -102,17 +132,21 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
         }
       }
 
-      if (field === 'quantity' || field === 'unitCost') {
-        const qty = field === 'quantity' ? Number(value) : item.quantity;
-        const cost = field === 'unitCost' ? Number(value) : item.unitCost;
-        updatedItem.subtotal = (qty || 0) * (cost || 0);
+      if (field === 'quantity') {
+        const qty = Number(value) || 0;
+        updatedItem.quantity = qty;
+        updatedItem.subtotal = qty * Number(updatedItem.unitCost || 0);
+      } else if (field === 'unitCost') {
+        const cost = Number(value) || 0;
+        updatedItem.unitCost = cost;
+        updatedItem.subtotal = Number(updatedItem.quantity || 0) * cost;
       }
 
       return updatedItem;
     });
 
     setBillItems(updated);
-    updateTotalsFromItems(updated, taxAmount, perceptions);
+    updateTotalsFromItems(updated, perceptions, applyIva);
   };
 
   const handleResetForm = () => {
@@ -133,6 +167,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
     setTotalAmount(fresh.totalAmount);
     setBillStatus(fresh.billStatus);
     setBillItems([]);
+    setApplyIva(true);
     setIsProcessing(fresh.isProcessing);
     setIsProcessed(fresh.isProcessed);
   };
@@ -149,6 +184,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
       setInvoiceNumber(editingBill.invoiceNumber || '');
       setSubtotal(editingBill.subtotal !== undefined ? editingBill.subtotal : '');
       setTaxAmount(editingBill.taxAmount !== undefined ? editingBill.taxAmount : '');
+      setApplyIva(editingBill.taxAmount === undefined || editingBill.taxAmount > 0);
       setPerceptions(editingBill.perceptions !== undefined ? editingBill.perceptions : '');
       setCurrency(editingBill.currency || 'AR$ (Pesos)');
       setTotalAmount(editingBill.amount !== undefined ? editingBill.amount : '');
@@ -197,6 +233,9 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
         if (parsed.perceptions !== undefined) setPerceptions(parsed.perceptions);
         if (parsed.currency) setCurrency(parsed.currency);
         if (parsed.amount !== undefined) setTotalAmount(parsed.amount);
+        if (parsed.items && parsed.items.length > 0) {
+          setBillItems(parsed.items);
+        }
       }
     } catch (err) {
       console.error('Error procesando factura:', err);
@@ -508,22 +547,47 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                     type="number"
                     step="0.01"
                     value={subtotal}
-                    onChange={(e) => setSubtotal(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
+                    readOnly
+                    className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] opacity-90 cursor-not-allowed font-medium"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-300">IVA / Impuestos ($)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-300">IVA / Impuestos ($)</label>
+                    <div className="flex items-center gap-1.5 cursor-pointer" onClick={handleToggleIva}>
+                      <span className="text-[10px] text-purple-200 font-semibold select-none">
+                        {applyIva ? 'IVA (21%)' : 'Sin IVA'}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={applyIva}
+                        onClick={(e) => { e.stopPropagation(); handleToggleIva(); }}
+                        className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border border-purple-800 transition-colors duration-200 ease-in-out focus:outline-none ${
+                          applyIva ? 'bg-[#9A7DB8]' : 'bg-slate-700'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out mt-[1px] ${
+                            applyIva ? 'translate-x-4' : 'translate-x-0.5'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
                   <input
                     type="number"
                     step="0.01"
                     value={taxAmount}
+                    readOnly={!applyIva}
+                    disabled={!applyIva}
                     onChange={(e) => {
-                      const newTax = e.target.value === '' ? '' : Number(e.target.value);
+                      const newTax = e.target.value === '' ? 0 : Number(e.target.value);
                       setTaxAmount(newTax);
-                      updateTotalsFromItems(billItems, newTax, perceptions);
+                      const tot = Number(totalAmount) || 0;
+                      setSubtotal(tot - newTax);
                     }}
-                    className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
+                    className={`bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] ${!applyIva ? 'opacity-50 cursor-not-allowed' : ''}`}
                   />
                 </div>
               </div>
@@ -554,18 +618,21 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                     {billItems.map((item) => (
                       <div key={item.id} className="p-3 bg-[#251733] rounded-xl border border-purple-900/40 flex flex-col gap-2 shadow-xs">
                         <div className="flex items-center gap-2 w-full">
-                          <select
-                            value={item.productId || ''}
-                            onChange={(e) => handleBillItemChange(item.id, 'productId', e.target.value)}
-                            className="flex-1 min-w-0 bg-[#160E1E] border border-purple-900/60 rounded-lg p-2 text-xs text-white outline-none focus:border-[#9A7DB8] cursor-pointer truncate"
-                          >
-                            <option value="">-- Ingreso libre / Seleccionar producto --</option>
-                            {availableProducts.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name} (Stock actual: {p.currentStock})
-                              </option>
-                            ))}
-                          </select>
+                          <div className="relative flex-1 min-w-0">
+                            <select
+                              value={item.productId || ''}
+                              onChange={(e) => handleBillItemChange(item.id, 'productId', e.target.value)}
+                              className="w-full appearance-none bg-[#160E1E] border border-purple-900/60 rounded-lg pr-8 pl-2 py-2 text-xs text-white outline-none focus:border-[#9A7DB8] cursor-pointer truncate"
+                            >
+                              <option value="">-- Ingreso libre / Seleccionar producto --</option>
+                              {availableProducts.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name} (Stock actual: {p.currentStock})
+                                </option>
+                              ))}
+                            </select>
+                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#CBB5E2] pointer-events-none text-[18px]">expand_more</span>
+                          </div>
                           <button
                             type="button"
                             onClick={() => handleRemoveBillItem(item.id)}
@@ -639,7 +706,11 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                     type="number"
                     step="0.01"
                     value={perceptions}
-                    onChange={(e) => setPerceptions(e.target.value === '' ? '' : Number(e.target.value))}
+                    onChange={(e) => {
+                      const newPerc = e.target.value === '' ? '' : Number(e.target.value);
+                      setPerceptions(newPerc);
+                      updateTotalsFromItems(billItems, newPerc, applyIva);
+                    }}
                     className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
                   />
                 </div>
@@ -666,7 +737,20 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                   type="number"
                   step="0.01"
                   value={totalAmount}
-                  onChange={(e) => setTotalAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                  onChange={(e) => {
+                    const newTotal = e.target.value === '' ? '' : Number(e.target.value);
+                    setTotalAmount(newTotal);
+                    if (typeof newTotal === 'number' && newTotal >= 0) {
+                      const { subtotal: newSub, taxAmount: newTax } = calculateInvoiceSubtotalAndTax(
+                        billItems.length > 0 ? billItems : [{ subtotal: newTotal }],
+                        applyIva,
+                        0.21,
+                        Number(perceptions) || 0
+                      );
+                      setSubtotal(newSub);
+                      setTaxAmount(newTax);
+                    }
+                  }}
                   required
                   className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] font-bold text-sm text-[#CBB5E2]"
                 />

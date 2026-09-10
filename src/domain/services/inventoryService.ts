@@ -5,13 +5,16 @@ export function recordStockEntry(
   quantity: number,
   provider?: string
 ): { updatedProduct: Product; movement: StockMovement } {
-  if (quantity <= 0) {
+  const numQty = Number(quantity) || 0;
+  if (numQty <= 0) {
     throw new Error('La cantidad de entrada debe ser mayor a 0');
   }
 
+  const currentStockNum = Number(product.currentStock) || 0;
+
   const updatedProduct: Product = {
     ...product,
-    currentStock: product.currentStock + quantity
+    currentStock: currentStockNum + numQty
   };
 
   const movement: StockMovement = {
@@ -19,7 +22,7 @@ export function recordStockEntry(
     productId: product.id,
     productName: product.name,
     type: 'entry',
-    quantity,
+    quantity: numQty,
     date: new Date().toISOString(),
     provider
   };
@@ -31,17 +34,20 @@ export function recordStockSale(
   product: Product,
   quantity: number
 ): { updatedProduct: Product; movement: StockMovement } {
-  if (quantity <= 0) {
+  const numQty = Number(quantity) || 0;
+  if (numQty <= 0) {
     throw new Error('La cantidad vendida debe ser mayor a 0');
   }
 
-  if (product.currentStock < quantity) {
-    throw new Error(`Stock insuficiente para "${product.name}". Disponible: ${product.currentStock}, Requerido: ${quantity}`);
+  const currentStockNum = Number(product.currentStock) || 0;
+
+  if (currentStockNum < numQty) {
+    throw new Error(`Stock insuficiente para "${product.name}". Disponible: ${currentStockNum}, Requerido: ${numQty}`);
   }
 
   const updatedProduct: Product = {
     ...product,
-    currentStock: product.currentStock - quantity
+    currentStock: currentStockNum - numQty
   };
 
   const movement: StockMovement = {
@@ -49,7 +55,7 @@ export function recordStockSale(
     productId: product.id,
     productName: product.name,
     type: 'sale',
-    quantity,
+    quantity: numQty,
     date: new Date().toISOString()
   };
 
@@ -61,15 +67,17 @@ export function recordStockAdjustment(
   newStock: number,
   reasonNote: string
 ): { updatedProduct: Product; movement: StockMovement } {
-  if (newStock < 0) {
+  const newStockNum = Number(newStock) || 0;
+  if (newStockNum < 0) {
     throw new Error('El stock no puede ser negativo');
   }
 
-  const difference = newStock - product.currentStock;
+  const currentStockNum = Number(product.currentStock) || 0;
+  const difference = newStockNum - currentStockNum;
 
   const updatedProduct: Product = {
     ...product,
-    currentStock: newStock
+    currentStock: newStockNum
   };
 
   const movement: StockMovement = {
@@ -91,7 +99,7 @@ export function findProductByBarcode(products: Product[], barcode: string): Prod
 }
 
 export function getLowStockAlerts(products: Product[]): Product[] {
-  return products.filter(p => p.currentStock <= p.minStock);
+  return products.filter(p => (Number(p.currentStock) || 0) <= (Number(p.minStock) || 0));
 }
 
 export function processStockReceiptFromBill(bill: SupplierBill, products: Product[]): Product[] {
@@ -99,36 +107,57 @@ export function processStockReceiptFromBill(bill: SupplierBill, products: Produc
     return products;
   }
 
-  const productMap = new Map<string, { quantityToAdd: number; newPrice?: number }>();
+  const updatedProducts = [...products];
+  const newProductsCreated: Product[] = [];
 
   for (const item of bill.items) {
-    if (item.quantity <= 0) continue;
+    const itemQty = Number(item.quantity) || 0;
+    const itemCost = Number(item.unitCost) || 0;
+    if (itemQty <= 0) continue;
     
-    // Match by productId if provided, or fallback to exact name matching
-    const matched = item.productId 
-      ? products.find(p => p.id === item.productId)
-      : products.find(p => p.name.toLowerCase() === item.productName.toLowerCase());
+    const cleanItemName = (item.productName || '').trim().toLowerCase();
 
-    if (matched) {
-      const existing = productMap.get(matched.id) || { quantityToAdd: 0 };
-      const nextQuantity = existing.quantityToAdd + item.quantity;
-      const nextPrice = item.updateCatalogPrice && item.unitCost > 0 ? item.unitCost : existing.newPrice;
-      productMap.set(matched.id, { quantityToAdd: nextQuantity, newPrice: nextPrice });
+    // Match by productId if provided, or by trimmed name matching
+    const existingIndex = updatedProducts.findIndex(p => 
+      (item.productId && p.id === item.productId) || 
+      (cleanItemName && p.name.trim().toLowerCase() === cleanItemName)
+    );
+
+    if (existingIndex >= 0) {
+      const p = updatedProducts[existingIndex];
+      const pStock = Number(p.currentStock) || 0;
+      const nextPrice = item.updateCatalogPrice && itemCost > 0 ? itemCost : p.price;
+      updatedProducts[existingIndex] = {
+        ...p,
+        currentStock: pStock + itemQty,
+        price: nextPrice
+      };
+    } else {
+      // Check if we already created a new product in this loop for the same productName
+      const newlyCreatedIndex = newProductsCreated.findIndex(p => p.name.toLowerCase() === (item.productName || '').toLowerCase());
+      if (newlyCreatedIndex >= 0) {
+        const p = newProductsCreated[newlyCreatedIndex];
+        const pStock = Number(p.currentStock) || 0;
+        const nextPrice = item.updateCatalogPrice && itemCost > 0 ? itemCost : p.price;
+        newProductsCreated[newlyCreatedIndex] = {
+          ...p,
+          currentStock: pStock + itemQty,
+          price: nextPrice
+        };
+      } else {
+        const newProduct: Product = {
+          id: item.productId || ('prod-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4)),
+          sku: 'PROD-' + Math.floor(1000 + Math.random() * 9000),
+          name: item.productName || 'Producto Nuevo',
+          category: 'Insumos Clínicos',
+          currentStock: itemQty,
+          minStock: 5,
+          price: itemCost
+        };
+        newProductsCreated.push(newProduct);
+      }
     }
   }
 
-  if (productMap.size === 0) {
-    return products;
-  }
-
-  return products.map(p => {
-    const updateInfo = productMap.get(p.id);
-    if (!updateInfo) return p;
-
-    return {
-      ...p,
-      currentStock: p.currentStock + updateInfo.quantityToAdd,
-      price: updateInfo.newPrice !== undefined ? updateInfo.newPrice : p.price
-    };
-  });
+  return [...updatedProducts, ...newProductsCreated];
 }

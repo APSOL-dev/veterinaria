@@ -10,9 +10,10 @@ Al presionar el botón **"Nueva Consulta"** (desde la barra lateral o cualquier 
   - Notas clínicas y diagnóstico (obligatorio).
   - Indicaciones / Posología de Receta (opcional con botón "Generar Receta").
   - Zona de carga de archivos adjuntos (simulada para imágenes y PDFs).
-- **Acciones al guardar:**
+- **Acciones al guardar y generación automática de PDF:**
   - **"Guardar Consulta":** Almacena el registro en el historial clínico del paciente y navega inmediatamente a su ficha técnica en el módulo "Pacientes", mostrando la nueva entrada en la cronología.
-  - **"Guardar y Generar Receta":** Guarda la consulta médica y registra la indicación de receta para el paciente.
+  - **"Guardar y Generar Receta" / Generar PDF:** Guarda la consulta médica y activa automáticamente el visor/modal de PDF e impresión (`window.print()`), permitiendo al usuario descargar o imprimir de inmediato la receta y ficha de consulta en PDF.
+  - **Botón Generar PDF Directo:** Tanto en la ficha de atención rápida como en la cronología histórica del paciente se ofrece la opción de disparar la generación y visualización directa del documento PDF oficial.
 
 - **Almacenamiento en Supabase Storage (`veterinaria-archivos`):**
   - **Archivos Adjuntos:** Todos los estudios, radiografías o análisis cargados se suben al bucket público `veterinaria-archivos` dentro de la carpeta `/consultas/`.

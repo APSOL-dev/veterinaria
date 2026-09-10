@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import html2pdf from 'html2pdf.js';
 import { Patient } from '../../domain/types';
 
 interface PrescriptionModalProps {
@@ -9,6 +10,7 @@ interface PrescriptionModalProps {
   vetLicenseNumber?: string;
   prescriptionText: string;
   dateStr?: string;
+  autoPrint?: boolean;
 }
 
 export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
@@ -18,7 +20,8 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   vetName,
   vetLicenseNumber = 'MP 8472-VET',
   prescriptionText,
-  dateStr
+  dateStr,
+  autoPrint = false
 }) => {
   if (!isOpen) return null;
 
@@ -43,13 +46,41 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
   const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMessage)}`;
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadPDF = () => {
+    const element = document.getElementById('prescription-printable-card');
+    if (!element) {
+      window.print();
+      return;
+    }
+
+    const actionsBar = element.querySelector('.print\\:hidden') as HTMLElement | null;
+    if (actionsBar) actionsBar.style.display = 'none';
+
+    const cleanPatientName = (patient.name || 'Paciente').replace(/\s+/g, '_');
+    const opt = {
+      margin: [10, 10, 10, 10] as [number, number, number, number],
+      filename: `Receta_${cleanPatientName}.pdf`,
+      image: { type: 'jpeg' as const, quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF: { unit: 'mm' as const, format: 'a4', orientation: 'portrait' as const }
+    };
+
+    try {
+      html2pdf().set(opt).from(element).save().then(() => {
+        if (actionsBar) actionsBar.style.display = 'flex';
+      }).catch(() => {
+        if (actionsBar) actionsBar.style.display = 'flex';
+        window.print();
+      });
+    } catch {
+      if (actionsBar) actionsBar.style.display = 'flex';
+      window.print();
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-2xl w-full p-8 shadow-2xl flex flex-col gap-6 border border-slate-200 my-auto text-slate-900 font-body-md print:shadow-none print:border-none print:w-full print:max-w-none print:p-0">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in overflow-y-auto print:bg-white print:p-8 print:static print:block print:inset-auto print:backdrop-blur-none">
+      <div id="prescription-printable-card" className="bg-white rounded-2xl max-w-2xl w-full p-8 shadow-2xl flex flex-col gap-6 border border-slate-200 my-auto text-slate-900 font-body-md print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:m-0">
         
         {/* Encabezado Membretado Impresión / Vista */}
         <div className="flex items-center justify-between border-b-2 border-purple-900/30 pb-4">
@@ -139,11 +170,11 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
           <button
             type="button"
-            onClick={handlePrint}
+            onClick={handleDownloadPDF}
             className="bg-[#9A7DB8] hover:bg-[#8666A6] text-white px-5 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[18px]">print</span>
-            <span>Imprimir / PDF</span>
+            <span className="material-symbols-outlined text-[18px]">download</span>
+            <span>Descargar PDF</span>
           </button>
         </div>
       </div>

@@ -18,7 +18,8 @@ import {
   formatInvoiceFullNumber,
   filterBillsByDateRange,
   filterPaymentsByDateRange,
-  getDefaultDateRange
+  getDefaultDateRange,
+  calculateInvoiceSubtotalAndTax
 } from './supplierService';
 
 describe('supplierService', () => {
@@ -62,7 +63,25 @@ describe('supplierService', () => {
     expect(bill.documentType).toBe('Factura A');
     expect(bill.subtotal).toBe(100000);
     expect(bill.taxAmount).toBe(21000);
+    expect(bill.perceptions).toBe(5000);
     expect(bill.currency).toBe('AR$ (Pesos)');
+  });
+
+  it('createSupplierBillRecord should preserve items array when provided', () => {
+    const items = [
+      { id: '1', productId: 'prod-2', productName: 'Royal Canin Gastrointestinal 2kg', quantity: 15, unitCost: 24990, subtotal: 374850 }
+    ];
+    const bill = createSupplierBillRecord({
+      supplierName: 'FarmaVet SA',
+      invoiceNumber: '0001-00045612',
+      date: '2026-08-27',
+      amount: 374850,
+      itemsCount: 1,
+      status: 'pending',
+      items
+    });
+
+    expect(bill.items).toEqual(items);
   });
 
   it('createSupplierBillRecord should safely fallback missing fields to prevent UI crashes', () => {
@@ -316,6 +335,43 @@ describe('supplierService', () => {
       expect(projections[0].dateLabel).toBe('Noviembre 2025');
     });
 
+    it('calculateMonthlyExpenditureProjections should split bill across months according to supplier credit term percentage breakdown', () => {
+      const bills: SupplierBill[] = [
+        {
+          id: 'b-split',
+          supplierName: 'Insumos Médicos del Plata',
+          invoiceNumber: '0001-00009999',
+          date: '2026-08-01',
+          amount: 100000,
+          itemsCount: 1,
+          status: 'pending'
+        }
+      ];
+
+      const customTerms = [
+        {
+          supplierName: 'Insumos Médicos del Plata',
+          termType: 'cuotas_30_60' as const,
+          termDays: 30,
+          installmentsCount: 2,
+          contadoPercent: 0,
+          dias30Percent: 50,
+          dias60Percent: 50,
+          dias90Percent: 0
+        }
+      ];
+
+      const projections = calculateMonthlyExpenditureProjections(bills, {}, [], '2026-08-01', '2026-10-31', customTerms);
+      
+      // 50% ($50.000) at 30 days -> 2026-08-31 (Agosto 2026)
+      const agos = projections.find(p => p.monthKey === '2026-08');
+      expect(agos?.totalAdeudado).toBe(50000);
+
+      // 50% ($50.000) at 60 days -> 2026-09-30 (Septiembre 2026)
+      const sept = projections.find(p => p.monthKey === '2026-09');
+      expect(sept?.totalAdeudado).toBe(50000);
+    });
+
     it('groupProjectionsByYear should group monthly projections into years with total aggregates', () => {
       const bills: SupplierBill[] = [
         { id: 'b1', supplierName: 'Sup A', invoiceNumber: '001', date: '2025-11-15', amount: 500, itemsCount: 1, status: 'pending' },
@@ -367,6 +423,61 @@ describe('supplierService', () => {
       // 3. Factura b2 (2026-08-15): Debe = 5000, Haber = 0, Saldo = 11000
       expect(movements[2].debe).toBe(5000);
       expect(movements[2].saldo).toBe(11000);
+    });
+  });
+
+  describe('calculateInvoiceSubtotalAndTax', () => {
+    it('should sum products for totalAmount and calculate subtotal/IVA when IVA is enabled', () => {
+      const items = [
+        { id: '1', productName: 'Meloxicam', quantity: 10, unitCost: 18200, subtotal: 182000 },
+        { id: '2', productName: 'Royal Canin', quantity: 15, unitCost: 24990, subtotal: 374850 }
+      ];
+
+      const res = calculateInvoiceSubtotalAndTax(items, true, 0.21);
+      expect(res.itemsSum).toBe(556850);
+      expect(res.totalAmount).toBe(556850);
+      expect(res.subtotal).toBe(460206.61);
+      expect(res.taxAmount).toBe(96643.39);
+      expect(res.subtotal + res.taxAmount).toBeCloseTo(res.totalAmount);
+    });
+
+    it('should set subtotal equal to totalAmount and IVA to 0 when IVA is disabled', () => {
+      const items = [
+        { id: '1', productName: 'Meloxicam', quantity: 10, unitCost: 18200, subtotal: 182000 },
+        { id: '2', productName: 'Royal Canin', quantity: 15, unitCost: 24990, subtotal: 374850 }
+      ];
+
+      const res = calculateInvoiceSubtotalAndTax(items, false, 0.21);
+      expect(res.itemsSum).toBe(556850);
+      expect(res.totalAmount).toBe(556850);
+      expect(res.subtotal).toBe(556850);
+      expect(res.taxAmount).toBe(0);
+    });
+  });
+
+  describe('supplier breakdown per month', () => {
+    it('calculateMonthlyExpenditureProjections should include supplierBreakdown array for each month', () => {
+      const bills: SupplierBill[] = [
+        { id: 'b1', supplierName: 'Distribuidora FarmaVet SA', invoiceNumber: '001', date: '2026-09-01', amount: 500000, itemsCount: 1, status: 'pending' },
+        { id: 'b2', supplierName: 'Laboratorios Zoonosis SRL', invoiceNumber: '002', date: '2026-09-05', amount: 300000, itemsCount: 1, status: 'pending' }
+      ];
+
+      const payments: SupplierPayment[] = [
+        { id: 'p1', billId: 'b1', billInvoiceNumber: '001', supplierName: 'Distribuidora FarmaVet SA', date: '2026-09-10', amount: 200000, paymentMethod: 'Efectivo' }
+      ];
+
+      const projections = calculateMonthlyExpenditureProjections(bills, {}, payments, '2026-09-01', '2026-09-30');
+      const sept = projections.find(p => p.monthKey === '2026-09');
+
+      expect(sept).toBeDefined();
+      expect(sept?.supplierBreakdown).toBeDefined();
+      expect(sept?.supplierBreakdown?.length).toBeGreaterThanOrEqual(1);
+
+      const farmaVet = sept?.supplierBreakdown?.find(s => s.supplierName === 'Distribuidora FarmaVet SA');
+      expect(farmaVet).toBeDefined();
+      expect(farmaVet?.totalPagado).toBe(200000);
+      expect(farmaVet?.totalAdeudado).toBe(300000);
+      expect(farmaVet?.total).toBe(500000);
     });
   });
 });

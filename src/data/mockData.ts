@@ -167,6 +167,10 @@ export const initialVaccineDoses: VaccineDosis[] = [
   }
 ];
 
+import { getWednesdayOfCurrentWeek } from '../domain/services/agendaService';
+
+const sampleWedDate = getWednesdayOfCurrentWeek();
+
 export const initialMedicalAppointments: MedicalAppointment[] = [
   {
     id: 'med-app-1',
@@ -176,8 +180,9 @@ export const initialMedicalAppointments: MedicalAppointment[] = [
     breed: 'Golden Retriever',
     ownerName: 'Carlos Mendoza',
     vetName: 'Dra. Ana López',
-    date: '2026-08-26',
+    date: sampleWedDate,
     time: '10:00',
+    endTime: '11:00',
     reason: 'Consulta General & Vacuna Anual',
     status: 'in_progress'
   },
@@ -189,8 +194,9 @@ export const initialMedicalAppointments: MedicalAppointment[] = [
     breed: 'Gato Siamés',
     ownerName: 'Laura Vargas',
     vetName: 'Dr. Marcos Silva',
-    date: '2026-08-26',
+    date: sampleWedDate,
     time: '11:00',
+    endTime: '11:30',
     reason: 'Revisión Oídos',
     status: 'pending'
   }
@@ -214,8 +220,9 @@ export const initialGroomingAppointments: GroomingAppointment[] = [
     ownerName: 'Sofía M.',
     serviceId: 'groom-srv-3',
     serviceName: 'Baño y Corte',
-    date: '2026-08-26',
+    date: sampleWedDate,
     time: '09:00',
+    endTime: '10:00',
     durationMinutes: 60,
     price: 18000,
     status: 'confirmed'

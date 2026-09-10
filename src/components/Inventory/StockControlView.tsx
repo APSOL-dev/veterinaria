@@ -173,10 +173,17 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
     return matchesCategory && matchesQuery;
   });
 
+  const handleOpenEntryModal = () => {
+    setEntryProductId(entryProductId || products[0]?.id || '');
+    setEntryQty(10);
+    setShowEntryModal(true);
+  };
+
   const handleStockEntrySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!entryProductId || entryQty <= 0) return;
-    onAddStockEntry(entryProductId, Number(entryQty), entryProvider || undefined);
+    const targetId = entryProductId || products[0]?.id;
+    if (!targetId || entryQty <= 0) return;
+    onAddStockEntry(targetId, Number(entryQty), entryProvider || undefined);
     setEntryProvider('');
     setShowEntryModal(false);
   };
@@ -236,7 +243,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         {activeSubmodule === 'productos-fisicos' ? (
           <div className="flex items-center gap-sm">
             <button
-              onClick={() => setShowEntryModal(true)}
+              onClick={handleOpenEntryModal}
               className="bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">inventory_2</span>

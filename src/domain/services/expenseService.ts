@@ -9,6 +9,8 @@ export function createExpenseRecord(input: {
   description: string;
   amount: number;
   note?: string;
+  voucherFile?: string;
+  voucherUrl?: string;
 }): ExpenseRecord {
   return {
     id: 'exp-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
@@ -19,7 +21,9 @@ export function createExpenseRecord(input: {
     paymentMethod: input.paymentMethod,
     description: input.description,
     amount: input.amount,
-    note: input.note
+    note: input.note,
+    voucherFile: input.voucherFile,
+    voucherUrl: input.voucherUrl
   };
 }
 
@@ -89,7 +93,9 @@ export function prepareExpenseForCopy(expense: ExpenseRecord): Omit<ExpenseRecor
     paymentMethod: expense.paymentMethod,
     description: expense.description,
     amount: expense.amount,
-    note: expense.note
+    note: expense.note,
+    voucherFile: expense.voucherFile,
+    voucherUrl: expense.voucherUrl
   };
 }
 

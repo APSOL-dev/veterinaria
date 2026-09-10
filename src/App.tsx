@@ -66,12 +66,16 @@ import {
   fetchExpensesFromSupabase,
   fetchProductsFromSupabase,
   fetchVaccineCatalogFromSupabase,
+  fetchVaccineDosesFromSupabase,
   fetchServicesCatalogFromSupabase,
   fetchClinicalNotesFromSupabase,
   fetchMedicalAppointmentsFromSupabase,
   fetchGroomingAppointmentsFromSupabase,
   fetchReceiptsFromSupabase,
+  fetchSupplierQuotesFromSupabase,
   insertPatientToSupabase,
+  updatePatientInSupabase,
+  insertVaccineDosisToSupabase,
   insertClinicalNoteToSupabase,
   insertMedicalAppointmentToSupabase,
   insertGroomingAppointmentToSupabase,
@@ -79,7 +83,10 @@ import {
   insertSupplierBillToSupabase,
   updateSupplierBillInSupabase,
   deleteSupplierBillFromSupabase,
+  insertSupplierQuoteToSupabase,
   insertExpenseToSupabase,
+  updateExpenseInSupabase,
+  deleteExpenseFromSupabase,
   insertReceiptToSupabase,
   fetchSupplierPaymentsFromSupabase,
   insertSupplierPaymentToSupabase,
@@ -90,6 +97,7 @@ import {
   updateServiceCatalogItemInSupabase,
   deleteServiceCatalogItemFromSupabase,
   updateProductInSupabase,
+  upsertProductToSupabase,
   deleteProductFromSupabase
 } from './domain/services/supabaseService';
 
@@ -217,11 +225,13 @@ export const App: React.FC = () => {
         dbProducts, 
         dbPayments,
         dbVaccines,
+        dbDoses,
         dbServices,
         dbNotes,
         dbMedApps,
         dbGroomApps,
-        dbReceipts
+        dbReceipts,
+        dbQuotes
       ] = await Promise.all([
         fetchPatientsFromSupabase(),
         fetchSupplierBillsFromSupabase(),
@@ -229,11 +239,13 @@ export const App: React.FC = () => {
         fetchProductsFromSupabase(),
         fetchSupplierPaymentsFromSupabase(),
         fetchVaccineCatalogFromSupabase(),
+        fetchVaccineDosesFromSupabase(),
         fetchServicesCatalogFromSupabase(),
         fetchClinicalNotesFromSupabase(),
         fetchMedicalAppointmentsFromSupabase(),
         fetchGroomingAppointmentsFromSupabase(),
-        fetchReceiptsFromSupabase()
+        fetchReceiptsFromSupabase(),
+        fetchSupplierQuotesFromSupabase()
       ]);
 
       if (dbPatients && dbPatients.length > 0) {
@@ -248,12 +260,17 @@ export const App: React.FC = () => {
       }
       if (dbProducts && dbProducts.length > 0) {
         setProducts(dbProducts);
+      } else {
+        initialProducts.forEach(p => upsertProductToSupabase(p));
       }
       if (dbPayments && dbPayments.length > 0) {
         setPayments(dbPayments);
       }
       if (dbVaccines && dbVaccines.length > 0) {
         setVaccineCatalog(dbVaccines);
+      }
+      if (dbDoses && dbDoses.length > 0) {
+        setVaccineDoses(dbDoses);
       }
       if (dbServices && dbServices.length > 0) {
         setServicesCatalog(dbServices);
@@ -269,6 +286,9 @@ export const App: React.FC = () => {
       }
       if (dbReceipts && dbReceipts.length > 0) {
         setReceipts(dbReceipts);
+      }
+      if (dbQuotes && dbQuotes.length > 0) {
+        setSupplierQuotes(dbQuotes);
       }
     }
     loadDataFromSupabase();
@@ -340,6 +360,14 @@ export const App: React.FC = () => {
 
     const newDosis = createDosisRecord(selectedPatient.id, vac, data.applicationDate, data.vetName, undefined, data.batch);
     setVaccineDoses([newDosis, ...vaccineDoses]);
+    insertVaccineDosisToSupabase(newDosis);
+  };
+
+  const handleUpdatePatients = (updatedPatients: Patient[]) => {
+    setPatients(updatedPatients);
+    updatedPatients.forEach(p => {
+      updatePatientInSupabase(p);
+    });
   };
 
   const handleAddMedicalAppointment = (app: Omit<MedicalAppointment, 'id'>) => {
@@ -365,6 +393,7 @@ export const App: React.FC = () => {
     if (!product) return;
     const { updatedProduct } = recordStockEntry(product, quantity, provider);
     setProducts(products.map(p => p.id === productId ? updatedProduct : p));
+    upsertProductToSupabase(updatedProduct);
   };
 
   const handleAddProduct = (newProduct: Omit<Product, 'id'>) => {
@@ -407,11 +436,19 @@ export const App: React.FC = () => {
     deleteServiceCatalogItemFromSupabase(id);
   };
 
+  const handleUpdateServicesCatalog = (updatedServices: ServiceCatalogItem[]) => {
+    setServicesCatalog(updatedServices);
+    updatedServices.forEach(item => {
+      updateServiceCatalogItemInSupabase(item.id, item);
+    });
+  };
+
   const handleAdjustStock = (productId: string, newStock: number, reason: string) => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
     const { updatedProduct } = recordStockAdjustment(product, newStock, reason);
     setProducts(products.map(p => p.id === productId ? updatedProduct : p));
+    upsertProductToSupabase(updatedProduct);
   };
 
   const handleAddPatient = async (patientData: {
@@ -436,8 +473,19 @@ export const App: React.FC = () => {
       title: res.success ? '¡Paciente Guardado!' : 'Aviso de Almacenamiento',
       type: res.success ? 'success' : 'warning',
       message: res.success
-        ? `¡Paciente ${newPat.name} guardado exitosamente en Supabase!`
-        : `Paciente agregado localmente. (Nota Supabase: ${res.error || 'Verifique permisos en la tabla'})`
+        ? `¡Paciente ${newPat.name} guardado exitosamente!`
+        : `Paciente agregado localmente. (${res.error || 'Verifique la conexión'})`
+    });
+  };
+
+  const syncProductsAfterBill = (bill: SupplierBill) => {
+    if (!bill.items || bill.items.length === 0) return;
+    setProducts(prevProducts => {
+      const nextProducts = processStockReceiptFromBill(bill, prevProducts);
+      nextProducts.forEach(p => {
+        upsertProductToSupabase(p);
+      });
+      return nextProducts;
     });
   };
 
@@ -445,9 +493,7 @@ export const App: React.FC = () => {
     const bill = createSupplierBillRecord(billData);
     setSupplierBills([bill, ...supplierBills]);
 
-    if (bill.items && bill.items.length > 0) {
-      setProducts(prevProducts => processStockReceiptFromBill(bill, prevProducts));
-    }
+    syncProductsAfterBill(bill);
 
     const res = await insertSupplierBillToSupabase(bill);
     setNotifModal({
@@ -455,8 +501,8 @@ export const App: React.FC = () => {
       title: res.success ? '¡Factura Guardada!' : 'Aviso de Almacenamiento',
       type: res.success ? 'success' : 'warning',
       message: res.success
-        ? `¡Factura N° ${bill.invoiceNumber} de ${bill.supplierName} guardada exitosamente en Supabase!`
-        : `Factura agregada localmente. (Nota Supabase: ${res.error || 'Verifique permisos en la tabla'})`
+        ? `¡Factura N° ${bill.invoiceNumber} de ${bill.supplierName} guardada exitosamente!`
+        : `Factura agregada localmente. (${res.error || 'Verifique la conexión'})`
     });
   };
 
@@ -464,9 +510,7 @@ export const App: React.FC = () => {
     setSupplierBills(prev => prev.map(b => b.id === id ? { ...billData, id } : b));
     
     const updatedBill = { ...billData, id };
-    if (updatedBill.items && updatedBill.items.length > 0) {
-      setProducts(prevProducts => processStockReceiptFromBill(updatedBill, prevProducts));
-    }
+    syncProductsAfterBill(updatedBill);
 
     const res = await updateSupplierBillInSupabase(id, billData);
     setNotifModal({
@@ -474,8 +518,8 @@ export const App: React.FC = () => {
       title: res.success ? '¡Factura Actualizada!' : 'Aviso de Almacenamiento',
       type: res.success ? 'success' : 'warning',
       message: res.success
-        ? `¡Factura N° ${billData.invoiceNumber} de ${billData.supplierName} actualizada exitosamente en Supabase!`
-        : `Factura actualizada localmente. (Nota Supabase: ${res.error || 'Verifique permisos en la tabla'})`
+        ? `¡Factura N° ${billData.invoiceNumber} de ${billData.supplierName} actualizada exitosamente!`
+        : `Factura actualizada localmente. (${res.error || 'Verifique la conexión'})`
     });
   };
 
@@ -489,13 +533,14 @@ export const App: React.FC = () => {
       type: res.success ? 'success' : 'warning',
       message: res.success
         ? `Factura ${target ? 'N° ' + target.invoiceNumber : ''} eliminada exitosamente.`
-        : `Factura eliminada localmente. (Nota Supabase: ${res.error || 'Verifique permisos en la tabla'})`
+        : `Factura eliminada localmente. (${res.error || 'Verifique la conexión'})`
     });
   };
 
   const handleAddSupplierQuote = (quoteData: Omit<SupplierQuote, 'id'>) => {
     const quote = createSupplierQuoteRecord(quoteData);
     setSupplierQuotes([quote, ...supplierQuotes]);
+    insertSupplierQuoteToSupabase(quote);
   };
 
   const handleUpdateMonthlyBudget = (monthKey: string, budgetAmount: number) => {
@@ -514,13 +559,14 @@ export const App: React.FC = () => {
       title: res.success ? '¡Gasto Registrado!' : 'Aviso de Almacenamiento',
       type: res.success ? 'success' : 'warning',
       message: res.success
-        ? `¡Gasto de $${newExp.amount} registrado exitosamente en Supabase!`
-        : `Gasto registrado localmente. (Nota Supabase: ${res.error || 'Verifique permisos en la tabla'})`
+        ? `¡Gasto de $${newExp.amount.toLocaleString('es-AR')} registrado exitosamente!`
+        : `Gasto registrado localmente. (${res.error || 'Verifique la conexión'})`
     });
   };
 
-  const handleUpdateExpense = (id: string, updatedData: Omit<ExpenseRecord, 'id'>) => {
+  const handleUpdateExpense = async (id: string, updatedData: Omit<ExpenseRecord, 'id'>) => {
     setExpenses(prev => prev.map(e => e.id === id ? { ...updatedData, id } : e));
+    await updateExpenseInSupabase(id, updatedData);
   };
 
   const [pendingBillingItems, setPendingBillingItems] = useState<BillItem[] | undefined>(undefined);
@@ -543,8 +589,9 @@ export const App: React.FC = () => {
     setActiveSubmodule('nueva-facturacion');
   }, [patients]);
 
-  const handleDeleteExpense = (id: string) => {
+  const handleDeleteExpense = async (id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
+    await deleteExpenseFromSupabase(id);
   };
 
   const handleDuplicateExpense = (id: string) => {
@@ -576,6 +623,7 @@ export const App: React.FC = () => {
             const totalPaid = getTotalPaidForBill(updatedPayments, b.id);
             const remaining = Math.max(0, (b.amount || 0) - totalPaid);
             if (remaining === 0) {
+              updateSupplierBillInSupabase(b.id, { status: 'paid' });
               return { ...b, status: 'paid' };
             }
           }
@@ -781,14 +829,14 @@ export const App: React.FC = () => {
                     setActiveModuleState('clinica');
                     setActiveSubmodule('calendario-clinica');
                   }}
-                  onUpdatePatients={setPatients}
+                  onUpdatePatients={handleUpdatePatients}
                 />
               )}
 
               {activeSubmodule === 'tutores' && (
                 <TutoresView
                   patients={patients}
-                  onUpdatePatients={setPatients}
+                  onUpdatePatients={handleUpdatePatients}
                   receipts={receipts}
                 />
               )}
@@ -803,7 +851,7 @@ export const App: React.FC = () => {
                   vaccineDoses={vaccineDoses}
                   onNavigateToTab={handleNavigateFromShortcut}
                   onAddPatient={handleAddPatient}
-                  onUpdatePatients={setPatients}
+                  onUpdatePatients={handleUpdatePatients}
                   vaccineCatalog={vaccineCatalog}
                   onRegisterDosis={handleRegisterDosis}
                   onAddVaccineToCatalog={handleAddVaccineToCatalog}
@@ -826,7 +874,7 @@ export const App: React.FC = () => {
               onUpdateServiceCatalogItem={handleUpdateServiceInCatalog}
               onDeleteServiceCatalogItem={handleDeleteServiceFromCatalog}
               onAdjustStock={handleAdjustStock}
-              onUpdateServicesCatalog={setServicesCatalog}
+              onUpdateServicesCatalog={handleUpdateServicesCatalog}
               onAddBill={handleAddSupplierBill}
             />
           )}

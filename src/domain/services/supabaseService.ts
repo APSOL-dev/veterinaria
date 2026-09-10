@@ -195,7 +195,8 @@ export function mapRowToSupplierBill(row: any): SupplierBill {
     itemsCount: Number(row.itemsCount ?? row.items_count ?? 1),
     status: row.status || 'pending',
     voucherName: row.voucherName || row.voucher_name || undefined,
-    voucherUrl: row.voucherUrl || row.voucher_url || undefined
+    voucherUrl: row.voucherUrl || row.voucher_url || undefined,
+    items: Array.isArray(row.items) ? row.items : (typeof row.items === 'string' ? JSON.parse(row.items) : undefined)
   };
 }
 
@@ -220,7 +221,9 @@ export function mapRowToExpenseRecord(row: any): ExpenseRecord {
     paymentMethod: row.paymentMethod || row.payment_method || 'Efectivo',
     description: String(row.description || ''),
     amount: Number(row.amount ?? 0),
-    note: row.note || undefined
+    note: row.note || undefined,
+    voucherFile: row.voucherFile || row.voucher_file || undefined,
+    voucherUrl: row.voucherUrl || row.voucher_url || undefined
   };
 }
 
@@ -343,6 +346,36 @@ export async function fetchServicesCatalogFromSupabase(): Promise<ServiceCatalog
   }
 }
 
+export async function fetchVaccineDosesFromSupabase(): Promise<VaccineDosis[] | null> {
+  try {
+    const { data, error } = await supabase.from('vetsoft_vw_dosis_vacunas').select('*');
+    if (error) {
+      const { data: rawData, error: rawError } = await supabase.from('vetsoft_dosis_vacunas').select('*');
+      if (rawError || !rawData || rawData.length === 0) return null;
+      return rawData.map(mapRowToVaccineDosis);
+    }
+    if (!data || data.length === 0) return null;
+    return data.map(mapRowToVaccineDosis);
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchSupplierQuotesFromSupabase(): Promise<SupplierQuote[] | null> {
+  try {
+    const { data, error } = await supabase.from('vetsoft_vw_presupuestos_proveedores').select('*');
+    if (error) {
+      const { data: rawData, error: rawError } = await supabase.from('vetsoft_presupuestos_proveedores').select('*');
+      if (rawError || !rawData || rawData.length === 0) return null;
+      return rawData.map(mapRowToSupplierQuote);
+    }
+    if (!data || data.length === 0) return null;
+    return data.map(mapRowToSupplierQuote);
+  } catch {
+    return null;
+  }
+}
+
 // =============================================================================
 // INSERTION HELPERS (Tables prefixed with vetsoft_)
 // =============================================================================
@@ -377,6 +410,38 @@ export async function insertPatientToSupabase(patient: Patient): Promise<SyncRes
     });
 
     if (error) console.error('Supabase error inserting patient:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function updatePatientInSupabase(patient: Patient): Promise<SyncResult> {
+  try {
+    if (patient.ownerId) {
+      await supabase.from('vetsoft_tutores').upsert({
+        id: patient.ownerId,
+        name: patient.ownerName,
+        phone: patient.ownerPhone || null
+      });
+    }
+
+    const { error } = await supabase.from('vetsoft_pacientes').update({
+      owner_id: patient.ownerId || null,
+      name: patient.name,
+      species: patient.species,
+      breed: patient.breed,
+      sex: patient.sex,
+      birth_date: sanitizeDateString(patient.birthDate),
+      photo_url: patient.photoUrl || null,
+      status: patient.status,
+      weight_kg: patient.weightKg || null,
+      alerts: patient.alerts || [],
+      weight_history: patient.weightHistory || [],
+      updated_at: new Date().toISOString()
+    }).eq('id', patient.id);
+
+    if (error) console.error('Supabase error updating patient:', error);
     return { success: !error, error: extractErrorMessage(error) };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error de conexión' };
@@ -441,9 +506,9 @@ export async function insertGroomingAppointmentToSupabase(appt: GroomingAppointm
   }
 }
 
-export async function insertProductToSupabase(prod: Product): Promise<SyncResult> {
+export async function upsertProductToSupabase(prod: Product): Promise<SyncResult> {
   try {
-    const { error } = await supabase.from('vetsoft_productos').insert({
+    const { error } = await supabase.from('vetsoft_productos').upsert({
       id: prod.id,
       sku: prod.sku,
       name: prod.name,
@@ -453,11 +518,15 @@ export async function insertProductToSupabase(prod: Product): Promise<SyncResult
       price: prod.price,
       barcode: prod.barcode || null
     });
-    if (error) console.error('Supabase error inserting product:', error);
+    if (error) console.error('Supabase error upserting product:', error);
     return { success: !error, error: extractErrorMessage(error) };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error de conexión' };
   }
+}
+
+export async function insertProductToSupabase(prod: Product): Promise<SyncResult> {
+  return upsertProductToSupabase(prod);
 }
 
 export async function updateProductInSupabase(id: string, prod: Partial<Product>): Promise<SyncResult> {
@@ -470,6 +539,11 @@ export async function updateProductInSupabase(id: string, prod: Partial<Product>
     if (prod.minStock !== undefined) payload.min_stock = prod.minStock;
     if (prod.price !== undefined) payload.price = prod.price;
     if (prod.barcode !== undefined) payload.barcode = prod.barcode || null;
+
+    // If full product properties are present, use upsert to guarantee insertion if table is empty
+    if (prod.name && prod.sku && prod.category) {
+      return upsertProductToSupabase({ id, ...prod } as Product);
+    }
 
     const { error } = await supabase.from('vetsoft_productos').update(payload).eq('id', id);
     if (error) console.error('Supabase error updating product:', error);
@@ -521,6 +595,27 @@ export async function deleteVaccineCatalogItemFromSupabase(id: string): Promise<
   try {
     const { error } = await supabase.from('vetsoft_vacunas_catalogo').delete().eq('id', id);
     if (error) console.error('Supabase error deleting vaccine catalog item:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function insertVaccineDosisToSupabase(dosis: VaccineDosis): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_dosis_vacunas').insert({
+      id: dosis.id,
+      patient_id: dosis.patientId,
+      vaccine_id: dosis.vaccineId,
+      vaccine_name: dosis.vaccineName,
+      application_date: sanitizeDateString(dosis.applicationDate),
+      expiration_date: sanitizeDateString(dosis.expirationDate),
+      vet_name: dosis.vetName,
+      batch: dosis.batch || null,
+      status: dosis.status || 'ok'
+    });
+
+    if (error) console.error('Supabase error inserting vaccine dosis:', error);
     return { success: !error, error: extractErrorMessage(error) };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error de conexión' };
@@ -680,6 +775,24 @@ export async function deleteSupplierBillFromSupabase(id: string): Promise<SyncRe
   }
 }
 
+export async function insertSupplierQuoteToSupabase(quote: SupplierQuote): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_presupuestos_proveedores').insert({
+      id: quote.id,
+      supplier_name: quote.supplierName,
+      title: quote.title,
+      date: sanitizeDateString(quote.date) || new Date().toISOString().substring(0, 10),
+      amount: quote.amount,
+      status: quote.status
+    });
+
+    if (error) console.error('Supabase error inserting supplier quote:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
 export async function insertExpenseToSupabase(expense: ExpenseRecord): Promise<SyncResult> {
   try {
     const cleanDate = sanitizeDateString(expense.date) || new Date().toISOString().substring(0, 10);
@@ -691,9 +804,50 @@ export async function insertExpenseToSupabase(expense: ExpenseRecord): Promise<S
       amount: expense.amount,
       date: cleanDate,
       month_key: cleanDate.substring(0, 7),
+      responsible: expense.responsible,
+      allocation: expense.allocation,
+      payment_method: expense.paymentMethod,
+      note: expense.note,
+      voucher_file: expense.voucherFile,
+      voucher_url: expense.voucherUrl,
       status: 'paid'
     });
     if (error) console.error('Supabase error inserting expense:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function updateExpenseInSupabase(id: string, expense: Omit<ExpenseRecord, 'id'>): Promise<SyncResult> {
+  try {
+    const cleanDate = sanitizeDateString(expense.date) || new Date().toISOString().substring(0, 10);
+
+    const { error } = await supabase.from('vetsoft_gastos').update({
+      category: expense.category,
+      description: expense.description,
+      amount: expense.amount,
+      date: cleanDate,
+      month_key: cleanDate.substring(0, 7),
+      responsible: expense.responsible,
+      allocation: expense.allocation,
+      payment_method: expense.paymentMethod,
+      note: expense.note,
+      voucher_file: expense.voucherFile,
+      voucher_url: expense.voucherUrl
+    }).eq('id', id);
+
+    if (error) console.error('Supabase error updating expense:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function deleteExpenseFromSupabase(id: string): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_gastos').delete().eq('id', id);
+    if (error) console.error('Supabase error deleting expense:', error);
     return { success: !error, error: extractErrorMessage(error) };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error de conexión' };
@@ -705,7 +859,7 @@ export async function insertReceiptToSupabase(receipt: BillReceipt): Promise<Syn
     const { error: headerErr } = await supabase.from('vetsoft_recibos').insert({
       id: receipt.id,
       patient_id: receipt.patientId || null,
-      date: receipt.date,
+      date: sanitizeDateString(receipt.date) || new Date().toISOString().substring(0, 10),
       document_type: receipt.documentType,
       invoice_number: receipt.receiptNumber,
       subtotal: receipt.subtotal,

@@ -234,7 +234,7 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
                   <tr key={m.id} className="hover:bg-surface-container/20 transition-colors">
                     <td className="py-3 px-md text-center">
                       <div className="flex items-center justify-center gap-1">
-                        {onOpenRegisterPayment && m.type === 'bill' && m.status !== 'Pagado' && (
+                        {onOpenRegisterPayment && m.type === 'bill' && m.status !== 'Pagado' && m.status !== 'paid' && (
                           <button
                             type="button"
                             onClick={() => onOpenRegisterPayment(m.id)}
@@ -276,11 +276,17 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
                     <td className="py-3 px-md text-center">
                       {m.status && m.status !== '-' ? (
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                          m.status === 'Pagado'
+                          m.status === 'Pagado' || m.status === 'paid'
                             ? 'bg-[#E8F5E9] text-[#27AE60]'
-                            : 'bg-slate-100 text-slate-700 border border-slate-300'
+                            : m.status === 'Pago parcial' || m.status === 'partial'
+                            ? 'bg-[#FEF9E7] text-[#D35400]'
+                            : 'bg-[#FDEDEC] text-[#C0392B]'
                         }`}>
-                          {m.status}
+                          {m.status === 'paid' || m.status === 'Pagado'
+                            ? 'Pagado'
+                            : m.status === 'partial' || m.status === 'Pago parcial'
+                            ? 'Pago parcial'
+                            : 'Pendiente'}
                         </span>
                       ) : (
                         <span className="text-slate-400">-</span>
@@ -328,7 +334,7 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
                   <span className="material-symbols-outlined text-[#CBB5E2] text-[20px]">more_time</span>
                   <span>Configurar Plazos (%)</span>
                 </h3>
-                <div className="mt-1">
+                <div className="mt-1 relative inline-block">
                   <select
                     value={editingSupplierName}
                     onChange={e => {
@@ -340,12 +346,13 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
                       setDias60Percent(termInfo.dias60Percent ?? (termInfo.termType === '60_dias' ? 100 : 0));
                       setDias90Percent(termInfo.dias90Percent ?? (termInfo.termType === '90_dias' ? 100 : 0));
                     }}
-                    className="bg-[#160E1E] text-[#CBB5E2] text-xs font-bold p-1 rounded border border-purple-900/50 outline-none"
+                    className="appearance-none bg-[#160E1E] text-[#CBB5E2] text-xs font-bold py-1 pr-7 pl-2 rounded border border-purple-900/50 outline-none cursor-pointer"
                   >
                     {allSuppliersList.map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
+                  <span className="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 text-[#CBB5E2] pointer-events-none text-[16px]">expand_more</span>
                 </div>
               </div>
               <button

@@ -100,6 +100,7 @@ export interface MedicalAppointment {
   vetName: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
+  endTime?: string; // HH:MM
   reason: string;
   status: MedicalAppointmentStatus;
   notes?: string;
@@ -131,6 +132,7 @@ export interface GroomingAppointment {
   serviceName: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
+  endTime?: string; // HH:MM
   durationMinutes: number;
   price: number;
   status: GroomingAppointmentStatus;
@@ -209,21 +211,37 @@ export interface SupplierQuote {
   status: 'draft' | 'approved' | 'rejected';
 }
 
+export interface SupplierBreakdownItem {
+  supplierName: string;
+  totalAdeudado: number;
+  totalPagado: number;
+  total: number;
+}
+
+export interface ExpenseBreakdownItem {
+  category: string;
+  amount: number;
+}
+
 export interface MonthlyExpenditureProjection {
   monthKey: string; // YYYY-MM
   dateLabel: string; // e.g. "mayo_2025"
   totalAdeudado: number;
   totalPagado: number;
+  totalGastos: number;
   total: number;
   presupuestoTotal: number;
   cumplimientoPercentage: number;
   statusLevel: 'ok' | 'warning' | 'exceeded';
+  supplierBreakdown?: SupplierBreakdownItem[];
+  expenseBreakdown?: ExpenseBreakdownItem[];
 }
 
 export interface YearlyExpenditureProjection {
   year: number;
   totalAdeudado: number;
   totalPagado: number;
+  totalGastos: number;
   total: number;
   presupuestoTotal: number;
   cumplimientoPercentage: number;
@@ -270,6 +288,8 @@ export interface ExpenseRecord {
   description: string;
   amount: number;
   note?: string;
+  voucherFile?: string;
+  voucherUrl?: string;
 }
 
 export interface StockMovement {

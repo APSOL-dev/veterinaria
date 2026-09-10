@@ -12,7 +12,8 @@ Gestiona el catálogo personalizado de vacunas que ofrece la clínica y el regis
 
 **Operaciones CRUD y Sincronización en Base de Datos:**
 - **Catálogo de Vacunas (`public.vetsoft_vacunas_catalogo`):** Permite **Agregar**, **Editar** (nombre, días de vigencia) y **Eliminar** ítems del catálogo general, sincronizando en tiempo real con Supabase PostgreSQL.
-- **Catálogo de Servicios y Prestaciones (`public.vetsoft_catalogo_servicios`):** Soporta alta, edición (categoría, nombre, descripción, precio) y eliminación con botones en tabla y modales dedicados.
+- **Dosis Aplicadas (`public.vetsoft_dosis_vacunas`):** Persiste de forma automatizada cada aplicación registrada a un paciente (`insertVaccineDosisToSupabase`), cargándolas al iniciar la app mediante la vista `public.vetsoft_vw_dosis_vacunas`.
+- **Catálogo de Servicios y Prestaciones (`public.vetsoft_catalogo_servicios`):** Soporta alta, edición (categoría, nombre, descripción, precio, estado reactivo) y eliminación con botones en tabla y modales dedicados.
 - **Catálogo de Productos e Inventario (`public.vetsoft_productos`):** Soporta alta de nuevos productos, edición (SKU, nombre, categoría, precio, stock mínimo) y eliminación con sincronización en Supabase DB.
 
 **Casos borde conocidos:**

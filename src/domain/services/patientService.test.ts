@@ -5,7 +5,9 @@ import {
   createNewPatientRecord, 
   calculateWeightTrend,
   formatAttachmentFileList,
-  updatePatientRecord
+  updatePatientRecord,
+  shouldAutoTriggerPdfOnSave,
+  formatConsultationPdfTitle
 } from './patientService';
 
 const mockPatients: Patient[] = [
@@ -137,5 +139,18 @@ describe('patientService', () => {
     expect(muna?.weightKg).toBe(4.8);
     expect(muna?.breed).toBe('Siamés Mestizo');
     expect(muna?.weightHistory).toContainEqual(expect.objectContaining({ weightKg: 4.8 }));
+  });
+
+  describe('PDF Generation Helpers', () => {
+    it('shouldAutoTriggerPdfOnSave should return true when generatePdf flag is set or prescription is present', () => {
+      expect(shouldAutoTriggerPdfOnSave(true, 'Amoxicilina 500mg')).toBe(true);
+      expect(shouldAutoTriggerPdfOnSave(false, 'Amoxicilina 500mg')).toBe(true);
+      expect(shouldAutoTriggerPdfOnSave(true, undefined)).toBe(true);
+      expect(shouldAutoTriggerPdfOnSave(false, undefined)).toBe(false);
+    });
+
+    it('formatConsultationPdfTitle should construct a standardized document title', () => {
+      expect(formatConsultationPdfTitle('Rocky', 'Consulta')).toBe('Receta_Consulta_Rocky.pdf');
+    });
   });
 });

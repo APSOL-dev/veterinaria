@@ -363,6 +363,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
 
       <PrescriptionModal
         isOpen={showPrescriptionModal}
+        autoPrint={false}
         onClose={() => {
           setShowPrescriptionModal(false);
           setNotes('');
