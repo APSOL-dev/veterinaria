@@ -13,6 +13,9 @@ export function getAccessibleModules(role: UserRoleType): ActiveModule[] {
 }
 
 export function canAccessModule(role: UserRoleType, module: ActiveModule): boolean {
+  if (module === 'whatsapp') {
+    return role === 'Administrador' || role === 'Veterinario';
+  }
   const allowed = getAccessibleModules(role);
   return allowed.includes(module);
 }

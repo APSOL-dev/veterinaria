@@ -1,5 +1,5 @@
 import React from 'react';
-import { getAccessibleModules, UserRoleType } from '../../domain/services/rbacService';
+import { canAccessModule, UserRoleType } from '../../domain/services/rbacService';
 
 export type ActiveModule = 
   | 'proveedores' 
@@ -7,7 +7,8 @@ export type ActiveModule =
   | 'peluqueria' 
   | 'pacientes' 
   | 'inventario'
-  | 'cobros';
+  | 'cobros'
+  | 'whatsapp';
 
 interface SidebarProps {
   activeModule: ActiveModule;
@@ -37,10 +38,11 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
     { id: 'pacientes', label: 'Pacientes', icon: 'pets' },
     { id: 'inventario', label: 'Inventario', icon: 'inventory_2' },
     { id: 'cobros', label: 'Cobros', icon: 'point_of_sale' },
+    { id: 'whatsapp', label: 'WhatsApp', icon: 'chat' },
   ];
 
-  const allowedModuleIds = getAccessibleModules(userRoleType);
-  const modules = allModules.filter(m => allowedModuleIds.includes(m.id));
+  const modules = allModules.filter(m => canAccessModule(userRoleType, m.id));
+
 
   const handleLogoutClick = () => {
     onLogout?.();

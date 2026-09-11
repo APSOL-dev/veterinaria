@@ -10,6 +10,7 @@ import { StoreBillingView } from './components/Billing/StoreBillingView';
 import { SuppliersView } from './components/Suppliers/SuppliersView';
 import { TutoresView } from './components/Patient/TutoresView';
 import { CobrosView } from './components/Billing/CobrosView';
+import { ChatPage } from './pages/ChatPage';
 import { LoginPage } from './components/Auth/LoginPage';
 import { UserSession } from './domain/services/authService';
 import { resolveShortcutNavigationTarget } from './domain/services/navigationService';
@@ -891,6 +892,21 @@ export const App: React.FC = () => {
               servicesCatalog={servicesCatalog}
               onCheckout={handleCheckout}
               onNavigateToHistorial={() => setActiveSubmodule('historial-cobros')}
+            />
+          )}
+
+          {/* Module: WhatsApp */}
+          {activeModule === 'whatsapp' && (
+            <ChatPage
+              patientsList={patients}
+              onOpenPatientProfile={(clientData: any) => {
+                const targetPatient = patients.find(p => p.id === clientData.id || p.ownerPhone === clientData.ownerPhone);
+                if (targetPatient) {
+                  setSelectedPatient(targetPatient);
+                }
+                setActiveModuleState('pacientes');
+                setActiveSubmodule('ficha-pacientes');
+              }}
             />
           )}
         </main>

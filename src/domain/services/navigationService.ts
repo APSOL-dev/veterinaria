@@ -6,7 +6,8 @@ export const MODULE_SUBMODULE_MAP: Record<ActiveModule, string[]> = {
   peluqueria: ['calendario-peluqueria'],
   pacientes: ['ficha-pacientes', 'tutores', 'control-vacunas'],
   inventario: ['productos-fisicos', 'servicios-catalogo'],
-  cobros: ['nueva-facturacion', 'historial-cobros']
+  cobros: ['nueva-facturacion', 'historial-cobros'],
+  whatsapp: ['mensajeria']
 };
 
 export function getDefaultSubmoduleForModule(module: ActiveModule): string {
