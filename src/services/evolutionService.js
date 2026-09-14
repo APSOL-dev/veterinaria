@@ -11,6 +11,32 @@ const getEnv = () => ({
   instance: import.meta.env.VITE_EVOLUTION_INSTANCE || DEFAULT_INSTANCE,
 });
 
+function safeStringifyError(errorJson, errorText, status, statusText) {
+  if (!errorJson) return errorText || `Error ${status}: ${statusText}`;
+
+  const candidate = 
+    errorJson.message ||
+    errorJson.response?.message ||
+    errorJson.response?.data?.message ||
+    errorJson.response?.data ||
+    errorJson.data?.message ||
+    errorJson.error ||
+    errorJson.reason;
+
+  if (!candidate) {
+    return typeof errorJson === 'object' ? JSON.stringify(errorJson) : String(errorJson);
+  }
+
+  if (typeof candidate === 'string') return candidate;
+  if (Array.isArray(candidate)) {
+    return candidate.map(c => typeof c === 'object' ? JSON.stringify(c) : String(c)).join(', ');
+  }
+  if (typeof candidate === 'object') {
+    return JSON.stringify(candidate);
+  }
+  return String(candidate);
+}
+
 async function apiRequest(method, path, body = null) {
   const { apiUrl, apiKey } = getEnv();
   if (!apiUrl || !apiKey) {
@@ -29,7 +55,8 @@ async function apiRequest(method, path, body = null) {
     const errorText = await response.text();
     let errorJson;
     try { errorJson = JSON.parse(errorText); } catch (_) {}
-    throw new Error(errorJson?.message || errorJson?.error || `Error ${response.status}: ${response.statusText}`);
+    const messageStr = safeStringifyError(errorJson, errorText, response.status, response.statusText);
+    throw new Error(messageStr);
   }
   return response.json();
 }
@@ -136,32 +163,38 @@ export const evolutionService = {
   },
   async sendTextMessage(number, text) {
     const instance = await getInstanceName();
-    const cleanNum = String(number).replace(/\D/g, '');
+    const cleanNum = String(number).endsWith('@g.us') ? number : String(number).replace(/\D/g, '');
     return await apiRequest('POST', `/message/sendText/${encodeURIComponent(instance)}`, {
       number: cleanNum,
       text,
-      options: { delay: 1200, presence: 'composing' },
     });
   },
   async sendMediaMessage(number, mediaBase64, mediatype, fileName, caption = '') {
     const instance = await getInstanceName();
-    const cleanNum = String(number).replace(/\D/g, '');
+    const cleanNum = String(number).endsWith('@g.us') ? number : String(number).replace(/\D/g, '');
+    const formattedMedia = mediaBase64.startsWith('data:') ? mediaBase64 : `data:${mediatype === 'image' ? 'image/png' : 'application/pdf'};base64,${mediaBase64}`;
     return await apiRequest('POST', `/message/sendMedia/${encodeURIComponent(instance)}`, {
       number: cleanNum,
       mediaMessage: {
         mediatype,
         caption,
-        media: mediaBase64,
+        media: formattedMedia,
         fileName,
       },
+      media: formattedMedia,
+      mediatype,
+      caption,
+      fileName,
     });
   },
   async sendAudioMessage(number, audioBase64) {
     const instance = await getInstanceName();
-    const cleanNum = String(number).replace(/\D/g, '');
+    const cleanNum = String(number).endsWith('@g.us') ? number : String(number).replace(/\D/g, '');
+    const formattedAudio = audioBase64.startsWith('data:') ? audioBase64 : `data:audio/ogg;codecs=opus;base64,${audioBase64}`;
     return await apiRequest('POST', `/message/sendWhatsAppAudio/${encodeURIComponent(instance)}`, {
       number: cleanNum,
-      audioMessage: { audio: audioBase64 },
+      audio: formattedAudio,
+      audioMessage: { audio: formattedAudio },
     });
   },
   async markAsRead(remoteJid) {
@@ -172,9 +205,17 @@ export const evolutionService = {
   },
   async getBase64FromMediaMessage(messageKeyOrId) {
     const instance = await getInstanceName();
-    const id = typeof messageKeyOrId === 'string' ? messageKeyOrId : (messageKeyOrId?.key?.id || messageKeyOrId?.id);
+    let keyObj = {};
+    if (typeof messageKeyOrId === 'string') {
+      keyObj = { id: messageKeyOrId };
+    } else if (messageKeyOrId?.key) {
+      keyObj = messageKeyOrId.key;
+    } else if (messageKeyOrId?.id) {
+      keyObj = { id: messageKeyOrId.id };
+    }
     return await apiRequest('POST', `/chat/getBase64FromMediaMessage/${encodeURIComponent(instance)}`, {
-      message: { key: { id } },
+      message: { key: keyObj },
+      convertToMp4: false,
     });
   },
 };

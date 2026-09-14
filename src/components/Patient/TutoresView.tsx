@@ -1,18 +1,22 @@
 import React, { useState, useMemo } from 'react';
-import { Patient, BillReceipt } from '../../domain/types';
-import { getUniqueTutores, updateTutorAndPetInfo, calculateTutorAccountMovements, TutorPaymentRecord } from '../../domain/services/tutorService';
+import { Patient, BillReceipt, MedicalAppointment, GroomingAppointment } from '../../domain/types';
+import { getUniqueTutores, updateTutorAndPetInfo, calculateTutorAccountMovements, getTutorAppointments, TutorAppointmentSummary, TutorPaymentRecord } from '../../domain/services/tutorService';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 
 interface TutoresViewProps {
   patients: Patient[];
   onUpdatePatients: (updatedPatients: Patient[]) => void;
   receipts?: BillReceipt[];
+  medicalAppointments?: MedicalAppointment[];
+  groomingAppointments?: GroomingAppointment[];
 }
 
 export const TutoresView: React.FC<TutoresViewProps> = ({
   patients,
   onUpdatePatients,
-  receipts = []
+  receipts = [],
+  medicalAppointments = [],
+  groomingAppointments = []
 }) => {
   const tutores = useMemo(() => getUniqueTutores(patients), [patients]);
   const [selectedTutorName, setSelectedTutorName] = useState<string>(tutores[0]?.ownerName || '');
@@ -50,6 +54,17 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
     if (accountMovements.length === 0) return 0;
     return accountMovements[accountMovements.length - 1].saldo;
   }, [accountMovements]);
+
+  // Turnos del tutor (médicos y peluquería)
+  const tutorAppointments = useMemo(() => {
+    if (!activeTutor) return [];
+    return getTutorAppointments(
+      activeTutor.ownerName,
+      activeTutor.pets.map(p => p.id),
+      medicalAppointments,
+      groomingAppointments
+    );
+  }, [activeTutor, medicalAppointments, groomingAppointments]);
 
   // Edit Modal Form State
   const [editOwnerName, setEditOwnerName] = useState('');
@@ -326,6 +341,63 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Turnos Programados del Tutor / Mascotas */}
+        <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex flex-col gap-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="font-headline-sm text-sm font-semibold text-slate-900 flex items-center gap-xs">
+              <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">calendar_month</span>
+              Turnos programados del tutor ({tutorAppointments.length})
+            </h2>
+            <span className="text-xs text-slate-500 font-medium">
+              Consultas médicas y peluquería
+            </span>
+          </div>
+
+          {tutorAppointments.length === 0 ? (
+            <p className="text-xs text-slate-500 italic p-xs">No hay turnos programados ni registrados para este tutor.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-sm">
+              {tutorAppointments.map((app: TutorAppointmentSummary) => {
+                const isPending = app.status === 'pending' || app.status === 'confirmed';
+                return (
+                  <div key={app.id} className={`p-sm rounded-xl border flex flex-col justify-between text-xs gap-xs ${
+                    isPending ? 'bg-amber-50/60 border-amber-200' : 'bg-surface-container-low border-outline-variant/20'
+                  }`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-bold text-slate-900">{app.patientName}</span>
+                        <span className="text-slate-500 text-[11px] ml-1.5">({app.type})</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        app.status === 'completed'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : isPending
+                          ? 'bg-amber-100 text-amber-900'
+                          : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {app.status === 'completed' ? '✓ Cobrado / Completado' : isPending ? 'Pendiente' : app.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-md text-[#5C3C7B] font-medium text-[11px]">
+                      <span className="flex items-center gap-0.5">
+                        <span className="material-symbols-outlined text-[13px]">event</span>
+                        {app.date}
+                      </span>
+                      <span className="flex items-center gap-0.5">
+                        <span className="material-symbols-outlined text-[13px]">schedule</span>
+                        {app.time} hs
+                      </span>
+                    </div>
+                    <div className="text-slate-600 text-[11px] truncate">
+                      {app.detail}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Associated Pets Section */}

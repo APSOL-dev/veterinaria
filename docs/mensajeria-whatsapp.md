@@ -26,9 +26,14 @@ Módulo de mensajería WhatsApp integrado con Evolution API (v2 / Baileys). Perm
   - Renderizado automático de las imágenes de avatar devueltas por el servidor de mensajería (`profilePicUrl`) o fotos asociadas al cliente en VETSOFT.
   - Fallback suave con iniciales estilizadas en caso de error de carga de imagen o ausencia de avatar.
 - Recepción y reproducción de archivos multimedia (`getBase64FromMediaMessage`):
-  - Las imágenes enviadas/recibidas se obtienen y desencriptan en base64 desde el servidor de mensajería para previsualizarlas directamente en el chat (con soporte para ampliar en Lightbox).
-  - Las notas de voz / audios PTT se obtienen en formato de audio y se renderizan con un reproductor HTML5 con controles interactivos de reproducción, pausa y avance.
+  - Las imágenes enviadas/recibidas se obtienen y desencriptan en base64 desde el servidor de mensajería para previsualizarlas directamente en el chat (con soporte para ampliar en Lightbox y miniaturas thumbnail de carga rápida).
+  - Las notas de voz / audios PTT se infieren con los encabezados MIME correctos (`audio/ogg`) y se renderizan con un reproductor HTML5 funcional con controles interactivos de reproducción, pausa y avance.
   - Los documentos adjuntos (PDFs) ofrecen enlace de descarga directa con el nombre original del archivo.
+- Manejo de Permisos de Micrófono y Conexiones Seguras:
+  - Detección previa de disponibilidad de `navigator.mediaDevices`. Si se accede por HTTP no seguro o sin permisos, despliega alertas informativas claras solicitando permisos o HTTPS.
+  - Captura diferencial de errores (`NotAllowedError`, `NotFoundError`) evitando bloqueos de la interfaz.
+- Formateo de Errores de API (Evolution API):
+  - Las respuestas HTTP 400 u otros fallos de la API deserializan arreglos y mensajes de validación internos (`message` / `response.message`) para informar la causa exacta del error en lugar de mensajes genéricos.
 - Fondo de pantalla característico de WhatsApp Web:
   - Papel tapiz con patrón de garabatos vectoriales en tono beige cálido (`#efeae2`), aplicado tanto a la vista activa del chat como a la pantalla vacía inicial.
   - Burbujas de chat con estilo fiel a WhatsApp Web: verde suave (`#d9fdd3`) para mensajes enviados y blanco para recibidos, acompañadas de doble tilde azul (`#53bdeb`) para confirmaciones de entrega/lectura.

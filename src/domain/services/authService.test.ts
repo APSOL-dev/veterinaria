@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { authenticateUser, getDemoCredentials } from './authService';
+import { authenticateUser, getDemoCredentials, saveUserSession, loadSavedUserSession, clearUserSession } from './authService';
 import { supabase } from '../supabaseClient';
 
 describe('authService', () => {
@@ -78,5 +78,20 @@ describe('authService', () => {
     expect(demo[0].username).toBe('Administrador');
     expect(demo[1].username).toBe('Veterinario');
     expect(demo[2].username).toBe('Peluquero');
+  });
+
+  it('session persistence helpers should save, load, and clear session in localStorage', () => {
+    const mockSession = {
+      username: 'admin@vetsoft.com',
+      name: 'Dr. J. Silva',
+      role: 'Administrador' as const,
+      roleLabel: 'Administrador General'
+    };
+
+    saveUserSession(mockSession);
+    expect(loadSavedUserSession()).toEqual(mockSession);
+
+    clearUserSession();
+    expect(loadSavedUserSession()).toBeNull();
   });
 });

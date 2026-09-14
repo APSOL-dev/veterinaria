@@ -86,3 +86,31 @@ export function getDemoCredentials(): DemoCredential[] {
   return DEMO_USERS;
 }
 
+const STORAGE_KEY = 'vetsoft_user_session';
+
+export function saveUserSession(session: UserSession): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  } catch (err) {
+    console.warn('No se pudo guardar la sesión de usuario:', err);
+  }
+}
+
+export function loadSavedUserSession(): UserSession | null {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch (err) {
+    console.warn('Error leyendo la sesión guardada:', err);
+    return null;
+  }
+}
+
+export function clearUserSession(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (err) {
+    console.warn('Error borrando la sesión guardada:', err);
+  }
+}
+

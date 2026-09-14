@@ -14,3 +14,4 @@ En la vista **Agenda & Turnos** (tanto en el calendario de Área Médica como de
 1. Al presionar **`Cobrar Turno`** en una tarjeta de la agenda, el sistema obtiene el paciente y la prestación agendada.
 2. Deriva automáticamente al usuario hacia el módulo **Cobros** $\rightarrow$ `nueva-facturacion` (Punto de Venta POS).
 3. Preselecciona al paciente asignado al turno para agilizar la emisión del comprobante de cobranza.
+4. **Actualización Automática a Estado Cobrado:** Al confirmar y cobrar la venta en el punto de cobro, el turno correspondiente cambia automáticamente su estado a `completado`. En el calendario de la Agenda, el botón "Cobrar Turno" se reemplaza automáticamente por una insignia verde resaltada de **`✓ Cobrado`**.

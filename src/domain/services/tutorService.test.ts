@@ -3,7 +3,8 @@ import { Patient } from '../types';
 import { 
   getUniqueTutores, 
   updateTutorAndPetInfo,
-  calculateTutorAccountMovements 
+  calculateTutorAccountMovements,
+  getTutorAppointments
 } from './tutorService';
 
 describe('tutorService', () => {
@@ -97,4 +98,50 @@ describe('tutorService', () => {
     expect(movements[2].debe).toBe(5000);
     expect(movements[2].saldo).toBe(10000);
   });
+
+  it('getTutorAppointments should retrieve medical and grooming appointments for a tutor', () => {
+    const medical = [
+      {
+        id: 'med1',
+        patientId: 'p1',
+        patientName: 'Rocky',
+        species: 'Canino' as const,
+        breed: 'Golden Retriever',
+        ownerName: 'Carlos Mendoza',
+        vetName: 'Silva',
+        date: '2026-09-20',
+        time: '10:00',
+        reason: 'Consulta general',
+        status: 'pending' as const
+      }
+    ];
+
+    const grooming = [
+      {
+        id: 'groom1',
+        patientId: 'p1',
+        patientName: 'Rocky',
+        species: 'Canino' as const,
+        breed: 'Golden Retriever',
+        ownerName: 'Carlos Mendoza',
+        serviceId: 's1',
+        serviceName: 'Baño Completo',
+        date: '2026-09-18',
+        time: '14:00',
+        durationMinutes: 45,
+        price: 3500,
+        status: 'pending' as const
+      }
+    ];
+
+    const appointments = getTutorAppointments('Carlos Mendoza', ['p1', 'p2'], medical, grooming);
+
+    expect(appointments.length).toBe(2);
+    // Sorted by date/time: groom1 (2026-09-18) comes first, med1 (2026-09-20) second
+    expect(appointments[0].id).toBe('groom1');
+    expect(appointments[0].type).toBe('Peluquería / Estética');
+    expect(appointments[1].id).toBe('med1');
+    expect(appointments[1].type).toBe('Consulta Médica');
+  });
 });
+

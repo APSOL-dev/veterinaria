@@ -148,29 +148,65 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
     setAvatarErrors(prev => ({ ...prev, [id]: true }));
   }, []);
 
-  const loadMediaForMessage = useCallback(async (msgId) => {
+  const loadMediaForMessage = useCallback(async (msg) => {
+    const msgId = typeof msg === 'string' ? msg : (msg?.key?.id || msg?.id);
     if (!msgId) return;
+
     setMediaCache(prev => {
       if (prev[msgId]?.loading || prev[msgId]?.base64) return prev;
       return { ...prev, [msgId]: { loading: true } };
     });
 
+    const msgObj = typeof msg === 'object' ? msg : messages.find(m => (m.key?.id || m.id) === msgId);
+    const isAudioMsg = !!(msgObj?.message?.audioMessage || msgObj?.messageType === 'audioMessage');
+    const isDocMsg = !!(msgObj?.message?.documentMessage || msgObj?.messageType === 'documentMessage');
+    const isImageMsg = !!(msgObj?.message?.imageMessage || msgObj?.messageType === 'imageMessage');
+
+    const defaultMime = isAudioMsg ? 'audio/ogg' : (isDocMsg ? 'application/pdf' : 'image/jpeg');
+
     try {
-      const res = await evolutionService.getBase64FromMediaMessage(msgId);
-      let finalBase64 = res?.base64 || res?.media || '';
-      const mimetype = res?.mimetype || '';
-      if (finalBase64 && !finalBase64.startsWith('data:')) {
-        finalBase64 = `data:${mimetype || 'application/octet-stream'};base64,${finalBase64}`;
+      const inlineBase64 = msgObj?.message?.imageMessage?.base64 ||
+        msgObj?.message?.audioMessage?.base64 ||
+        msgObj?.message?.documentMessage?.base64;
+
+      if (inlineBase64) {
+        const formatted = inlineBase64.startsWith('data:') ? inlineBase64 : `data:${defaultMime};base64,${inlineBase64}`;
+        setMediaCache(prev => ({
+          ...prev,
+          [msgId]: { base64: formatted, mimetype: defaultMime, loading: false, error: false }
+        }));
+        return;
       }
+
+      const res = await evolutionService.getBase64FromMediaMessage(msgObj || msgId);
+      let rawB64 = res?.base64 || res?.media || res?.base64Data || '';
+      const mime = (res?.mimetype && res.mimetype !== 'application/octet-stream') ? res.mimetype : defaultMime;
+
+      let finalBase64 = rawB64;
+      if (finalBase64 && !finalBase64.startsWith('data:')) {
+        finalBase64 = `data:${mime};base64,${finalBase64}`;
+      }
+
+      if (!finalBase64 && isImageMsg && msgObj?.message?.imageMessage?.jpegThumbnail) {
+        finalBase64 = `data:image/jpeg;base64,${msgObj.message.imageMessage.jpegThumbnail}`;
+      }
+
       setMediaCache(prev => ({
         ...prev,
-        [msgId]: { base64: finalBase64, mimetype, loading: false, error: !finalBase64 }
+        [msgId]: { base64: finalBase64, mimetype: mime, loading: false, error: !finalBase64 }
       }));
     } catch (err) {
       console.warn('Error cargando multimedia para mensaje:', msgId, err);
-      setMediaCache(prev => ({ ...prev, [msgId]: { loading: false, error: true } }));
+      let fallbackB64 = '';
+      if (isImageMsg && msgObj?.message?.imageMessage?.jpegThumbnail) {
+        fallbackB64 = `data:image/jpeg;base64,${msgObj.message.imageMessage.jpegThumbnail}`;
+      }
+      setMediaCache(prev => ({
+        ...prev,
+        [msgId]: { base64: fallbackB64, mimetype: defaultMime, loading: false, error: !fallbackB64 }
+      }));
     }
-  }, []);
+  }, [messages]);
 
   useEffect(() => {
     messages.forEach(msg => {
@@ -184,7 +220,7 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
       );
       const msgId = msg.key?.id || msg.id;
       if (isMedia && msgId && !mediaCache[msgId]) {
-        loadMediaForMessage(msgId);
+        loadMediaForMessage(msg);
       }
     });
   }, [messages, loadMediaForMessage, mediaCache]);
@@ -360,12 +396,13 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
 
     try {
       if (config.apiUrl && config.apiKey) {
-        await evolutionService.sendTextMessage(cleanNumber, textToSend);
+        await evolutionService.sendTextMessage(remoteJid, textToSend);
         loadMessagesForChat(remoteJid);
       }
     } catch (err) {
       console.error('Error enviando mensaje:', err);
-      alert('Error enviando mensaje: ' + err.message);
+      const msg = typeof err?.message === 'string' ? err.message : (typeof err === 'string' ? err : JSON.stringify(err?.message || err));
+      alert('Error enviando mensaje: ' + msg);
     } finally {
       setIsSending(false);
     }
@@ -373,6 +410,11 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
 
   // 7. Grabación de Nota de Voz
   const startRecording = async () => {
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      alert('El acceso al micrófono no está disponible en este navegador o requiere conexión segura (HTTPS).');
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
@@ -393,15 +435,15 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
           const base64Audio = reader.result.split(',')[1];
           if (selectedChat && base64Audio) {
             const remoteJid = selectedChat.remoteJid || selectedChat.id;
-            const cleanNumber = remoteJid.replace(/\D/g, '');
             try {
               setIsSending(true);
               if (config.apiUrl && config.apiKey) {
-                await evolutionService.sendAudioMessage(cleanNumber, base64Audio);
+                await evolutionService.sendAudioMessage(remoteJid, base64Audio);
                 loadMessagesForChat(remoteJid);
               }
             } catch (err) {
               console.error('Error enviando nota de voz:', err);
+              alert('Error enviando nota de voz: ' + err.message);
             } finally {
               setIsSending(false);
             }
@@ -419,7 +461,13 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
       }, 1000);
     } catch (err) {
       console.error('No se pudo acceder al micrófono:', err);
-      alert('Permiso de micrófono denegado o no disponible.');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        alert('Permiso de micrófono denegado. Habilita el acceso al micrófono en la barra de dirección de tu navegador.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        alert('No se detectó ningún micrófono conectado al equipo.');
+      } else {
+        alert('No se pudo acceder al micrófono: ' + (err.message || 'Error de hardware o permisos.'));
+      }
     }
   };
 
@@ -454,12 +502,13 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
       try {
         setIsSending(true);
         if (config.apiUrl && config.apiKey) {
-          await evolutionService.sendMediaMessage(cleanNumber, base64Media, mediatype, file.name, file.name);
+          await evolutionService.sendMediaMessage(remoteJid, base64Media, mediatype, file.name, file.name);
           loadMessagesForChat(remoteJid);
         }
       } catch (err) {
         console.error('Error enviando archivo:', err);
-        alert('Error al enviar archivo: ' + err.message);
+        const msg = typeof err?.message === 'string' ? err.message : (typeof err === 'string' ? err : JSON.stringify(err?.message || err));
+        alert('Error al enviar archivo: ' + msg);
       } finally {
         setIsSending(false);
         if (fileInputRef.current) fileInputRef.current.value = '';

@@ -12,7 +12,7 @@ import { TutoresView } from './components/Patient/TutoresView';
 import { CobrosView } from './components/Billing/CobrosView';
 import { ChatPage } from './pages/ChatPage';
 import { LoginPage } from './components/Auth/LoginPage';
-import { UserSession } from './domain/services/authService';
+import { UserSession, saveUserSession, loadSavedUserSession, clearUserSession } from './domain/services/authService';
 import { resolveShortcutNavigationTarget } from './domain/services/navigationService';
 import { supabase } from './domain/supabaseClient';
 
@@ -107,7 +107,7 @@ import { AppNotificationModal } from './components/Common/AppNotificationModal';
 import { LowStockAlertModal } from './components/Inventory/LowStockAlertModal';
 
 export const App: React.FC = () => {
-  const [userSession, setUserSession] = useState<UserSession | null>(null);
+  const [userSession, setUserSession] = useState<UserSession | null>(loadSavedUserSession);
   const [showLowStockModal, setShowLowStockModal] = useState<boolean>(false);
   const [activeModule, setActiveModuleState] = useState<ActiveModule>('pacientes');
   const [activeSubmodule, setActiveSubmodule] = useState<string>('ficha-pacientes');
@@ -164,6 +164,7 @@ export const App: React.FC = () => {
   const [receipts, setReceipts] = useState<BillReceipt[]>(initialReceipts);
 
   const handleLoginSuccess = useCallback((session: UserSession) => {
+    saveUserSession(session);
     setUserSession(session);
     const defaultMod = getDefaultModuleForRole(session.role);
     const nav = resolveNavigationState(defaultMod);
@@ -679,6 +680,22 @@ export const App: React.FC = () => {
     setReceipts([result.receipt, ...receipts]);
     setProducts(result.updatedProducts);
     insertReceiptToSupabase(result.receipt);
+
+    // Marcar turnos del paciente como cobrados en la agenda
+    setMedicalAppointments(prev => prev.map(app => {
+      if (app.patientId === pat.id && app.status !== 'cancelled') {
+        return { ...app, status: 'completed' as const };
+      }
+      return app;
+    }));
+
+    setGroomingAppointments(prev => prev.map(app => {
+      if (app.patientId === pat.id && app.status !== 'cancelled') {
+        return { ...app, status: 'completed' as const };
+      }
+      return app;
+    }));
+
     setNotifModal({
       isOpen: true,
       title: '¡Cobro Emitido!',
@@ -721,7 +738,10 @@ export const App: React.FC = () => {
         userName={userSession.name}
         userRole={userSession.roleLabel}
         userRoleType={userSession.role}
-        onLogout={() => setUserSession(null)}
+        onLogout={() => {
+          clearUserSession();
+          setUserSession(null);
+        }}
       />
 
       {/* Main Layout Area (Pegado directamente a la barra lateral) */}
@@ -852,6 +872,8 @@ export const App: React.FC = () => {
                   patients={patients}
                   onUpdatePatients={handleUpdatePatients}
                   receipts={receipts}
+                  medicalAppointments={medicalAppointments}
+                  groomingAppointments={groomingAppointments}
                 />
               )}
 
@@ -869,6 +891,8 @@ export const App: React.FC = () => {
                   vaccineCatalog={vaccineCatalog}
                   onRegisterDosis={handleRegisterDosis}
                   onAddVaccineToCatalog={handleAddVaccineToCatalog}
+                  medicalAppointments={medicalAppointments}
+                  groomingAppointments={groomingAppointments}
                 />
               )}
             </>

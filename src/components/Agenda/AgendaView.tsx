@@ -269,14 +269,21 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                               </div>
                               <span className="text-[11px] text-slate-600 truncate font-medium">{app.species} ({app.breed})</span>
                               <span className="text-[10px] text-[#5C3C7B] font-semibold truncate">Dr. {app.vetName}</span>
-                              <button
-                                type="button"
-                                onClick={() => onNavigateToBilling?.(app.patientId, 'Consulta Médica', 15000)}
-                                className="mt-1 bg-[#9A7DB8] text-white hover:bg-[#8362A5] px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-0.5 shadow-xs transition-all cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
-                                Cobrar turno
-                              </button>
+                              {app.status === 'completed' ? (
+                                <div className="mt-1 bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-1 rounded-lg text-[10px] font-bold flex items-center justify-center gap-0.5 shadow-2xs">
+                                  <span className="material-symbols-outlined text-[12px] text-emerald-700">check_circle</span>
+                                  <span>✓ Cobrado</span>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => onNavigateToBilling?.(app.patientId, 'Consulta Médica', 15000)}
+                                  className="mt-1 bg-[#9A7DB8] text-white hover:bg-[#8362A5] px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-0.5 shadow-xs transition-all cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
+                                  Cobrar turno
+                                </button>
+                              )}
                             </div>
                           );
                         } else {
@@ -321,14 +328,21 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                               </div>
                               <span className="text-[11px] text-slate-700 truncate font-semibold">{g.serviceName}</span>
                               <span className="text-[10px] text-slate-600 truncate font-medium">Propietario: {g.ownerName}</span>
-                              <button
-                                type="button"
-                                onClick={() => onNavigateToBilling?.(g.patientId, g.serviceName, g.price || 12000)}
-                                className="mt-1 bg-amber-600 text-white hover:bg-amber-700 px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-0.5 shadow-xs transition-all cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
-                                Cobrar turno
-                              </button>
+                              {g.status === 'completed' ? (
+                                <div className="mt-1 bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-1 rounded-lg text-[10px] font-bold flex items-center justify-center gap-0.5 shadow-2xs">
+                                  <span className="material-symbols-outlined text-[12px] text-emerald-700">check_circle</span>
+                                  <span>✓ Cobrado</span>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => onNavigateToBilling?.(g.patientId, g.serviceName, g.price || 12000)}
+                                  className="mt-1 bg-amber-600 text-white hover:bg-amber-700 px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-0.5 shadow-xs transition-all cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-[12px]">point_of_sale</span>
+                                  Cobrar turno
+                                </button>
+                              )}
                             </div>
                           );
                         } else {

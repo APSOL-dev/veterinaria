@@ -1,4 +1,4 @@
-import { Patient, Species } from '../types';
+import { Patient, Species, MedicalAppointment, GroomingAppointment } from '../types';
 
 export interface TutorSummary {
   ownerName: string;
@@ -136,3 +136,53 @@ export function calculateTutorAccountMovements(
     };
   });
 }
+
+export interface TutorAppointmentSummary {
+  id: string;
+  type: 'Consulta Médica' | 'Peluquería / Estética';
+  date: string;
+  time: string;
+  patientName: string;
+  patientId: string;
+  detail: string;
+  status: string;
+}
+
+export function getTutorAppointments(
+  tutorName: string,
+  tutorPetIds: string[],
+  medicalAppointments: MedicalAppointment[] = [],
+  groomingAppointments: GroomingAppointment[] = []
+): TutorAppointmentSummary[] {
+  const ownerLower = (tutorName || '').trim().toLowerCase();
+  const petSet = new Set(tutorPetIds);
+
+  const med = (medicalAppointments || [])
+    .filter(app => (petSet.has(app.patientId) || app.ownerName.toLowerCase() === ownerLower) && app.status !== 'cancelled')
+    .map(app => ({
+      id: app.id,
+      type: 'Consulta Médica' as const,
+      date: app.date,
+      time: app.time,
+      patientName: app.patientName,
+      patientId: app.patientId,
+      detail: `Dr. ${app.vetName} — ${app.reason}`,
+      status: app.status
+    }));
+
+  const groom = (groomingAppointments || [])
+    .filter(app => (petSet.has(app.patientId) || app.ownerName.toLowerCase() === ownerLower) && app.status !== 'cancelled')
+    .map(app => ({
+      id: app.id,
+      type: 'Peluquería / Estética' as const,
+      date: app.date,
+      time: app.time,
+      patientName: app.patientName,
+      patientId: app.patientId,
+      detail: `${app.serviceName}`,
+      status: app.status
+    }));
+
+  return [...med, ...groom].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+}
+

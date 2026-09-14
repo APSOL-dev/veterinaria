@@ -7,6 +7,7 @@ Gestiona la autenticación de usuarios mediante credenciales corporativas (Usuar
 - **Inicio de sesión seguro:** Los campos de Usuario y Contraseña inician completamente vacíos. Se eliminaron los accesos rápidos o credenciales demo visibles por motivos de seguridad.
 - **Alternancia de visibilidad de contraseña:** Incluye un botón interacivo con icono de ojo (`visibility` / `visibility_off`) dentro del campo de contraseña para permitir al usuario mostrar u ocultar los caracteres ingresados según lo requiera.
 - **Validación de credenciales:** Valida las credenciales ingresadas contra la capa de autenticación y devuelve un mensaje de error claro en caso de ser incorrectas.
+- **Persistencia de sesión en recarga (F5):** Mantiene la sesión activa guardando las credenciales autorizadas en el almacenamiento local del navegador (`localStorage`). Al recargar la página o presionar F5, el usuario permanece autenticado sin regresar a la pantalla de login. La sesión se invalida limpiando la clave de persistencia únicamente al hacer clic explícito en "Cerrar Sesión".
 - **Seguridad y Control de Accesos:** Asigna el rol correspondiente y restringe el acceso a módulos específicos según la matriz RBAC de la clínica.
 
 **Casos borde conocidos:**

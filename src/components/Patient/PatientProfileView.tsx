@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Patient, ClinicalNote, VaccineDosis, Species, Sex, PatientRequiredVaccine, VaccineCatalogItem } from '../../domain/types';
+import { Patient, ClinicalNote, VaccineDosis, Species, Sex, PatientRequiredVaccine, VaccineCatalogItem, MedicalAppointment, GroomingAppointment } from '../../domain/types';
 import { filterPatients, calculateWeightTrend, updatePatientRecord } from '../../domain/services/patientService';
 import { NewPatientModal } from './NewPatientModal';
 import { PrescriptionModal } from './PrescriptionModal';
@@ -18,6 +18,8 @@ interface PatientProfileViewProps {
   vaccineCatalog?: VaccineCatalogItem[];
   onRegisterDosis?: (dosis: { vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => void;
   onAddVaccineToCatalog?: (name: string, frequencyDays: number) => void;
+  medicalAppointments?: MedicalAppointment[];
+  groomingAppointments?: GroomingAppointment[];
 }
 
 export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
@@ -32,7 +34,9 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   onUpdatePatients,
   vaccineCatalog = [],
   onRegisterDosis,
-  onAddVaccineToCatalog
+  onAddVaccineToCatalog,
+  medicalAppointments = [],
+  groomingAppointments = []
 }) => {
   const [newNoteText, setNewNoteText] = useState('');
   const [newPrescriptionText, setNewPrescriptionText] = useState('');
@@ -40,6 +44,37 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   const [patientSearch, setPatientSearch] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('Todos');
   const [showNewPatientModal, setShowNewPatientModal] = useState(false);
+
+  const patientAppointments = useMemo(() => {
+    if (!selectedPatient) return [];
+    const med = (medicalAppointments || [])
+      .filter(app => app.patientId === selectedPatient.id && app.status !== 'cancelled')
+      .map(app => ({
+        id: app.id,
+        type: 'Consulta Médica' as const,
+        date: app.date,
+        time: app.time,
+        detail: `Dr. ${app.vetName} — ${app.reason}`,
+        status: app.status
+      }));
+
+    const groom = (groomingAppointments || [])
+      .filter(app => app.patientId === selectedPatient.id && app.status !== 'cancelled')
+      .map(app => ({
+        id: app.id,
+        type: 'Peluquería / Estética' as const,
+        date: app.date,
+        time: app.time,
+        detail: `${app.serviceName}`,
+        status: app.status
+      }));
+
+    return [...med, ...groom].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  }, [selectedPatient, medicalAppointments, groomingAppointments]);
+
+  const pendingAppointments = useMemo(() => {
+    return patientAppointments.filter(app => app.status === 'pending' || app.status === 'confirmed');
+  }, [patientAppointments]);
 
   // Active Tab state for redesigned layout (No Sidebar)
   const [activeTab, setActiveTab] = useState<'ficha' | 'vacunas'>('ficha');
@@ -404,6 +439,41 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                     {alert.replace(/^⚠️\s*/, '')}
                   </span>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Turnos Pendientes / Programados de este paciente */}
+          {patientAppointments.length > 0 && (
+            <div className="bg-amber-50/70 border border-amber-200 p-2.5 px-3 rounded-xl flex flex-col gap-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-amber-900 flex items-center gap-1.5 text-[11px]">
+                  <span className="material-symbols-outlined text-[16px] text-amber-700">calendar_month</span>
+                  Turnos programados ({patientAppointments.length}):
+                </span>
+                {pendingAppointments.length > 0 && (
+                  <span className="bg-amber-200 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {pendingAppointments.length} {pendingAppointments.length === 1 ? 'pendiente' : 'pendientes'}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {patientAppointments.map(app => {
+                  const isPending = app.status === 'pending' || app.status === 'confirmed';
+                  return (
+                    <div key={app.id} className={`px-2.5 py-1 rounded-lg border text-[11px] flex items-center gap-2 ${
+                      isPending ? 'bg-amber-100/90 border-amber-300 font-semibold text-amber-950' : 'bg-white border-slate-200 text-slate-700'
+                    }`}>
+                      <span>{app.type} ({app.date} {app.time}hs)</span>
+                      <span className="text-slate-500 font-normal">• {app.detail}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
+                        app.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : isPending ? 'bg-amber-200 text-amber-900' : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {app.status === 'completed' ? '✓ Cobrado' : isPending ? 'Pendiente' : app.status}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
