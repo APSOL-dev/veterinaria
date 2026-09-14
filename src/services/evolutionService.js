@@ -10,7 +10,7 @@ const getEnv = () => ({
 async function apiRequest(method, path, body = null) {
   const { apiUrl, apiKey } = getEnv();
   if (!apiUrl || !apiKey) {
-    throw new Error('Faltan configurar las credenciales de Evolution API.');
+    throw new Error('Faltan configurar las credenciales del servidor de mensajería.');
   }
   const cleanUrl = apiUrl.replace(/\/$/, '');
   const url = `${cleanUrl}${path}`;
@@ -30,13 +30,43 @@ async function apiRequest(method, path, body = null) {
   return response.json();
 }
 
+let resolvedInstanceName = null;
+
+async function getInstanceName() {
+  const { instance } = getEnv();
+  if (resolvedInstanceName) return resolvedInstanceName;
+  if (instance && instance !== 'DEFAULT') {
+    try {
+      const data = await apiRequest('GET', `/instance/connectionState/${encodeURIComponent(instance)}`);
+      if (data && !JSON.stringify(data).toLowerCase().includes('does not exist')) {
+        resolvedInstanceName = instance;
+        return resolvedInstanceName;
+      }
+    } catch (_) {}
+  }
+
+  try {
+    const list = await apiRequest('GET', '/instance/fetchInstances');
+    const instancesList = Array.isArray(list) ? list : (list?.value || []);
+    if (instancesList.length > 0 && instancesList[0]?.name) {
+      resolvedInstanceName = instancesList[0].name;
+      return resolvedInstanceName;
+    }
+  } catch (err) {
+    console.warn('Error resolviendo instancia activa:', err);
+  }
+
+  resolvedInstanceName = instance || 'Veterinaria Arlekyn';
+  return resolvedInstanceName;
+}
+
 export const evolutionService = {
   getConfig: () => getEnv(),
   async getConnectionState() {
-    const { instance } = getEnv();
-    if (!instance) return 'close';
     try {
-      const data = await apiRequest('GET', `/instance/connectionState/${instance}`);
+      const instance = await getInstanceName();
+      if (!instance) return 'close';
+      const data = await apiRequest('GET', `/instance/connectionState/${encodeURIComponent(instance)}`);
       return data?.instance?.state || data?.connectionState?.state || 'close';
     } catch (err) {
       if (err.message?.toLowerCase().includes('not found')) return 'not_found';
@@ -44,46 +74,75 @@ export const evolutionService = {
     }
   },
   async getConnectionStateFull() {
-    const { instance } = getEnv();
-    return await apiRequest('GET', `/instance/connectionState/${instance}`);
+    const instance = await getInstanceName();
+    return await apiRequest('GET', `/instance/connectionState/${encodeURIComponent(instance)}`);
   },
   async getQrCode() {
-    const { instance } = getEnv();
-    const data = await apiRequest('GET', `/instance/connect/${instance}`);
+    const instance = await getInstanceName();
+    const data = await apiRequest('GET', `/instance/connect/${encodeURIComponent(instance)}`);
+    
+    let rawBase64 = data?.base64 || 
+                    data?.code?.base64 || 
+                    data?.qrcode?.base64 || 
+                    (typeof data?.qrcode === 'string' ? data.qrcode : '') ||
+                    (typeof data?.code === 'string' && data.code.includes('base64') ? data.code : '');
+
+    if (!rawBase64 && typeof data === 'object' && data !== null) {
+      for (const val of Object.values(data)) {
+        if (typeof val === 'string' && (val.startsWith('data:image') || val.length > 200)) {
+          rawBase64 = val;
+          break;
+        } else if (val && typeof val === 'object') {
+          for (const subVal of Object.values(val)) {
+            if (typeof subVal === 'string' && (subVal.startsWith('data:image') || subVal.length > 200)) {
+              rawBase64 = subVal;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    let finalBase64 = rawBase64 || '';
+    if (finalBase64 && !finalBase64.startsWith('data:')) {
+      finalBase64 = `data:image/png;base64,${finalBase64}`;
+    }
+
     return {
-      base64: data?.base64 || data?.code?.base64 || data?.qrcode?.base64 || '',
-      code: data?.code || data?.qrcode?.code || '',
+      base64: finalBase64,
+      code: data?.code || data?.qrcode?.code || data?.pairingCode || '',
+      raw: data
     };
   },
   async logoutInstance() {
-    const { instance } = getEnv();
-    return await apiRequest('DELETE', `/instance/logout/${instance}`);
+    const instance = await getInstanceName();
+    return await apiRequest('DELETE', `/instance/logout/${encodeURIComponent(instance)}`);
   },
   async fetchChats() {
-    const { instance } = getEnv();
-    return await apiRequest('POST', `/chat/findChats/${instance}`, {});
+    const instance = await getInstanceName();
+    return await apiRequest('POST', `/chat/findChats/${encodeURIComponent(instance)}`, {});
   },
   async fetchMessages(remoteJid, page = 1, limit = 50) {
-    const { instance } = getEnv();
-    return await apiRequest('POST', `/chat/findMessages/${instance}`, {
+    const instance = await getInstanceName();
+    return await apiRequest('POST', `/chat/findMessages/${encodeURIComponent(instance)}`, {
       where: { key: { remoteJid } },
       limit,
       page,
     });
   },
   async sendTextMessage(number, text) {
-    const { instance } = getEnv();
+    const instance = await getInstanceName();
     const cleanNum = String(number).replace(/\D/g, '');
-    return await apiRequest('POST', `/message/sendText/${instance}`, {
+    return await apiRequest('POST', `/message/sendText/${encodeURIComponent(instance)}`, {
       number: cleanNum,
       text,
       options: { delay: 1200, presence: 'composing' },
     });
   },
   async sendMediaMessage(number, mediaBase64, mediatype, fileName, caption = '') {
-    const { instance } = getEnv();
+    const instance = await getInstanceName();
     const cleanNum = String(number).replace(/\D/g, '');
-    return await apiRequest('POST', `/message/sendMedia/${instance}`, {
+    return await apiRequest('POST', `/message/sendMedia/${encodeURIComponent(instance)}`, {
       number: cleanNum,
       mediaMessage: {
         mediatype,
@@ -94,17 +153,24 @@ export const evolutionService = {
     });
   },
   async sendAudioMessage(number, audioBase64) {
-    const { instance } = getEnv();
+    const instance = await getInstanceName();
     const cleanNum = String(number).replace(/\D/g, '');
-    return await apiRequest('POST', `/message/sendWhatsAppAudio/${instance}`, {
+    return await apiRequest('POST', `/message/sendWhatsAppAudio/${encodeURIComponent(instance)}`, {
       number: cleanNum,
       audioMessage: { audio: audioBase64 },
     });
   },
   async markAsRead(remoteJid) {
-    const { instance } = getEnv();
-    return await apiRequest('POST', `/chat/markMessageAsRead/${instance}`, {
+    const instance = await getInstanceName();
+    return await apiRequest('POST', `/chat/markMessageAsRead/${encodeURIComponent(instance)}`, {
       readMessages: [{ remoteJid }],
+    });
+  },
+  async getBase64FromMediaMessage(messageKeyOrId) {
+    const instance = await getInstanceName();
+    const id = typeof messageKeyOrId === 'string' ? messageKeyOrId : (messageKeyOrId?.key?.id || messageKeyOrId?.id);
+    return await apiRequest('POST', `/chat/getBase64FromMediaMessage/${encodeURIComponent(instance)}`, {
+      message: { key: { id } },
     });
   },
 };
