@@ -10,18 +10,27 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setIsLoading(true);
 
-    const session = authenticateUser(username, password);
-    if (session) {
-      onLoginSuccess(session);
-    } else {
-      setErrorMessage('Credenciales inválidas. Por favor verifique el usuario y la contraseña.');
+    try {
+      const session = await authenticateUser(username, password);
+      if (session) {
+        onLoginSuccess(session);
+      } else {
+        setErrorMessage('Credenciales inválidas. Por favor verifique el usuario o email y la contraseña.');
+      }
+    } catch (err: any) {
+      setErrorMessage('Error de autenticación con Supabase: ' + (err?.message || 'Verifique su conexión'));
+    } finally {
+      setIsLoading(false);
     }
   };
+
 
   return (
     <div className="flex flex-col min-h-screen w-full font-sans text-white select-none relative overflow-hidden" style={{ background: 'linear-gradient(to right, #40245E, #6B4E8A)' }}>
@@ -56,25 +65,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
           {/* Login Form */}
           <form method="post" onSubmit={handleSubmit} className="space-y-5">
-            {/* Username Field */}
+            {/* Email Field */}
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-2" htmlFor="username">
-                Usuario
+              <label className="block text-xs font-semibold text-gray-700 mb-2" htmlFor="email">
+                Correo Electrónico
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
+                    <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
                   </svg>
                 </div>
                 <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Administrador"
+                  placeholder="ejemplo@vetsoft.com"
                   required
                   className="block w-full pl-10 pr-3 py-3 border border-transparent rounded-lg text-gray-900 bg-[#F5EFF9] focus:outline-none focus:ring-2 focus:ring-[#9A7DB8] focus:border-transparent sm:text-sm font-medium"
                 />
@@ -120,9 +129,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl text-sm font-semibold text-white bg-[#5C3C7B] hover:bg-[#4A2F66] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5C3C7B] shadow-md hover:shadow-lg transition-all cursor-pointer"
+                disabled={isLoading}
+                className="w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent rounded-xl text-sm font-semibold text-white bg-[#5C3C7B] hover:bg-[#4A2F66] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5C3C7B] shadow-md hover:shadow-lg transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <span>Ingresar al sistema</span>
+                {isLoading ? (
+                  <>
+                    <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                    <span>Verificando credenciales...</span>
+                  </>
+                ) : (
+                  <span>Ingresar al sistema</span>
+                )}
               </button>
             </div>
           </form>

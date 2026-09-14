@@ -14,6 +14,7 @@ import { ChatPage } from './pages/ChatPage';
 import { LoginPage } from './components/Auth/LoginPage';
 import { UserSession } from './domain/services/authService';
 import { resolveShortcutNavigationTarget } from './domain/services/navigationService';
+import { supabase } from './domain/supabaseClient';
 
 import { 
   initialPatients, 
@@ -218,84 +219,93 @@ export const App: React.FC = () => {
   }, []);
 
   React.useEffect(() => {
-    if (!userSession) return;
+    async function checkSessionAndLoadData() {
+      // Confirmar sesión con supabase.auth.getSession() antes de hacer fetches
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession && !userSession) {
+        return;
+      }
 
-    async function loadDataFromSupabase() {
-      const [
-        dbPatients, 
-        dbBills, 
-        dbExpenses, 
-        dbProducts, 
-        dbPayments,
-        dbVaccines,
-        dbDoses,
-        dbServices,
-        dbNotes,
-        dbMedApps,
-        dbGroomApps,
-        dbReceipts,
-        dbQuotes
-      ] = await Promise.all([
-        fetchPatientsFromSupabase(),
-        fetchSupplierBillsFromSupabase(),
-        fetchExpensesFromSupabase(),
-        fetchProductsFromSupabase(),
-        fetchSupplierPaymentsFromSupabase(),
-        fetchVaccineCatalogFromSupabase(),
-        fetchVaccineDosesFromSupabase(),
-        fetchServicesCatalogFromSupabase(),
-        fetchClinicalNotesFromSupabase(),
-        fetchMedicalAppointmentsFromSupabase(),
-        fetchGroomingAppointmentsFromSupabase(),
-        fetchReceiptsFromSupabase(),
-        fetchSupplierQuotesFromSupabase()
-      ]);
+      async function loadDataFromSupabase() {
+        const [
+          dbPatients, 
+          dbBills, 
+          dbExpenses, 
+          dbProducts, 
+          dbPayments,
+          dbVaccines,
+          dbDoses,
+          dbServices,
+          dbNotes,
+          dbMedApps,
+          dbGroomApps,
+          dbReceipts,
+          dbQuotes
+        ] = await Promise.all([
+          fetchPatientsFromSupabase(),
+          fetchSupplierBillsFromSupabase(),
+          fetchExpensesFromSupabase(),
+          fetchProductsFromSupabase(),
+          fetchSupplierPaymentsFromSupabase(),
+          fetchVaccineCatalogFromSupabase(),
+          fetchVaccineDosesFromSupabase(),
+          fetchServicesCatalogFromSupabase(),
+          fetchClinicalNotesFromSupabase(),
+          fetchMedicalAppointmentsFromSupabase(),
+          fetchGroomingAppointmentsFromSupabase(),
+          fetchReceiptsFromSupabase(),
+          fetchSupplierQuotesFromSupabase()
+        ]);
 
-      if (dbPatients && dbPatients.length > 0) {
-        setPatients(dbPatients);
-        setSelectedPatient(dbPatients[0]);
+        if (dbPatients && dbPatients.length > 0) {
+          setPatients(dbPatients);
+          setSelectedPatient(dbPatients[0]);
+        }
+        if (dbBills && dbBills.length > 0) {
+          setSupplierBills(dbBills);
+        }
+        if (dbExpenses && dbExpenses.length > 0) {
+          setExpenses(dbExpenses);
+        }
+        if (dbProducts && dbProducts.length > 0) {
+          setProducts(dbProducts);
+        } else {
+          initialProducts.forEach(p => upsertProductToSupabase(p));
+        }
+        if (dbPayments && dbPayments.length > 0) {
+          setPayments(dbPayments);
+        }
+        if (dbVaccines && dbVaccines.length > 0) {
+          setVaccineCatalog(dbVaccines);
+        }
+        if (dbDoses && dbDoses.length > 0) {
+          setVaccineDoses(dbDoses);
+        }
+        if (dbServices && dbServices.length > 0) {
+          setServicesCatalog(dbServices);
+        }
+        if (dbNotes && dbNotes.length > 0) {
+          setClinicalNotes(dbNotes);
+        }
+        if (dbMedApps && dbMedApps.length > 0) {
+          setMedicalAppointments(dbMedApps);
+        }
+        if (dbGroomApps && dbGroomApps.length > 0) {
+          setGroomingAppointments(dbGroomApps);
+        }
+        if (dbReceipts && dbReceipts.length > 0) {
+          setReceipts(dbReceipts);
+        }
+        if (dbQuotes && dbQuotes.length > 0) {
+          setSupplierQuotes(dbQuotes);
+        }
       }
-      if (dbBills && dbBills.length > 0) {
-        setSupplierBills(dbBills);
-      }
-      if (dbExpenses && dbExpenses.length > 0) {
-        setExpenses(dbExpenses);
-      }
-      if (dbProducts && dbProducts.length > 0) {
-        setProducts(dbProducts);
-      } else {
-        initialProducts.forEach(p => upsertProductToSupabase(p));
-      }
-      if (dbPayments && dbPayments.length > 0) {
-        setPayments(dbPayments);
-      }
-      if (dbVaccines && dbVaccines.length > 0) {
-        setVaccineCatalog(dbVaccines);
-      }
-      if (dbDoses && dbDoses.length > 0) {
-        setVaccineDoses(dbDoses);
-      }
-      if (dbServices && dbServices.length > 0) {
-        setServicesCatalog(dbServices);
-      }
-      if (dbNotes && dbNotes.length > 0) {
-        setClinicalNotes(dbNotes);
-      }
-      if (dbMedApps && dbMedApps.length > 0) {
-        setMedicalAppointments(dbMedApps);
-      }
-      if (dbGroomApps && dbGroomApps.length > 0) {
-        setGroomingAppointments(dbGroomApps);
-      }
-      if (dbReceipts && dbReceipts.length > 0) {
-        setReceipts(dbReceipts);
-      }
-      if (dbQuotes && dbQuotes.length > 0) {
-        setSupplierQuotes(dbQuotes);
-      }
+      loadDataFromSupabase();
     }
-    loadDataFromSupabase();
+
+    checkSessionAndLoadData();
   }, [userSession]);
+
 
 
   // Handlers

@@ -1,3 +1,5 @@
+import { supabase } from '../supabaseClient';
+
 export interface UserSession {
   username: string;
   name: string;
@@ -37,21 +39,50 @@ const DEMO_USERS: DemoCredential[] = [
   }
 ];
 
-export function authenticateUser(username: string, pass: string): UserSession | null {
-  const found = DEMO_USERS.find(
-    u => u.username.toLowerCase() === username.trim().toLowerCase() && u.pass === pass.trim()
-  );
+export async function authenticateUser(email: string, pass: string): Promise<UserSession | null> {
+  const cleanEmail = (email || '').trim();
+  const cleanPass = (pass || '').trim();
 
-  if (!found) return null;
+  if (!cleanEmail || !cleanPass) return null;
 
-  return {
-    username: found.username,
-    name: found.name,
-    role: found.role,
-    roleLabel: found.roleLabel
-  };
+  // Autenticación estricta con Supabase Auth usando correo y contraseña
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password: cleanPass
+    });
+
+    if (error || !data?.user) {
+      return null;
+    }
+
+    const metadata = data.user.user_metadata || {};
+    const rawRole = (metadata.role || '').toLowerCase();
+    const userPrefix = cleanEmail.split('@')[0].toLowerCase();
+
+    let role: 'Administrador' | 'Veterinario' | 'Peluquero' = 'Administrador';
+    if (rawRole.includes('vet') || (userPrefix !== 'admin' && (userPrefix.includes('vet') || userPrefix.includes('veterinario')))) {
+      role = 'Veterinario';
+    } else if (rawRole.includes('pelu') || userPrefix.includes('pelu') || userPrefix.includes('peluquero')) {
+      role = 'Peluquero';
+    } else if (rawRole.includes('admin') || userPrefix.includes('admin')) {
+      role = 'Administrador';
+    }
+
+    const roleLabel = metadata.roleLabel || (role === 'Administrador' ? 'Administrador General' : role === 'Veterinario' ? 'Médico Veterinario' : 'Peluquería & Estética');
+
+    return {
+      username: data.user.email || cleanEmail,
+      name: metadata.full_name || metadata.nombre || metadata.name || cleanEmail,
+      role,
+      roleLabel
+    };
+  } catch (err) {
+    return null;
+  }
 }
 
 export function getDemoCredentials(): DemoCredential[] {
   return DEMO_USERS;
 }
+
