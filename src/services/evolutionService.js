@@ -1,10 +1,14 @@
 /**
  * Servicio para operaciones con Evolution API (WhatsApp)
  */
+const DEFAULT_API_URL = 'https://prueba-evolution-api.uxxqdc.easypanel.host';
+const DEFAULT_API_KEY = '8AF3602FB24C-4164-9BA6-8B98A684A682';
+const DEFAULT_INSTANCE = 'Veterinaria Arlekyn';
+
 const getEnv = () => ({
-  apiUrl: import.meta.env.VITE_EVOLUTION_API_URL || '',
-  apiKey: import.meta.env.VITE_EVOLUTION_API_KEY || '',
-  instance: import.meta.env.VITE_EVOLUTION_INSTANCE || '',
+  apiUrl: import.meta.env.VITE_EVOLUTION_API_URL || DEFAULT_API_URL,
+  apiKey: import.meta.env.VITE_EVOLUTION_API_KEY || DEFAULT_API_KEY,
+  instance: import.meta.env.VITE_EVOLUTION_INSTANCE || DEFAULT_INSTANCE,
 });
 
 async function apiRequest(method, path, body = null) {

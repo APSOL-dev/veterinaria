@@ -6,11 +6,11 @@ describe('evolutionService', () => {
     vi.restoreAllMocks();
   });
 
-  it('should return config object from environment', () => {
+  it('should return config object from environment or default fallbacks', () => {
     const config = evolutionService.getConfig();
-    expect(config).toHaveProperty('apiUrl');
-    expect(config).toHaveProperty('apiKey');
-    expect(config).toHaveProperty('instance');
+    expect(config.apiUrl).toBeTruthy();
+    expect(config.apiKey).toBeTruthy();
+    expect(config.instance).toBeTruthy();
   });
 
   it('should return close state when fetch throws error or instance not configured', async () => {
