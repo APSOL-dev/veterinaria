@@ -1,6 +1,7 @@
 import { SupplierBill, SupplierBillItem } from '../types';
 
-export const INVOICE_WEBHOOK_URL = 'https://bots.apsol-consultora.com.ar/webhook/0ca257f9-31f1-4639-ba17-b096d1c95a66';
+export const INVOICE_WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL || 'https://bots.apsol-consultora.com.ar/webhook/0ca257f9-31f1-4639-ba17-b096d1c95a66';
+export const INVOICE_WEBHOOK_SECRET = import.meta.env.VITE_WEBHOOK_SECRET || '';
 
 export interface SendInvoiceWebhookInput {
   bill: Omit<SupplierBill, 'id'> | SupplierBill;
@@ -16,10 +17,15 @@ export interface WebhookResult {
 
 export async function sendInvoiceWebhook(input: SendInvoiceWebhookInput): Promise<WebhookResult> {
   const url = input.customWebhookUrl || INVOICE_WEBHOOK_URL;
+  const webhookSecret = INVOICE_WEBHOOK_SECRET;
 
   try {
     let body: BodyInit;
     let headers: Record<string, string> = {};
+
+    if (webhookSecret) {
+      headers['Authorization'] = `Bearer ${webhookSecret}`;
+    }
 
     if (input.file) {
       const formData = new FormData();
@@ -76,10 +82,16 @@ export async function sendInvoiceWebhook(input: SendInvoiceWebhookInput): Promis
         });
 
         const getUrl = `${url}${url.includes('?') ? '&' : '?'}${queryParams.toString()}`;
+        const getHeaders: Record<string, string> = {};
+        if (webhookSecret) {
+          getHeaders['Authorization'] = `Bearer ${webhookSecret}`;
+        }
         const getResponse = await fetch(getUrl, {
           method: 'GET',
+          headers: getHeaders,
           keepalive: true
         });
+
 
         let getResponseData: any;
         const getContentType = getResponse.headers && typeof getResponse.headers.get === 'function' ? getResponse.headers.get('content-type') : null;

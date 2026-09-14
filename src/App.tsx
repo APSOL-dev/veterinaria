@@ -218,6 +218,8 @@ export const App: React.FC = () => {
   }, []);
 
   React.useEffect(() => {
+    if (!userSession) return;
+
     async function loadDataFromSupabase() {
       const [
         dbPatients, 
@@ -293,7 +295,8 @@ export const App: React.FC = () => {
       }
     }
     loadDataFromSupabase();
-  }, []);
+  }, [userSession]);
+
 
   // Handlers
   const handleAddClinicalNote = (data: { notes: string; prescription?: string }) => {

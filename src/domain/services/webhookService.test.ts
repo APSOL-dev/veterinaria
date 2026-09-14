@@ -39,11 +39,11 @@ describe('webhookService', () => {
     vi.restoreAllMocks();
   });
 
-  it('INVOICE_WEBHOOK_URL should match specified endpoint', () => {
-    expect(INVOICE_WEBHOOK_URL).toBe('https://bots.apsol-consultora.com.ar/webhook/0ca257f9-31f1-4639-ba17-b096d1c95a66');
+  it('INVOICE_WEBHOOK_URL should match specified endpoint or env variable', () => {
+    expect(INVOICE_WEBHOOK_URL).toBe(import.meta.env.VITE_WEBHOOK_URL || 'https://bots.apsol-consultora.com.ar/webhook/0ca257f9-31f1-4639-ba17-b096d1c95a66');
   });
 
-  it('sendInvoiceWebhook should post JSON data successfully', async () => {
+  it('sendInvoiceWebhook should post JSON data successfully with headers', async () => {
     const result = await sendInvoiceWebhook({ bill: mockBill });
 
     expect(result.success).toBe(true);
@@ -54,6 +54,7 @@ describe('webhookService', () => {
       })
     );
   });
+
 
   it('sendInvoiceWebhook should send FormData when file is provided', async () => {
     const fakeFile = new File(['dummy content'], 'factura.pdf', { type: 'application/pdf' });
