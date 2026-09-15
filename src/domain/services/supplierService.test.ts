@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SupplierBill, SupplierQuote, SupplierPayment } from '../types';
+import { SupplierBill, SupplierQuote, SupplierPayment, ExpenseRecord } from '../types';
 import { 
   createSupplierBillRecord, 
   createSupplierQuoteRecord, 
@@ -19,7 +19,10 @@ import {
   filterBillsByDateRange,
   filterPaymentsByDateRange,
   getDefaultDateRange,
-  calculateInvoiceSubtotalAndTax
+  calculateInvoiceSubtotalAndTax,
+  filterPaymentsByDeletedBill,
+  filterAndSortSupplierBills,
+  prepareDuplicatedExpenseInput
 } from './supplierService';
 
 describe('supplierService', () => {
@@ -480,4 +483,75 @@ describe('supplierService', () => {
       expect(farmaVet?.total).toBe(500000);
     });
   });
+
+  describe('cascade deletion of payments for deleted bill', () => {
+    it('filterPaymentsByDeletedBill should remove payments associated by billId or invoiceNumber', () => {
+      const payments: SupplierPayment[] = [
+        { id: 'p1', billId: 'bill-1', billInvoiceNumber: '0001-00001234', supplierName: 'Laboratorio X', date: '2026-09-01', amount: 1000, paymentMethod: 'Efectivo' },
+        { id: 'p2', billId: 'bill-2', billInvoiceNumber: '0001-00005678', supplierName: 'Laboratorio Y', date: '2026-09-02', amount: 2000, paymentMethod: 'Transferencia' },
+        { id: 'p3', billId: 'other-bill', billInvoiceNumber: '0001-00001234', supplierName: 'Laboratorio X', date: '2026-09-03', amount: 500, paymentMethod: 'Efectivo' }
+      ];
+
+      const remaining = filterPaymentsByDeletedBill(payments, 'bill-1', '00001234', 'FC-A 0001-00001234');
+      expect(remaining.length).toBe(1);
+      expect(remaining[0].id).toBe('p2');
+    });
+  });
+
+  describe('filterAndSortSupplierBills', () => {
+    const sampleBills: SupplierBill[] = [
+      { id: 'b1', supplierName: 'FarmaVet SA', invoiceNumber: '0001-0001', date: '2026-09-10', amount: 5000, itemsCount: 2, status: 'pending' },
+      { id: 'b2', supplierName: 'Zoonosis SRL', invoiceNumber: '0002-0005', date: '2026-09-01', amount: 12000, itemsCount: 5, status: 'paid' },
+      { id: 'b3', supplierName: 'FarmaVet SA', invoiceNumber: '0001-0099', date: '2026-09-15', amount: 1000, itemsCount: 1, status: 'pending' }
+    ];
+
+    it('should filter by supplier name substring or selection', () => {
+      const filtered = filterAndSortSupplierBills(sampleBills, 'FarmaVet', '', '', 'asc');
+      expect(filtered.length).toBe(2);
+      expect(filtered.every(b => b.supplierName.includes('FarmaVet'))).toBe(true);
+    });
+
+    it('should filter by invoice number', () => {
+      const filtered = filterAndSortSupplierBills(sampleBills, '', '0005', '', 'asc');
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].id).toBe('b2');
+    });
+
+    it('should sort bills by date, amount or supplierName asc and desc', () => {
+      const sortedByAmountDesc = filterAndSortSupplierBills(sampleBills, '', '', 'amount', 'desc');
+      expect(sortedByAmountDesc[0].id).toBe('b2');
+      expect(sortedByAmountDesc[1].id).toBe('b1');
+      expect(sortedByAmountDesc[2].id).toBe('b3');
+
+      const sortedBySupplierAsc = filterAndSortSupplierBills(sampleBills, '', '', 'supplierName', 'asc');
+      expect(sortedBySupplierAsc[0].supplierName).toBe('FarmaVet SA');
+      expect(sortedBySupplierAsc[2].supplierName).toBe('Zoonosis SRL');
+    });
+  });
+
+  describe('prepareDuplicatedExpenseInput', () => {
+    it('should copy expense fields but reset voucherFile and voucherUrl', () => {
+      const source: ExpenseRecord = {
+        id: 'exp-123',
+        category: 'Insumos',
+        description: 'Compra de gasas',
+        amount: 4500,
+        date: '2026-09-10',
+        responsible: 'Juan',
+        allocation: 'Clínica',
+        paymentMethod: 'Efectivo',
+        note: 'Factura 123',
+        voucherFile: 'factura_123.pdf',
+        voucherUrl: 'https://storage.supabase.co/factura_123.pdf'
+      };
+
+      const copy = prepareDuplicatedExpenseInput(source);
+      expect(copy.category).toBe(source.category);
+      expect(copy.description).toBe(`${source.description} (Copia)`);
+      expect(copy.amount).toBe(source.amount);
+      expect(copy.voucherFile).toBeUndefined();
+      expect(copy.voucherUrl).toBeUndefined();
+    });
+  });
 });
+

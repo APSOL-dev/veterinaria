@@ -4,6 +4,8 @@ import { sendInvoiceWebhook, parseN8nInvoiceResponse } from '../../domain/servic
 import { resetInvoiceDrawerState, shouldShowResetButton, getSupplierCreditTerms, calculateDueDateFromTerm, calculateInvoiceSubtotalAndTax } from '../../domain/services/supplierService';
 import { uploadInvoiceVoucherToSupabase } from '../../domain/services/supabaseService';
 import { initialProducts } from '../../data/mockData';
+import { SearchableProductSelect } from '../Common/SearchableProductSelect';
+import { SearchableSupplierSelect } from '../Common/SearchableSupplierSelect';
 
 interface NewInvoiceDrawerProps {
   isOpen: boolean;
@@ -52,6 +54,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isProcessed, setIsProcessed] = useState<boolean>(false);
   const [isSubmittingWebhook, setIsSubmittingWebhook] = useState<boolean>(false);
+  const [extractionError, setExtractionError] = useState<string | null>(null);
 
   const updateTotalsFromItems = (
     items: SupplierBillItem[], 
@@ -170,6 +173,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
     setApplyIva(true);
     setIsProcessing(fresh.isProcessing);
     setIsProcessed(fresh.isProcessed);
+    setExtractionError(null);
   };
 
   useEffect(() => {
@@ -191,6 +195,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
       setBillStatus(editingBill.status || 'pending');
       setBillItems(editingBill.items || []);
       setIsProcessed(true);
+      setExtractionError(null);
     } else {
       handleResetForm();
     }
@@ -201,6 +206,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
   const handleProcessInvoiceWithN8n = async (fileToProcess?: File | null) => {
     const file = fileToProcess !== undefined ? fileToProcess : selectedFile;
     setIsProcessing(true);
+    setExtractionError(null);
 
     try {
       const result = await sendInvoiceWebhook({
@@ -216,32 +222,59 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
         file
       });
 
+      if (!result.success) {
+        setExtractionError(result.error || 'Error de comunicación con el webhook de n8n.');
+        setIsProcessed(false);
+        return;
+      }
+
       if (result.data) {
         const parsed = parseN8nInvoiceResponse(result.data);
-        const supplierVal = parsed.supplierName || parsed.razonSocial;
-        if (supplierVal) {
-          setSupplierName(supplierVal);
-          setRazonSocial(supplierVal);
+        const hasExtractedData = Boolean(
+          parsed.supplierName ||
+          parsed.razonSocial ||
+          parsed.cuit ||
+          parsed.invoiceNumber ||
+          parsed.amount ||
+          parsed.subtotal ||
+          (parsed.items && parsed.items.length > 0)
+        );
+
+        if (hasExtractedData) {
+          const supplierVal = parsed.supplierName || parsed.razonSocial;
+          if (supplierVal) {
+            setSupplierName(supplierVal);
+            setRazonSocial(supplierVal);
+          }
+          if (parsed.cuit) setCuit(parsed.cuit);
+          if (parsed.documentType) setDocumentType(parsed.documentType);
+          if (parsed.invoiceNumber) setInvoiceNumber(parsed.invoiceNumber);
+          if (parsed.date) setInvoiceDate(parsed.date);
+          if (parsed.paymentDate) setPaymentDate(parsed.paymentDate);
+          if (parsed.subtotal !== undefined) setSubtotal(parsed.subtotal);
+          if (parsed.taxAmount !== undefined) setTaxAmount(parsed.taxAmount);
+          if (parsed.perceptions !== undefined) setPerceptions(parsed.perceptions);
+          if (parsed.currency) setCurrency(parsed.currency);
+          if (parsed.amount !== undefined) setTotalAmount(parsed.amount);
+          if (parsed.items && parsed.items.length > 0) {
+            setBillItems(parsed.items);
+          }
+          setIsProcessed(true);
+          setExtractionError(null);
+        } else {
+          setExtractionError('El flujo de n8n respondió con éxito (HTTP 200), pero no devolvió ningún dato extraído. Verifica en n8n que el nodo Webhook tenga "Respond" en "Using Respond to Webhook Node" y que el flujo devuelva la respuesta con los datos.');
+          setIsProcessed(false);
         }
-        if (parsed.cuit) setCuit(parsed.cuit);
-        if (parsed.documentType) setDocumentType(parsed.documentType);
-        if (parsed.invoiceNumber) setInvoiceNumber(parsed.invoiceNumber);
-        if (parsed.date) setInvoiceDate(parsed.date);
-        if (parsed.paymentDate) setPaymentDate(parsed.paymentDate);
-        if (parsed.subtotal !== undefined) setSubtotal(parsed.subtotal);
-        if (parsed.taxAmount !== undefined) setTaxAmount(parsed.taxAmount);
-        if (parsed.perceptions !== undefined) setPerceptions(parsed.perceptions);
-        if (parsed.currency) setCurrency(parsed.currency);
-        if (parsed.amount !== undefined) setTotalAmount(parsed.amount);
-        if (parsed.items && parsed.items.length > 0) {
-          setBillItems(parsed.items);
-        }
+      } else {
+        setExtractionError('El flujo de n8n respondió con éxito (HTTP 200), pero la respuesta vino vacía. Verifica la configuración del flujo en n8n.');
+        setIsProcessed(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error procesando factura:', err);
+      setExtractionError(err.message || 'Error al conectar con n8n.');
+      setIsProcessed(false);
     } finally {
       setIsProcessing(false);
-      setIsProcessed(true);
     }
   };
 
@@ -271,7 +304,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const finalSupplier = supplierName.trim() || 'Proveedor General';
-    const finalInvoiceNumber = invoiceNumber.trim() || 'FC-0000-0000';
+    const finalInvoiceNumber = invoiceNumber.trim() || 'S/N';
     const finalAmount = Number(totalAmount) || Number(subtotal) || 0;
 
     let voucherName = editingBill?.voucherName;
@@ -405,7 +438,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
             </div>
           )}
 
-          {/* Process Invoice Button / Loading State in Automatic Mode */}
+          {/* Process Invoice Button / Loading State / Error State in Automatic Mode */}
           {!editingBill && loadMode === 'automatic' && !isProcessed && (
             <div className="flex flex-col gap-sm">
               {isProcessing ? (
@@ -424,13 +457,28 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                   Procesar factura
                 </button>
               )}
+
+              {extractionError && (
+                <div className="bg-[#2C1818] border border-amber-500/50 text-amber-200 p-md rounded-2xl text-xs flex flex-col gap-1.5 animate-fade-in mt-xs">
+                  <div className="flex items-center gap-xs font-bold text-amber-400">
+                    <span className="material-symbols-outlined text-[18px]">warning</span>
+                    <span>No se pudieron extraer datos del archivo</span>
+                  </div>
+                  <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                    {extractionError}
+                  </p>
+                  <div className="text-[10px] text-amber-300/80 pt-1 border-t border-amber-500/20">
+                    Puedes continuar la carga en modo manual o completar los campos abajo.
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Form Fields: Only visible in Manual mode OR after data returns OR when editing */}
-          {(loadMode === 'manual' || isProcessed || editingBill) && (
+          {/* Form Fields: Only visible in Manual mode OR after data returns OR when editing OR when extraction error occurs */}
+          {(loadMode === 'manual' || isProcessed || editingBill || extractionError) && (
             <div className="flex flex-col gap-md pt-sm border-t border-purple-900/40 animate-fade-in">
-              {!editingBill && loadMode === 'automatic' && (
+              {!editingBill && loadMode === 'automatic' && isProcessed && (
                 <div className="bg-[#1D2B20] border border-emerald-500/40 text-emerald-300 px-md py-2 rounded-xl text-[11px] font-bold flex items-center gap-xs">
                   <span className="material-symbols-outlined text-[16px]">check_circle</span>
                   Datos extraídos automáticamente (revisar antes de guardar)
@@ -441,12 +489,10 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-md">
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-300">Nombre proveedor *</label>
-                  <input
-                    type="text"
-                    list="suppliers-list"
+                  <SearchableSupplierSelect
+                    suppliers={registeredSuppliers}
                     value={supplierName}
-                    onChange={(e) => {
-                      const name = e.target.value;
+                    onChange={(name) => {
                       setSupplierName(name);
                       setRazonSocial(name);
                       if (name.trim()) {
@@ -456,15 +502,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                       }
                     }}
                     required
-                    className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
                   />
-                  <datalist id="suppliers-list">
-                    {registeredSuppliers.map(s => (
-                      <option key={s} value={s} />
-                    ))}
-                    <option value="Distribuidora FarmaVet SA" />
-                    <option value="Laboratorios Zoonosis SRL" />
-                  </datalist>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-300">CUIT proveedor *</label>
@@ -532,8 +570,10 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                 <label className="text-[11px] font-bold text-slate-300">Número de remito / factura *</label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  onChange={(e) => setInvoiceNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="Ej: 000100012345"
                   required
                   className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] font-mono"
                 />
@@ -618,20 +658,29 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                     {billItems.map((item) => (
                       <div key={item.id} className="p-3 bg-[#251733] rounded-xl border border-purple-900/40 flex flex-col gap-2 shadow-xs">
                         <div className="flex items-center gap-2 w-full">
-                          <div className="relative flex-1 min-w-0">
-                            <select
-                              value={item.productId || ''}
-                              onChange={(e) => handleBillItemChange(item.id, 'productId', e.target.value)}
-                              className="w-full appearance-none bg-[#160E1E] border border-purple-900/60 rounded-lg pr-8 pl-2 py-2 text-xs text-white outline-none focus:border-[#9A7DB8] cursor-pointer truncate"
-                            >
-                              <option value="">-- Ingreso libre / Seleccionar producto --</option>
-                              {availableProducts.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name} (Stock actual: {p.currentStock})
-                                </option>
-                              ))}
-                            </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#CBB5E2] pointer-events-none text-[18px]">expand_more</span>
+                          <div className="flex-1 min-w-0">
+                            <SearchableProductSelect
+                              products={availableProducts}
+                              selectedProductId={item.productId}
+                              selectedProductName={item.productName}
+                              onSelectProduct={({ productId, productName, price, category }) => {
+                                const updated = billItems.map(it => {
+                                  if (it.id !== item.id) return it;
+                                  const unitCost = price !== undefined ? price : it.unitCost;
+                                  const quantity = it.quantity || 1;
+                                  return {
+                                    ...it,
+                                    productId,
+                                    productName,
+                                    category: (category as any) || it.category,
+                                    unitCost,
+                                    subtotal: quantity * unitCost
+                                  };
+                                });
+                                setBillItems(updated);
+                                updateTotalsFromItems(updated, perceptions, applyIva);
+                              }}
+                            />
                           </div>
                           <button
                             type="button"
@@ -642,16 +691,6 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>
-
-                        {!item.productId && (
-                          <input
-                            type="text"
-                            placeholder="Nombre del producto / ítem"
-                            value={item.productName}
-                            onChange={(e) => handleBillItemChange(item.id, 'productName', e.target.value)}
-                            className="bg-[#160E1E] border border-purple-900/60 rounded-lg p-1.5 text-xs text-white outline-none"
-                          />
-                        )}
 
                         <div className="grid grid-cols-3 gap-2">
                           <div>
@@ -737,22 +776,9 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                   type="number"
                   step="0.01"
                   value={totalAmount}
-                  onChange={(e) => {
-                    const newTotal = e.target.value === '' ? '' : Number(e.target.value);
-                    setTotalAmount(newTotal);
-                    if (typeof newTotal === 'number' && newTotal >= 0) {
-                      const { subtotal: newSub, taxAmount: newTax } = calculateInvoiceSubtotalAndTax(
-                        billItems.length > 0 ? billItems : [{ subtotal: newTotal }],
-                        applyIva,
-                        0.21,
-                        Number(perceptions) || 0
-                      );
-                      setSubtotal(newSub);
-                      setTaxAmount(newTax);
-                    }
-                  }}
+                  readOnly
                   required
-                  className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] font-bold text-sm text-[#CBB5E2]"
+                  className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-[#CBB5E2] font-bold text-sm outline-none cursor-not-allowed opacity-90"
                 />
               </div>
 

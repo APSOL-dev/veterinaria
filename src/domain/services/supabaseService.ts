@@ -807,7 +807,8 @@ export async function insertSupplierBillToSupabase(bill: SupplierBill): Promise<
       items_count: bill.itemsCount,
       status: bill.status,
       voucher_name: bill.voucherName || null,
-      voucher_url: bill.voucherUrl || null
+      voucher_url: bill.voucherUrl || null,
+      items: bill.items || []
     });
     if (error) console.error('Supabase error inserting supplier bill:', error);
     return { success: !error, error: extractErrorMessage(error) };
@@ -836,6 +837,7 @@ export async function updateSupplierBillInSupabase(id: string, bill: Partial<Sup
     if (bill.status !== undefined) payload.status = bill.status;
     if (bill.voucherName !== undefined) payload.voucher_name = bill.voucherName || null;
     if (bill.voucherUrl !== undefined) payload.voucher_url = bill.voucherUrl || null;
+    if (bill.items !== undefined) payload.items = bill.items || [];
 
     const { error } = await supabase.from('vetsoft_facturas_proveedores').update(payload).eq('id', id);
     if (error) console.error('Supabase error updating supplier bill:', error);
@@ -882,6 +884,19 @@ export async function deleteSupplierBillFromSupabase(id: string): Promise<SyncRe
     const { error } = await supabase.from('vetsoft_facturas_proveedores').delete().eq('id', id);
     if (error) console.error('Supabase error deleting supplier bill:', error);
     return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function deleteSupplierPaymentsForBillFromSupabase(billId: string, invoiceNumber?: string): Promise<SyncResult> {
+  try {
+    const { error: err1 } = await supabase.from('vetsoft_pagos_proveedores').delete().eq('bill_id', billId);
+    if (invoiceNumber && invoiceNumber.trim()) {
+      await supabase.from('vetsoft_pagos_proveedores').delete().eq('bill_invoice_number', invoiceNumber.trim());
+    }
+    if (err1) console.error('Supabase error deleting supplier payments for bill:', err1);
+    return { success: !err1, error: extractErrorMessage(err1) };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error de conexión' };
   }

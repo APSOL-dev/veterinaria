@@ -191,4 +191,12 @@ describe('webhookService', () => {
     expect(parsed.items![1].productName).toBe('Royal Canin Gastrointestinal 2kg');
     expect(parsed.items![1].quantity).toBe(15);
   });
+
+  it('parseN8nInvoiceResponse should return empty object for null, empty string, or empty payload', () => {
+    expect(parseN8nInvoiceResponse(null)).toEqual({});
+    expect(parseN8nInvoiceResponse('')).toEqual({});
+    expect(parseN8nInvoiceResponse({})).toEqual({});
+    expect(parseN8nInvoiceResponse([])).toEqual({});
+  });
 });
+

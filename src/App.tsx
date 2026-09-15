@@ -57,7 +57,7 @@ import { createDosisRecord } from './domain/services/vaccineService';
 import { getLowStockAlerts, recordStockEntry, recordStockAdjustment, processStockReceiptFromBill } from './domain/services/inventoryService';
 import { processCheckout } from './domain/services/billingService';
 import { createNewPatientRecord, updateClinicalNoteRecord, deleteClinicalNoteRecord } from './domain/services/patientService';
-import { createSupplierBillRecord, createSupplierQuoteRecord, saveSupplierCreditTerm } from './domain/services/supplierService';
+import { createSupplierBillRecord, createSupplierQuoteRecord, saveSupplierCreditTerm, filterPaymentsByDeletedBill, formatInvoiceFullNumber } from './domain/services/supplierService';
 import { createExpenseRecord } from './domain/services/expenseService';
 import { createPaymentRecord, getTotalPaidForBill } from './domain/services/paymentService';
 import { resolveNavigationState } from './domain/services/navigationService';
@@ -87,6 +87,7 @@ import {
   insertSupplierBillToSupabase,
   updateSupplierBillInSupabase,
   deleteSupplierBillFromSupabase,
+  deleteSupplierPaymentsForBillFromSupabase,
   insertSupplierQuoteToSupabase,
   insertExpenseToSupabase,
   updateExpenseInSupabase,
@@ -614,14 +615,21 @@ export const App: React.FC = () => {
 
   const handleDeleteSupplierBill = async (id: string) => {
     const target = supplierBills.find(b => b.id === id);
+    const invNum = target ? target.invoiceNumber : undefined;
+    const fullInvNum = target ? formatInvoiceFullNumber(target) : undefined;
+
     setSupplierBills(prev => prev.filter(b => b.id !== id));
+    setPayments(prev => filterPaymentsByDeletedBill(prev, id, invNum, fullInvNum));
+
     const res = await deleteSupplierBillFromSupabase(id);
+    await deleteSupplierPaymentsForBillFromSupabase(id, invNum || fullInvNum);
+
     setNotifModal({
       isOpen: true,
       title: res.success ? 'Factura Eliminada' : 'Aviso de Almacenamiento',
       type: res.success ? 'success' : 'warning',
       message: res.success
-        ? `Factura ${target ? 'N° ' + target.invoiceNumber : ''} eliminada exitosamente.`
+        ? `Factura ${target ? 'N° ' + target.invoiceNumber : ''} y sus pagos asociados fueron eliminados.`
         : `Factura eliminada localmente. (${res.error || 'Verifique la conexión'})`
     });
   };

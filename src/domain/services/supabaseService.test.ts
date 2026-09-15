@@ -109,6 +109,24 @@ describe('supabaseService row mappers', () => {
     expect(bill.voucherUrl).toBe('https://cjqziapqtyjsxqxumgbx.supabase.co/storage/v1/object/public/veterinaria-archivos/factura_001.pdf');
   });
 
+  it('should map DB row with items array to SupplierBill domain model', () => {
+    const rawRow = {
+      id: 'bill-items-1',
+      supplierName: 'FarmaVet SA',
+      amount: 60000,
+      items: [
+        { id: 'item-1', productName: 'Vacuna Sextuple', quantity: 5, unitCost: 12000, subtotal: 60000 }
+      ]
+    };
+
+    const bill = mapRowToSupplierBill(rawRow);
+
+    expect(bill.items).toBeDefined();
+    expect(bill.items).toHaveLength(1);
+    expect(bill.items![0].productName).toBe('Vacuna Sextuple');
+    expect(bill.items![0].quantity).toBe(5);
+  });
+
   it('should map DB row to ExpenseRecord domain model', () => {
     const rawRow = {
       id: 'exp-1',

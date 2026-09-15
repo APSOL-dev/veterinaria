@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { SupplierBill, SupplierQuote, ExpenseRecord, SupplierPayment, SupplierPaymentMethod, SupplierCreditTerm, Product } from '../../domain/types';
-import { calculateSupplierTotals, calculateMonthlyExpenditureProjections, groupProjectionsByYear, formatInvoiceFullNumber, filterBillsByDateRange, filterPaymentsByDateRange, getDefaultDateRange } from '../../domain/services/supplierService';
+import { calculateSupplierTotals, calculateMonthlyExpenditureProjections, groupProjectionsByYear, formatInvoiceFullNumber, filterBillsByDateRange, filterPaymentsByDateRange, getDefaultDateRange, filterAndSortSupplierBills } from '../../domain/services/supplierService';
 import { filterExpenseRecords, calculateExpenseTotals } from '../../domain/services/expenseService';
 import { getTotalPaidForBill, getRemainingBalance } from '../../domain/services/paymentService';
 import { NewInvoiceDrawer } from './NewInvoiceDrawer';
@@ -97,6 +97,40 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
   const filteredBills = useMemo(() => filterBillsByDateRange(bills, filterStartDate, filterEndDate), [bills, filterStartDate, filterEndDate]);
   const filteredPayments = useMemo(() => filterPaymentsByDateRange(payments, filterStartDate, filterEndDate), [payments, filterStartDate, filterEndDate]);
+
+  // Submodule: Facturas list filters and sorting state
+  const [billFilterSupplier, setBillFilterSupplier] = useState<string>('');
+  const [billFilterInvoiceNumber, setBillFilterInvoiceNumber] = useState<string>('');
+  const [billSortField, setBillSortField] = useState<string>('date');
+  const [billSortDirection, setBillSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const availableSupplierOptions = useMemo(() => {
+    const set = new Set<string>();
+    bills.forEach(b => { if (b.supplierName) set.add(b.supplierName); });
+    creditTerms.forEach(c => { if (c.supplierName) set.add(c.supplierName); });
+    quotes.forEach(q => { if (q.supplierName) set.add(q.supplierName); });
+    return Array.from(set).sort();
+  }, [bills, creditTerms, quotes]);
+
+  const displayBills = useMemo(() => {
+    return filterAndSortSupplierBills(
+      filteredBills,
+      billFilterSupplier,
+      billFilterInvoiceNumber,
+      billSortField,
+      billSortDirection,
+      payments
+    );
+  }, [filteredBills, billFilterSupplier, billFilterInvoiceNumber, billSortField, billSortDirection, payments]);
+
+  const handleSortBills = (field: string) => {
+    if (billSortField === field) {
+      setBillSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setBillSortField(field);
+      setBillSortDirection('asc');
+    }
+  };
 
   const totals = useMemo(() => calculateSupplierTotals(filteredBills, quotes, filteredPayments), [filteredBills, quotes, filteredPayments]);
   const projections = useMemo(() => calculateMonthlyExpenditureProjections(bills, monthlyBudgets, payments, filterStartDate, filterEndDate, creditTerms, expenses), [bills, monthlyBudgets, payments, filterStartDate, filterEndDate, creditTerms, expenses]);
@@ -342,8 +376,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
     setExpAmount(exp.amount);
     setExpNote(exp.note || '');
     setExpVoucherFile(null);
-    setExpVoucherFileName(exp.voucherFile || exp.note || '');
-    setExpVoucherUrl(exp.voucherUrl || '');
+    setExpVoucherFileName('');
+    setExpVoucherUrl('');
     setShowModal(true);
   };
 
@@ -790,23 +824,193 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   </table>
                 </div>
               ) : (
+                <div className="flex flex-col gap-xs flex-1">
+                  {/* Filter toolbar for Facturas */}
+                  <div className="bg-surface-container-low p-sm rounded-xl border border-outline-variant/30 mb-xs flex flex-wrap items-center justify-between gap-sm">
+                    <div className="flex flex-wrap items-center gap-sm flex-1">
+                      {/* Filtro por Proveedor (Texto + Desplegable) */}
+                      <div className="flex items-center gap-1.5 bg-surface-container border border-outline-variant/40 rounded-xl px-2.5 py-1 text-xs">
+                        <span className="material-symbols-outlined text-[16px] text-on-surface-variant">store</span>
+                        <select
+                          value={billFilterSupplier}
+                          onChange={(e) => setBillFilterSupplier(e.target.value)}
+                          className="bg-transparent text-xs text-on-surface font-medium outline-none cursor-pointer pr-1 border-r border-outline-variant/30 max-w-[130px]"
+                          title="Seleccionar Proveedor"
+                        >
+                          <option value="">Todos los prov.</option>
+                          {availableSupplierOptions.map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Buscar proveedor..."
+                          value={billFilterSupplier}
+                          onChange={(e) => setBillFilterSupplier(e.target.value)}
+                          className="bg-transparent text-xs text-on-surface outline-none w-36 placeholder:text-on-surface-variant/60"
+                        />
+                        {billFilterSupplier && (
+                          <button
+                            type="button"
+                            onClick={() => setBillFilterSupplier('')}
+                            className="text-on-surface-variant hover:text-on-surface cursor-pointer"
+                            title="Limpiar filtro de proveedor"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">close</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Filtro por N° Factura */}
+                      <div className="flex items-center gap-1.5 bg-surface-container border border-outline-variant/40 rounded-xl px-2.5 py-1 text-xs">
+                        <span className="material-symbols-outlined text-[16px] text-on-surface-variant">tag</span>
+                        <input
+                          type="text"
+                          placeholder="Buscar N° factura..."
+                          value={billFilterInvoiceNumber}
+                          onChange={(e) => setBillFilterInvoiceNumber(e.target.value)}
+                          className="bg-transparent text-xs text-on-surface outline-none w-40 placeholder:text-on-surface-variant/60 font-mono text-[11px]"
+                        />
+                        {billFilterInvoiceNumber && (
+                          <button
+                            type="button"
+                            onClick={() => setBillFilterInvoiceNumber('')}
+                            className="text-on-surface-variant hover:text-on-surface cursor-pointer"
+                            title="Limpiar filtro de factura"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">close</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {(billFilterSupplier || billFilterInvoiceNumber) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBillFilterSupplier('');
+                          setBillFilterInvoiceNumber('');
+                        }}
+                        className="text-xs text-primary font-semibold hover:underline flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">filter_alt_off</span>
+                        <span>Limpiar filtros</span>
+                      </button>
+                    )}
+                  </div>
+
                   <table className="w-full text-left font-body-md text-xs">
                     <thead className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
                       <tr>
-                        <th className="p-sm px-md">Fecha emisión</th>
-                        <th className="p-sm px-md">Fecha pago</th>
-                        <th className="p-sm px-md">Proveedor</th>
-                        <th className="p-sm px-md">N° factura</th>
-                        <th className="p-sm px-md text-center">Ítems</th>
-                        <th className="p-sm px-md text-right">Monto total</th>
-                        <th className="p-sm px-md text-right">Saldo restante</th>
-                        <th className="p-sm px-md text-center">Estado</th>
+                        <th
+                          onClick={() => handleSortBills('date')}
+                          className="p-sm px-md cursor-pointer select-none hover:bg-surface-container-high transition-colors"
+                          title="Ordenar por fecha de emisión"
+                        >
+                          <div className="inline-flex items-center gap-1">
+                            <span>Fecha emisión</span>
+                            <span className="material-symbols-outlined text-[14px]">
+                              {billSortField === 'date' ? (billSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more'}
+                            </span>
+                          </div>
+                        </th>
+                        <th
+                          onClick={() => handleSortBills('paymentDate')}
+                          className="p-sm px-md cursor-pointer select-none hover:bg-surface-container-high transition-colors"
+                          title="Ordenar por fecha de pago"
+                        >
+                          <div className="inline-flex items-center gap-1">
+                            <span>Fecha pago</span>
+                            <span className="material-symbols-outlined text-[14px]">
+                              {billSortField === 'paymentDate' ? (billSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more'}
+                            </span>
+                          </div>
+                        </th>
+                        <th
+                          onClick={() => handleSortBills('supplierName')}
+                          className="p-sm px-md cursor-pointer select-none hover:bg-surface-container-high transition-colors"
+                          title="Ordenar por proveedor"
+                        >
+                          <div className="inline-flex items-center gap-1">
+                            <span>Proveedor</span>
+                            <span className="material-symbols-outlined text-[14px]">
+                              {billSortField === 'supplierName' ? (billSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more'}
+                            </span>
+                          </div>
+                        </th>
+                        <th
+                          onClick={() => handleSortBills('invoiceNumber')}
+                          className="p-sm px-md cursor-pointer select-none hover:bg-surface-container-high transition-colors"
+                          title="Ordenar por N° factura"
+                        >
+                          <div className="inline-flex items-center gap-1">
+                            <span>N° factura</span>
+                            <span className="material-symbols-outlined text-[14px]">
+                              {billSortField === 'invoiceNumber' ? (billSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more'}
+                            </span>
+                          </div>
+                        </th>
+                        <th
+                          onClick={() => handleSortBills('itemsCount')}
+                          className="p-sm px-md text-center cursor-pointer select-none hover:bg-surface-container-high transition-colors"
+                          title="Ordenar por número de ítems"
+                        >
+                          <div className="inline-flex items-center gap-1 justify-center">
+                            <span>Ítems</span>
+                            <span className="material-symbols-outlined text-[14px]">
+                              {billSortField === 'itemsCount' ? (billSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more'}
+                            </span>
+                          </div>
+                        </th>
+                        <th
+                          onClick={() => handleSortBills('amount')}
+                          className="p-sm px-md text-right cursor-pointer select-none hover:bg-surface-container-high transition-colors"
+                          title="Ordenar por monto total"
+                        >
+                          <div className="inline-flex items-center gap-1 justify-end">
+                            <span>Monto total</span>
+                            <span className="material-symbols-outlined text-[14px]">
+                              {billSortField === 'amount' ? (billSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more'}
+                            </span>
+                          </div>
+                        </th>
+                        <th
+                          onClick={() => handleSortBills('remaining')}
+                          className="p-sm px-md text-right cursor-pointer select-none hover:bg-surface-container-high transition-colors"
+                          title="Ordenar por saldo restante"
+                        >
+                          <div className="inline-flex items-center gap-1 justify-end">
+                            <span>Saldo restante</span>
+                            <span className="material-symbols-outlined text-[14px]">
+                              {billSortField === 'remaining' ? (billSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more'}
+                            </span>
+                          </div>
+                        </th>
+                        <th
+                          onClick={() => handleSortBills('status')}
+                          className="p-sm px-md text-center cursor-pointer select-none hover:bg-surface-container-high transition-colors"
+                          title="Ordenar por estado"
+                        >
+                          <div className="inline-flex items-center gap-1 justify-center">
+                            <span>Estado</span>
+                            <span className="material-symbols-outlined text-[14px]">
+                              {billSortField === 'status' ? (billSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more'}
+                            </span>
+                          </div>
+                        </th>
                         <th className="p-sm px-md">Comprobante</th>
                         <th className="p-sm px-md text-center">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="text-on-surface">
-                      {bills.map((bill) => {
+                      {displayBills.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} className="p-md text-center text-slate-400 italic font-normal py-6">
+                            No se encontraron facturas con los filtros aplicados.
+                          </td>
+                        </tr>
+                      ) : (
+                        displayBills.map((bill) => {
                         const totalPaid = getTotalPaidForBill(payments, bill.id);
                         const remaining = getRemainingBalance(bill, payments);
                         const isPaid = remaining === 0;
@@ -823,7 +1027,11 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                         }
 
                         return (
-                          <tr key={bill.id} className="border-b border-surface-container-low hover:bg-surface-container transition-colors">
+                          <tr
+                            key={bill.id}
+                            onClick={() => handleOpenEditBill(bill)}
+                            className="border-b border-surface-container-low hover:bg-surface-container transition-colors cursor-pointer"
+                          >
                             <td className="p-sm px-md font-normal text-slate-700">{bill.date}</td>
                             <td className="p-sm px-md font-normal text-slate-700">{bill.paymentDate || bill.date}</td>
                             <td className="p-sm px-md font-medium text-slate-900">{bill.supplierName}</td>
@@ -838,12 +1046,13 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                 {badgeLabel}
                               </span>
                             </td>
-                            <td className="p-sm px-md">
+                            <td className="p-sm px-md" onClick={(e) => e.stopPropagation()}>
                               {bill.voucherUrl ? (
                                 <a
                                   href={bill.voucherUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
                                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E8F5E9] text-[#27AE60] hover:bg-[#C8E6C9] border border-[#27AE60]/30 transition-colors cursor-pointer"
                                   title={`Ver/Descargar ${bill.voucherName || 'Comprobante'}`}
                                 >
@@ -859,12 +1068,12 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                 <span className="text-slate-400 text-[11px]">—</span>
                               )}
                             </td>
-                            <td className="p-sm px-md text-center">
+                            <td className="p-sm px-md text-center" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1">
                                 <button
                                   type="button"
                                   title="Registrar pago"
-                                  onClick={() => handleOpenPaymentModal(bill)}
+                                  onClick={(e) => { e.stopPropagation(); handleOpenPaymentModal(bill); }}
                                   className="p-1 text-slate-400 hover:text-[#27AE60] transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
                                 >
                                   <span className="material-symbols-outlined text-[18px]">wallet</span>
@@ -872,7 +1081,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                 <button
                                   type="button"
                                   title="Editar factura"
-                                  onClick={() => handleOpenEditBill(bill)}
+                                  onClick={(e) => { e.stopPropagation(); handleOpenEditBill(bill); }}
                                   className="p-1 text-slate-400 hover:text-primary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
                                 >
                                   <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -880,7 +1089,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                 <button
                                   type="button"
                                   title="Eliminar factura"
-                                  onClick={() => handleDeleteBillClick(bill)}
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteBillClick(bill); }}
                                   className="p-1 text-slate-400 hover:text-error transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
                                 >
                                   <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -889,9 +1098,10 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             </td>
                           </tr>
                         );
-                      })}
+                      }))}
                     </tbody>
                   </table>
+                </div>
               )}
             </div>
           </div>

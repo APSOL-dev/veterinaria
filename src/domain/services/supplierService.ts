@@ -750,3 +750,114 @@ export function calculateInvoiceSubtotalAndTax(
   };
 }
 
+export function filterPaymentsByDeletedBill(
+  payments: SupplierPayment[],
+  billId: string,
+  invoiceNumber?: string,
+  fullInvoiceNumber?: string
+): SupplierPayment[] {
+  const cleanNum = (str?: string) => (str || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+  const targetIdClean = (billId || '').toLowerCase();
+  const targetNumClean = cleanNum(invoiceNumber);
+  const targetFullClean = cleanNum(fullInvoiceNumber);
+
+  return payments.filter(pay => {
+    if (pay.billId && pay.billId.toLowerCase() === targetIdClean) return false;
+    const payNumClean = cleanNum(pay.billInvoiceNumber);
+    if (!payNumClean) return true;
+
+    if (targetNumClean && (payNumClean.includes(targetNumClean) || targetNumClean.includes(payNumClean))) return false;
+    if (targetFullClean && (payNumClean.includes(targetFullClean) || targetFullClean.includes(payNumClean))) return false;
+
+    return true;
+  });
+}
+
+export function filterAndSortSupplierBills(
+  bills: SupplierBill[],
+  filterSupplier: string,
+  filterInvoiceNumber: string,
+  sortField: string,
+  sortDirection: 'asc' | 'desc',
+  payments: SupplierPayment[] = []
+): SupplierBill[] {
+  let result = [...bills];
+
+  if (filterSupplier && filterSupplier.trim()) {
+    const q = filterSupplier.trim().toLowerCase();
+    result = result.filter(b => (b.supplierName || '').toLowerCase().includes(q));
+  }
+
+  if (filterInvoiceNumber && filterInvoiceNumber.trim()) {
+    const q = filterInvoiceNumber.trim().toLowerCase();
+    result = result.filter(b => (b.invoiceNumber || '').toLowerCase().includes(q) || formatInvoiceFullNumber(b).toLowerCase().includes(q));
+  }
+
+  if (sortField) {
+    result.sort((a, b) => {
+      let valA: any = '';
+      let valB: any = '';
+
+      switch (sortField) {
+        case 'date':
+          valA = a.date || '';
+          valB = b.date || '';
+          break;
+        case 'paymentDate':
+          valA = a.paymentDate || a.date || '';
+          valB = b.paymentDate || b.date || '';
+          break;
+        case 'supplierName':
+          valA = (a.supplierName || '').toLowerCase();
+          valB = (b.supplierName || '').toLowerCase();
+          break;
+        case 'invoiceNumber':
+          valA = formatInvoiceFullNumber(a).toLowerCase();
+          valB = formatInvoiceFullNumber(b).toLowerCase();
+          break;
+        case 'itemsCount':
+          valA = a.itemsCount || 0;
+          valB = b.itemsCount || 0;
+          break;
+        case 'amount':
+          valA = a.amount || 0;
+          valB = b.amount || 0;
+          break;
+        case 'remaining':
+          valA = getRemainingBalance(a, payments);
+          valB = getRemainingBalance(b, payments);
+          break;
+        case 'status':
+          valA = a.status || '';
+          valB = b.status || '';
+          break;
+        default:
+          return 0;
+      }
+
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  return result;
+}
+
+export function prepareDuplicatedExpenseInput(expense: ExpenseRecord): Omit<ExpenseRecord, 'id'> {
+  return {
+    date: expense.date || new Date().toISOString().split('T')[0],
+    responsible: expense.responsible,
+    category: expense.category,
+    allocation: expense.allocation,
+    paymentMethod: expense.paymentMethod,
+    description: expense.description.includes('(Copia)') ? expense.description : `${expense.description} (Copia)`,
+    amount: expense.amount,
+    note: expense.note || '',
+    voucherFile: undefined,
+    voucherUrl: undefined
+  };
+}
+
+
