@@ -8,7 +8,7 @@ import {
 describe('rbacService', () => {
   it('Administrador should have full access to all modules including cobros', () => {
     const modules = getAccessibleModules('Administrador');
-    expect(modules).toEqual(['proveedores', 'clinica', 'peluqueria', 'pacientes', 'inventario', 'cobros']);
+    expect(modules).toEqual(['pacientes', 'clinica', 'peluqueria', 'inventario', 'cobros', 'whatsapp', 'proveedores']);
 
     expect(canAccessModule('Administrador', 'cobros')).toBe(true);
     expect(canAccessModule('Administrador', 'proveedores')).toBe(true);
@@ -18,7 +18,7 @@ describe('rbacService', () => {
 
   it('Veterinario should access clinica, pacientes, AND cobros, but NOT peluqueria, proveedores or inventario', () => {
     const modules = getAccessibleModules('Veterinario');
-    expect(modules).toEqual(['clinica', 'pacientes', 'cobros']);
+    expect(modules).toEqual(['pacientes', 'clinica', 'cobros', 'whatsapp']);
 
     expect(canAccessModule('Veterinario', 'clinica')).toBe(true);
     expect(canAccessModule('Veterinario', 'pacientes')).toBe(true);

@@ -29,6 +29,7 @@ export interface Patient {
   ownerId: string;
   ownerName: string;
   ownerPhone?: string;
+  address?: string;
   name: string;
   species: Species;
   breed: string;

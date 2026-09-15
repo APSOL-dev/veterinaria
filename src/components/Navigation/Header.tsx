@@ -95,22 +95,6 @@ export const Header: React.FC<HeaderProps> = React.memo(({
         })}
       </nav>
 
-      {/* Search Input */}
-      <div className="flex-1 max-w-sm px-md hidden md:block">
-        <div className="relative flex items-center">
-          <span className="material-symbols-outlined absolute left-3 text-on-primary-container text-[18px]">
-            search
-          </span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar..."
-            className="w-full bg-primary/20 border-none rounded-lg py-1.5 pl-9 pr-3 text-white placeholder-on-primary-container focus:ring-2 focus:ring-secondary text-xs outline-none"
-          />
-        </div>
-      </div>
-
       {/* Notifications Bell Button */}
       <div className="flex items-center gap-sm shrink-0">
         <button

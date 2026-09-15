@@ -3,7 +3,9 @@ import { BillItem, Product } from '../types';
 import { 
   calculateItemSubtotal, 
   calculateBillSummary, 
-  processCheckout 
+  processCheckout,
+  formatPriceInputDisplay,
+  parsePriceInput
 } from './billingService';
 
 describe('billingService', () => {
@@ -200,6 +202,28 @@ describe('billingService', () => {
           productsCatalog
         });
       }).toThrowError(/Stock insuficiente/);
+    });
+  });
+
+  describe('formatPriceInputDisplay and parsePriceInput', () => {
+    it('formatPriceInputDisplay should return empty string for 0, undefined, null or NaN', () => {
+      expect(formatPriceInputDisplay(0)).toBe('');
+      expect(formatPriceInputDisplay(undefined)).toBe('');
+      expect(formatPriceInputDisplay(null)).toBe('');
+      expect(formatPriceInputDisplay(NaN)).toBe('');
+    });
+
+    it('formatPriceInputDisplay should return string representation for non-zero numbers', () => {
+      expect(formatPriceInputDisplay(1500)).toBe('1500');
+      expect(formatPriceInputDisplay(15000)).toBe('15000');
+    });
+
+    it('parsePriceInput should return numeric price or 0 for empty or invalid input', () => {
+      expect(parsePriceInput('')).toBe(0);
+      expect(parsePriceInput('   ')).toBe(0);
+      expect(parsePriceInput('invalid')).toBe(0);
+      expect(parsePriceInput('15000')).toBe(15000);
+      expect(parsePriceInput('-500')).toBe(0);
     });
   });
 });

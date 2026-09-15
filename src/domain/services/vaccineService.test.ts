@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { 
   calculateExpirationDate, 
   determineVaccineStatus, 
-  createDosisRecord 
+  createDosisRecord,
+  formatVaccineReminderMessage,
+  getVencimientoLabel,
+  getEstadoLabel
 } from './vaccineService';
 import { VaccineCatalogItem } from '../types';
 
@@ -78,6 +81,43 @@ describe('vaccineService', () => {
       );
 
       expect(dosis.expirationDate).toBe('2024-12-31');
+    });
+  });
+
+  describe('formatVaccineReminderMessage', () => {
+    it('formats vaccine reminder text using exact specified pattern', () => {
+      const msg = formatVaccineReminderMessage(
+        'Juan Perez',
+        'Antirrábica',
+        'Prueba',
+        '2026-10-15'
+      );
+
+      expect(msg).toBe(
+        'Hola Juan Perez, te recordamos que la vacuna Antirrábica para Prueba vence el 2026-10-15 podemos agendar una visita para poner a Prueba al día!'
+      );
+    });
+  });
+
+  describe('getVencimientoLabel', () => {
+    it('returns "Vencida" for expired status', () => {
+      expect(getVencimientoLabel('expired')).toBe('Vencida');
+    });
+
+    it('returns "Al día" for ok or due_soon status', () => {
+      expect(getVencimientoLabel('ok')).toBe('Al día');
+      expect(getVencimientoLabel('due_soon')).toBe('Al día');
+    });
+  });
+
+  describe('getEstadoLabel', () => {
+    it('returns "Pendiente" for pendiente status', () => {
+      expect(getEstadoLabel('pendiente')).toBe('Pendiente');
+    });
+
+    it('returns "Aplicada" for aplicada or registered dose status', () => {
+      expect(getEstadoLabel('aplicada')).toBe('Aplicada');
+      expect(getEstadoLabel('ok')).toBe('Aplicada');
     });
   });
 });

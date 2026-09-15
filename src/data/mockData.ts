@@ -171,36 +171,7 @@ import { getWednesdayOfCurrentWeek } from '../domain/services/agendaService';
 
 const sampleWedDate = getWednesdayOfCurrentWeek();
 
-export const initialMedicalAppointments: MedicalAppointment[] = [
-  {
-    id: 'med-app-1',
-    patientId: 'patient-1',
-    patientName: 'Rocky',
-    species: 'Canino',
-    breed: 'Golden Retriever',
-    ownerName: 'Carlos Mendoza',
-    vetName: 'Dra. Ana López',
-    date: sampleWedDate,
-    time: '10:00',
-    endTime: '11:00',
-    reason: 'Consulta General & Vacuna Anual',
-    status: 'in_progress'
-  },
-  {
-    id: 'med-app-2',
-    patientId: 'patient-2',
-    patientName: 'Muna',
-    species: 'Felino',
-    breed: 'Gato Siamés',
-    ownerName: 'Laura Vargas',
-    vetName: 'Dr. Marcos Silva',
-    date: sampleWedDate,
-    time: '11:00',
-    endTime: '11:30',
-    reason: 'Revisión Oídos',
-    status: 'pending'
-  }
-];
+export const initialMedicalAppointments: MedicalAppointment[] = [];
 
 export const initialGroomingServices: GroomingService[] = [
   { id: 'groom-srv-1', name: 'Baño — perro chico', durationMinutes: 45, price: 12000 },
@@ -210,24 +181,7 @@ export const initialGroomingServices: GroomingService[] = [
   { id: 'groom-srv-5', name: 'Baño y Deslanado — gato', durationMinutes: 60, price: 20000 }
 ];
 
-export const initialGroomingAppointments: GroomingAppointment[] = [
-  {
-    id: 'groom-app-1',
-    patientId: 'patient-1',
-    patientName: 'Bella',
-    species: 'Canino',
-    breed: 'Caniche',
-    ownerName: 'Sofía M.',
-    serviceId: 'groom-srv-3',
-    serviceName: 'Baño y Corte',
-    date: sampleWedDate,
-    time: '09:00',
-    endTime: '10:00',
-    durationMinutes: 60,
-    price: 18000,
-    status: 'confirmed'
-  }
-];
+export const initialGroomingAppointments: GroomingAppointment[] = [];
 
 export const initialProducts: Product[] = [
   {

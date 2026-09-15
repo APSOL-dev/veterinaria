@@ -4,12 +4,18 @@ import {
   calculateDurationMinutes, 
   formatTimeRange, 
   isSlotOccupiedByAppointment,
+  getAppointmentActionButton,
+  prepareAppointmentReschedule,
+  validateAppointmentNotes,
   getMondayOfDate,
   getWeekDays,
   formatWeekRangeHeader,
   shiftWeek,
   formatDateToISO,
-  getWednesdayOfCurrentWeek
+  getWednesdayOfCurrentWeek,
+  filterAppointmentsWithNotes,
+  deleteAppointmentFromList,
+  getAppointmentCardTheme
 } from './agendaService';
 
 describe('agendaService', () => {
@@ -58,6 +64,39 @@ describe('agendaService', () => {
 
     it('should return only startTime when no endTime or duration is given', () => {
       expect(formatTimeRange('09:00')).toBe('09:00');
+    });
+  });
+
+  describe('getAppointmentActionButton', () => {
+    it('returns label "Completado" and isCompleted: true for completed appointments', () => {
+      const res = getAppointmentActionButton('completed');
+      expect(res).toEqual({ label: 'Completado', isCompleted: true });
+    });
+
+    it('returns label "Cobrar turno" and isCompleted: false for non-completed appointments', () => {
+      const res1 = getAppointmentActionButton('pending');
+      expect(res1).toEqual({ label: 'Cobrar turno', isCompleted: false });
+
+      const res2 = getAppointmentActionButton('in_progress');
+      expect(res2).toEqual({ label: 'Cobrar turno', isCompleted: false });
+    });
+  });
+
+  describe('prepareAppointmentReschedule', () => {
+    it('prepares rescheduled date, time and endTime based on duration', () => {
+      const res = prepareAppointmentReschedule('2026-09-20', '14:00', 45);
+      expect(res).toEqual({
+        date: '2026-09-20',
+        time: '14:00',
+        endTime: '14:45'
+      });
+    });
+  });
+
+  describe('validateAppointmentNotes', () => {
+    it('trims notes and returns clean string', () => {
+      expect(validateAppointmentNotes('  Observación clínica  ')).toBe('Observación clínica');
+      expect(validateAppointmentNotes('')).toBe('');
     });
   });
 
@@ -149,4 +188,59 @@ describe('agendaService', () => {
       expect(getWednesdayOfCurrentWeek(thu)).toBe('2026-09-09');
     });
   });
+
+  describe('filterAppointmentsWithNotes', () => {
+    const mockAppointments = [
+      { id: '1', patientName: 'Thor', ownerName: 'Juan', date: '2026-09-10', time: '10:00', notes: 'Se aplicó vacuna sextuple.' },
+      { id: '2', patientName: 'Luna', ownerName: 'Maria', date: '2026-09-15', time: '11:00', notes: '   ' },
+      { id: '3', patientName: 'Thor', ownerName: 'Juan', date: '2026-09-14', time: '09:00', notes: 'Control post operatorio positivo.' },
+      { id: '4', patientName: 'Milo', ownerName: 'Carlos', date: '2026-09-12', time: '16:00', notes: '' },
+      { id: '5', patientName: 'Rocky', ownerName: 'Ana', date: '2026-09-16', time: '14:00', notes: 'Pelo corto y baño antipulgas.' }
+    ];
+
+    it('should return only appointments with non-empty notes sorted descending by date', () => {
+      const result = filterAppointmentsWithNotes(mockAppointments);
+      expect(result.map(a => a.id)).toEqual(['5', '3', '1']);
+    });
+
+    it('should filter notes by search query matching patientName, ownerName, or notes content', () => {
+      const resultThor = filterAppointmentsWithNotes(mockAppointments, 'Thor');
+      expect(resultThor.map(a => a.id)).toEqual(['3', '1']);
+
+      const resultPulgas = filterAppointmentsWithNotes(mockAppointments, 'antipulgas');
+      expect(resultPulgas.map(a => a.id)).toEqual(['5']);
+
+      const resultUnknown = filterAppointmentsWithNotes(mockAppointments, 'inexistente');
+      expect(resultUnknown).toEqual([]);
+    });
+  });
+
+  describe('deleteAppointmentFromList', () => {
+    const mockAppointments = [
+      { id: 'app-1', patientName: 'Thor' },
+      { id: 'app-2', patientName: 'Luna' },
+      { id: 'app-3', patientName: 'Milo' }
+    ];
+
+    it('should remove the appointment with matching id from array', () => {
+      const result = deleteAppointmentFromList(mockAppointments, 'app-2');
+      expect(result).toHaveLength(2);
+      expect(result.map(a => a.id)).toEqual(['app-1', 'app-3']);
+    });
+
+    it('should return same elements if id is not found', () => {
+      const result = deleteAppointmentFromList(mockAppointments, 'non-existing');
+      expect(result).toHaveLength(3);
+    });
+  });
+
+  describe('getAppointmentCardTheme', () => {
+    it('should return green color theme configuration for all appointments', () => {
+      const theme = getAppointmentCardTheme();
+      expect(theme.cardBg).toContain('F0FDF4');
+      expect(theme.cardBorder).toContain('emerald');
+      expect(theme.buttonBg).toContain('emerald');
+    });
+  });
 });
+

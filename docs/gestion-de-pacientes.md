@@ -17,3 +17,12 @@ Este documento define el flujo de visualización y edición directa de los datos
 3. **Persistencia y Actualización:**
    - La función `updatePatientRecord` en `patientService.ts` procesa la modificación y refresca la lista global de pacientes.
    - La función `updatePatientInSupabase` en `supabaseService.ts` persiste automáticamente en la tabla `vetsoft_pacientes` y `vetsoft_tutores` todos los cambios de datos personales, peso, historial ponderal y alertas clínicas.
+
+**Desplegable Buscable de Pacientes y Tutores (`SearchablePatientSelect`):**
+- **Funcionalidad:** Reemplaza todos los selectores simples de pacientes/tutores en la aplicación (Ficha de Pacientes, Nueva Consulta, Agenda Médica, Agenda Peluquería, Cobros / POS).
+- **Búsqueda en Tiempo Real:** Permite escribir cualquier fragmento del nombre del paciente, especie, raza o nombre del tutor/dueño.
+- **Filtrado Dinámico:** Filtra al instante las opciones disponibles mediante `filterPatients` y formatea la etiqueta mediante `formatPatientOptionLabel`.
+- **Accesibilidad y Usabilidad:** Soporta autoenfocado, cierre al hacer clic fuera y resaltado del paciente actualmente seleccionado.
+- **Disposición en Cabecera:** En la Ficha del Paciente, el botón **"+ Nuevo paciente"** se posiciona en la misma fila a la derecha del selector desplegable buscable (`flex-nowrap`), garantizando una navegación limpia sin saltos de línea.
+
+

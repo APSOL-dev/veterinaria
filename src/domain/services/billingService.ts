@@ -147,3 +147,24 @@ export function processCheckout(params: CheckoutParams): CheckoutResult {
     stockMovements
   };
 }
+
+/**
+ * Formats a numeric price for an editable input box.
+ * If 0, undefined, null or NaN, returns empty string '' so the input appears blank without prefilled 0s.
+ */
+export function formatPriceInputDisplay(price: number | undefined | null): string {
+  if (price === undefined || price === null || isNaN(price) || price === 0) {
+    return '';
+  }
+  return String(price);
+}
+
+/**
+ * Parses user typed input string into a valid non-negative numeric price.
+ */
+export function parsePriceInput(input: string): number {
+  if (!input || input.trim() === '') return 0;
+  const num = Number(input);
+  return isNaN(num) ? 0 : Math.max(0, num);
+}
+

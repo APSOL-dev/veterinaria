@@ -5,6 +5,7 @@ import { Patient } from '../../domain/types';
 interface PrescriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSave?: () => void;
   patient: Patient;
   vetName: string;
   vetLicenseNumber?: string;
@@ -16,6 +17,7 @@ interface PrescriptionModalProps {
 export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   isOpen,
   onClose,
+  onSave,
   patient,
   vetName,
   vetLicenseNumber = 'MP 8472-VET',
@@ -44,7 +46,9 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     `${prescriptionText}\n\n` +
     `_Centro Veterinario Vetsoft — Consulta y tratamiento_`;
 
-  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMessage)}`;
+  const whatsappUrl = cleanPhone
+    ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMessage)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMessage)}`;
 
   const handleDownloadPDF = () => {
     const element = document.getElementById('prescription-printable-card');
@@ -80,8 +84,18 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in overflow-y-auto print:bg-white print:p-8 print:static print:block print:inset-auto print:backdrop-blur-none">
-      <div id="prescription-printable-card" className="bg-white rounded-2xl max-w-2xl w-full p-8 shadow-2xl flex flex-col gap-6 border border-slate-200 my-auto text-slate-900 font-body-md print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:m-0">
+      <div id="prescription-printable-card" className="relative bg-white rounded-2xl max-w-2xl w-full p-8 shadow-2xl flex flex-col gap-6 border border-slate-200 my-auto text-slate-900 font-body-md print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:m-0">
         
+        {/* Botón Cerrar (X) Arriba a la Derecha */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1.5 rounded-full transition-colors cursor-pointer print:hidden"
+          title="Cerrar ventana"
+        >
+          <span className="material-symbols-outlined text-[20px]">close</span>
+        </button>
+
         {/* Encabezado Membretado Impresión / Vista */}
         <div className="flex items-center justify-between border-b-2 border-purple-900/30 pb-4">
           <div className="flex items-center gap-3">
@@ -148,25 +162,15 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
         {/* Acciones de Modal (Ocultas en Impresión) */}
         <div className="flex items-center justify-end gap-3 pt-2 print:hidden">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer"
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-[#25D366] hover:bg-[#1EBE5D] text-white px-5 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer text-decoration-none"
           >
-            Cerrar
-          </button>
-
-          {cleanPhone && (
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-[#25D366] hover:bg-[#1EBE5D] text-white px-5 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer text-decoration-none"
-            >
-              <span className="material-symbols-outlined text-[18px]">chat</span>
-              <span>Enviar por WhatsApp</span>
-            </a>
-          )}
+            <span className="material-symbols-outlined text-[18px]">chat</span>
+            <span>Enviar por WhatsApp</span>
+          </a>
 
           <button
             type="button"
@@ -175,6 +179,21 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           >
             <span className="material-symbols-outlined text-[18px]">download</span>
             <span>Descargar PDF</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (onSave) {
+                onSave();
+              } else {
+                onClose();
+              }
+            }}
+            className="bg-[#5C3C7B] hover:bg-[#4A2F66] text-white px-5 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">save</span>
+            <span>Guardar</span>
           </button>
         </div>
       </div>

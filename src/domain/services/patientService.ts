@@ -118,7 +118,8 @@ export function shouldAutoTriggerPdfOnSave(
   generatePdfFlag?: boolean, 
   prescriptionText?: string
 ): boolean {
-  return Boolean(generatePdfFlag || (prescriptionText && prescriptionText.trim().length > 0));
+  if (!generatePdfFlag) return false;
+  return Boolean(prescriptionText && prescriptionText.trim().length > 0);
 }
 
 export function formatConsultationPdfTitle(
@@ -129,3 +130,60 @@ export function formatConsultationPdfTitle(
   const sanitizedType = (documentType || 'Documento').replace(/\s+/g, '_');
   return `Receta_${sanitizedType}_${sanitizedName}.pdf`;
 }
+
+import { ClinicalNote } from '../types';
+
+export function updateClinicalNoteRecord(
+  notes: ClinicalNote[],
+  noteId: string,
+  updates: { notes?: string; vetName?: string; prescription?: string }
+): ClinicalNote[] {
+  return notes.map(n => {
+    if (n.id !== noteId) return n;
+    return {
+      ...n,
+      notes: updates.notes !== undefined ? updates.notes : n.notes,
+      vetName: updates.vetName !== undefined ? updates.vetName : n.vetName,
+      prescription: updates.prescription !== undefined ? updates.prescription : n.prescription
+    };
+  });
+}
+
+export function deleteClinicalNoteRecord(
+  notes: ClinicalNote[],
+  noteId: string
+): ClinicalNote[] {
+  return notes.filter(n => n.id !== noteId);
+}
+
+export function prepareConsultationPrescriptionText(
+  notes: string,
+  prescriptionText?: string
+): string {
+  if (prescriptionText && prescriptionText.trim().length > 0) {
+    return prescriptionText.trim();
+  }
+  return notes.trim() || 'Consulta médica registrada.';
+}
+
+export function toggleAlertItem(alerts: string[], item: string): string[] {
+  const trimmed = item.trim();
+  if (!trimmed) return alerts;
+  if (alerts.includes(trimmed)) {
+    return alerts.filter(a => a !== trimmed);
+  }
+  return [...alerts, trimmed];
+}
+
+export function formatPatientOptionLabel(patient: Patient, variant: 'full' | 'short' | 'agenda' = 'full'): string {
+  if (!patient) return '';
+  if (variant === 'short') {
+    return `${patient.name} (${patient.species} - ${patient.ownerName})`;
+  }
+  if (variant === 'agenda') {
+    return `${patient.name} (${patient.species} - Dueño: ${patient.ownerName})`;
+  }
+  return `${patient.name} (${patient.species}${patient.breed ? ` - ${patient.breed}` : ''} | Tutor: ${patient.ownerName})`;
+}
+
+

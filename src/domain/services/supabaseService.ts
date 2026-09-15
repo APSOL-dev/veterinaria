@@ -51,7 +51,8 @@ export function mapRowToPatient(row: any): Patient {
     status: row.status || 'active',
     weightKg: Number(row.weightKg ?? row.weight_kg ?? 0),
     alerts: Array.isArray(row.alerts) ? row.alerts : [],
-    weightHistory: Array.isArray(row.weightHistory) ? row.weightHistory : []
+    weightHistory: Array.isArray(row.weightHistory) ? row.weightHistory : [],
+    requiredVaccines: Array.isArray(row.requiredVaccines || row.required_vaccines) ? (row.requiredVaccines || row.required_vaccines) : []
   };
 }
 
@@ -385,13 +386,34 @@ export interface SyncResult {
   error?: string;
 }
 
+export async function updateTutorInSupabase(
+  ownerId: string,
+  ownerName: string,
+  ownerPhone?: string,
+  address?: string
+): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_tutores').upsert({
+      id: ownerId,
+      name: ownerName,
+      phone: ownerPhone || null,
+      address: address || null
+    });
+    if (error) console.error('Supabase error updating tutor:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
 export async function insertPatientToSupabase(patient: Patient): Promise<SyncResult> {
   try {
     if (patient.ownerId) {
       await supabase.from('vetsoft_tutores').upsert({
         id: patient.ownerId,
         name: patient.ownerName,
-        phone: patient.ownerPhone || null
+        phone: patient.ownerPhone || null,
+        address: patient.address || null
       });
     }
 
@@ -406,7 +428,8 @@ export async function insertPatientToSupabase(patient: Patient): Promise<SyncRes
       photo_url: patient.photoUrl || null,
       status: patient.status,
       weight_kg: patient.weightKg || null,
-      alerts: patient.alerts || []
+      alerts: patient.alerts || [],
+      required_vaccines: patient.requiredVaccines || []
     });
 
     if (error) console.error('Supabase error inserting patient:', error);
@@ -422,7 +445,8 @@ export async function updatePatientInSupabase(patient: Patient): Promise<SyncRes
       await supabase.from('vetsoft_tutores').upsert({
         id: patient.ownerId,
         name: patient.ownerName,
-        phone: patient.ownerPhone || null
+        phone: patient.ownerPhone || null,
+        address: patient.address || null
       });
     }
 
@@ -438,6 +462,7 @@ export async function updatePatientInSupabase(patient: Patient): Promise<SyncRes
       weight_kg: patient.weightKg || null,
       alerts: patient.alerts || [],
       weight_history: patient.weightHistory || [],
+      required_vaccines: patient.requiredVaccines || [],
       updated_at: new Date().toISOString()
     }).eq('id', patient.id);
 
@@ -462,6 +487,31 @@ export async function insertClinicalNoteToSupabase(note: ClinicalNote): Promise<
       prescription_url: note.prescriptionUrl || null
     });
     if (error) console.error('Supabase error inserting clinical note:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function updateClinicalNoteInSupabase(id: string, noteData: Partial<ClinicalNote>): Promise<SyncResult> {
+  try {
+    const payload: any = {};
+    if (noteData.notes !== undefined) payload.notes = noteData.notes;
+    if (noteData.vetName !== undefined) payload.vet_name = noteData.vetName;
+    if (noteData.prescription !== undefined) payload.prescription = noteData.prescription || null;
+
+    const { error } = await supabase.from('vetsoft_consultas_clinicas').update(payload).eq('id', id);
+    if (error) console.error('Supabase error updating clinical note:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function deleteClinicalNoteFromSupabase(id: string): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_consultas_clinicas').delete().eq('id', id);
+    if (error) console.error('Supabase error deleting clinical note:', error);
     return { success: !error, error: extractErrorMessage(error) };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error de conexión' };
@@ -505,6 +555,68 @@ export async function insertGroomingAppointmentToSupabase(appt: GroomingAppointm
     return { success: false, error: err?.message || 'Error de conexión' };
   }
 }
+
+export async function updateMedicalAppointmentInSupabase(
+  id: string, 
+  updates: Partial<MedicalAppointment>
+): Promise<SyncResult> {
+  try {
+    const payload: any = {};
+    if (updates.status) payload.status = updates.status;
+    if (updates.date) payload.date = sanitizeDateString(updates.date);
+    if (updates.time) payload.time = updates.time;
+    if (updates.vetName) payload.vet_name = updates.vetName;
+    if (updates.reason) payload.reason = updates.reason;
+
+    const { error } = await supabase.from('vetsoft_turnos_clinica').update(payload).eq('id', id);
+    if (error) console.error('Supabase error updating medical appointment:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function updateGroomingAppointmentInSupabase(
+  id: string, 
+  updates: Partial<GroomingAppointment>
+): Promise<SyncResult> {
+  try {
+    const payload: any = {};
+    if (updates.status) payload.status = updates.status;
+    if (updates.date) payload.date = sanitizeDateString(updates.date);
+    if (updates.time) payload.time = updates.time;
+    if (updates.serviceName) payload.service_name = updates.serviceName;
+    if (updates.price !== undefined) payload.price = updates.price;
+    if (updates.notes !== undefined) payload.notes = updates.notes;
+
+    const { error } = await supabase.from('vetsoft_turnos_peluqueria').update(payload).eq('id', id);
+    if (error) console.error('Supabase error updating grooming appointment:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function deleteMedicalAppointmentFromSupabase(id: string): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_turnos_clinica').delete().eq('id', id);
+    if (error) console.error('Supabase error deleting medical appointment:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function deleteGroomingAppointmentFromSupabase(id: string): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_turnos_peluqueria').delete().eq('id', id);
+    if (error) console.error('Supabase error deleting grooming appointment:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
 
 export async function upsertProductToSupabase(prod: Product): Promise<SyncResult> {
   try {

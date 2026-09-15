@@ -9,6 +9,7 @@ import {
 } from '../../domain/types';
 import { calculateBillSummary, calculateItemSubtotal } from '../../domain/services/billingService';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
+import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
 
 interface StoreBillingViewProps {
   patients: Patient[];
@@ -208,19 +209,16 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display-lg text-[22px] text-on-surface leading-tight font-semibold">Nueva facturación y tienda (POS)</h1>
-          <p className="font-body-lg text-xs text-on-surface-variant flex items-center gap-xs mt-0.5 font-medium">
-            <span className="material-symbols-outlined text-[16px]">pets</span>
-            Paciente seleccionado: 
-            <select
-              value={selectedPatientId}
-              onChange={(e) => setSelectedPatientId(e.target.value)}
-              className="ml-2 bg-surface-container border-none rounded-lg py-1 px-2.5 text-primary font-semibold outline-none text-xs cursor-pointer"
-            >
-              {patients.map(p => (
-                <option key={p.id} value={p.id}>{p.name} ({p.species} • Dueño: {p.ownerName})</option>
-              ))}
-            </select>
-          </p>
+          <div className="flex items-center gap-xs mt-1">
+            <span className="material-symbols-outlined text-[16px] text-slate-500">pets</span>
+            <SearchablePatientSelect
+              patients={patients}
+              selectedPatientId={selectedPatientId}
+              onSelectPatient={setSelectedPatientId}
+              labelPrefix="Paciente seleccionado:"
+              variant="short"
+            />
+          </div>
         </div>
       </div>
 
@@ -486,6 +484,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                 type="number"
                 value={addQty}
                 onChange={(e) => setAddQty(Number(e.target.value))}
+                onFocus={(e) => e.target.select()}
                 min={1}
                 required
                 className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"

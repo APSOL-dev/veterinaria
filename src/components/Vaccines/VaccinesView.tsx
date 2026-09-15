@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Patient, VaccineCatalogItem, VaccineDosis } from '../../domain/types';
+import { formatVaccineReminderMessage } from '../../domain/services/vaccineService';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
 
 interface VaccinesViewProps {
@@ -12,7 +13,7 @@ interface VaccinesViewProps {
   onDeleteVaccineFromCatalog?: (id: string) => void;
   vaccineDoses: VaccineDosis[];
   onRegisterDosis: (dosis: { vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => void;
-  onScheduleAppointment: (patientId: string) => void;
+  onScheduleAppointment: (patientId: string, vaccineName?: string) => void;
   isGeneralCatalog?: boolean;
   onUpdatePatients?: (updatedPatients: Patient[]) => void;
 }
@@ -428,41 +429,37 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
           <div className="xl:col-span-2 flex flex-col gap-md">
             {/* Tarjeta Vacunas Necesarias del Paciente (Cargadas en Ficha) */}
             {activePatient.requiredVaccines && activePatient.requiredVaccines.length > 0 && (
-              <div className="bg-white rounded-2xl p-md shadow-sm border border-purple-200 flex flex-col gap-xs">
+              <div className="bg-emerald-50/50 rounded-2xl p-md shadow-sm border border-emerald-300 flex flex-col gap-xs w-full col-span-full">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-headline-sm text-xs font-semibold text-[#5C3C7B] flex items-center gap-xs">
-                    <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">vaccines</span>
+                  <h2 className="font-headline-sm text-xs font-bold text-emerald-950 flex items-center gap-xs">
+                    <span className="material-symbols-outlined text-emerald-700 text-[18px]">vaccines</span>
                     Vacunas necesarias / requeridas ({activePatient.name})
                   </h2>
-                  <span className="text-[11px] text-slate-500 font-medium">Cargadas desde la ficha del paciente</span>
+                  <span className="text-[11px] text-emerald-800 font-medium">Cargadas desde la ficha del paciente</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-xs mt-1">
+                <div className="flex flex-col gap-xs mt-1 w-full">
                   {activePatient.requiredVaccines.map(vac => (
                     <div
                       key={vac.id}
-                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-sm text-xs ${
-                        vac.status === 'aplicada'
-                          ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
-                          : 'bg-amber-50/70 border-amber-200 text-amber-950'
-                      }`}
+                      className="p-3 rounded-xl border border-emerald-200 bg-emerald-100/60 text-emerald-950 flex items-center justify-between gap-sm text-xs w-full shadow-2xs"
                     >
                       <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className="font-semibold text-xs truncate">{vac.vaccineName}</span>
-                        <span className="text-[10px] text-slate-600 font-medium">
+                        <span className="font-bold text-xs text-emerald-950 truncate">{vac.vaccineName}</span>
+                        <span className="text-[11px] text-emerald-800 font-medium">
                           Sugerida: <strong>{vac.suggestedDate}</strong>
                           {vac.appliedDate && ` • Aplicada: ${vac.appliedDate}`}
                         </span>
-                        {vac.notes && <span className="text-[10px] text-slate-500 italic truncate">{vac.notes}</span>}
+                        {vac.notes && <span className="text-[11px] text-emerald-700 italic truncate">{vac.notes}</span>}
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleToggleVaccineAppliedInVaccinesView(vac.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
                           vac.status === 'aplicada'
-                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                            : 'bg-amber-500 text-white hover:bg-amber-600'
+                            ? 'bg-emerald-800 text-white hover:bg-emerald-900'
+                            : 'bg-emerald-600 text-white hover:bg-emerald-700'
                         }`}
                       >
                         {vac.status === 'aplicada' ? '✓ Aplicada' : 'Marcar aplicada'}
@@ -488,57 +485,108 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       <th className="py-2 px-md">Fecha aplicación</th>
                       <th className="py-2 px-md">Profesional</th>
                       <th className="py-2 px-md">Fecha límite</th>
+                      <th className="py-2 px-md">Vencimiento</th>
                       <th className="py-2 px-md">Estado</th>
                     </tr>
                   </thead>
                   <tbody className="text-slate-800">
-                    {patientDoses.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="py-md text-center text-slate-500 text-xs font-medium">
-                          No hay dosis aplicadas registradas para {activePatient.name}.
-                        </td>
-                      </tr>
-                    ) : (
-                      patientDoses.map((dose) => {
+                    {(() => {
+                      const todayStr = new Date().toISOString().split('T')[0];
+                      const pendingReqs = (activePatient.requiredVaccines || []).filter(
+                        v => v.status === 'pendiente' && !patientDoses.some(d => d.vaccineName.toLowerCase() === v.vaccineName.toLowerCase())
+                      );
+
+                      if (patientDoses.length === 0 && pendingReqs.length === 0) {
                         return (
-                          <tr key={dose.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                            <td className="py-sm px-md font-medium text-slate-900 text-xs">{dose.vaccineName}</td>
-                            <td className="py-sm px-md font-medium text-slate-800">{dose.applicationDate}</td>
-                            <td className="py-sm px-md flex items-center gap-xs font-medium text-slate-800">
-                              <div className="w-5 h-5 rounded-full bg-purple-100 text-[#5C3C7B] flex items-center justify-center font-semibold text-[10px]">
-                                {dose.vetName.slice(0, 2).toUpperCase()}
-                              </div>
-                              {dose.vetName}
-                            </td>
-                            <td className={`py-sm px-md font-semibold ${
-                              dose.status === 'expired' ? 'text-red-700' : dose.status === 'due_soon' ? 'text-amber-700' : 'text-slate-800'
-                            }`}>
-                              {dose.expirationDate}
-                            </td>
-                            <td className="py-sm px-md">
-                              {dose.status === 'ok' && (
-                                <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                                  Al día
-                                </span>
-                              )}
-                              {dose.status === 'due_soon' && (
-                                <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-semibold text-[10px]">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
-                                  Próxima
-                                </span>
-                              )}
-                              {dose.status === 'expired' && (
-                                <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold text-[10px]">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
-                                  Vencida
-                                </span>
-                              )}
+                          <tr>
+                            <td colSpan={6} className="py-md text-center text-slate-500 text-xs font-medium">
+                              No hay vacunas registradas para {activePatient.name}.
                             </td>
                           </tr>
                         );
-                      })
-                    )}
+                      }
+
+                      return (
+                        <>
+                          {/* Dosis Aplicadas */}
+                          {patientDoses.map((dose) => {
+                            const isExpired = dose.status === 'expired' || dose.expirationDate < todayStr;
+                            return (
+                              <tr key={dose.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                                <td className="py-sm px-md font-medium text-slate-900 text-xs">{dose.vaccineName}</td>
+                                <td className="py-sm px-md font-medium text-slate-800">{dose.applicationDate}</td>
+                                <td className="py-sm px-md flex items-center gap-xs font-medium text-slate-800">
+                                  <div className="w-5 h-5 rounded-full bg-purple-100 text-[#5C3C7B] flex items-center justify-center font-semibold text-[10px]">
+                                    {dose.vetName.slice(0, 2).toUpperCase()}
+                                  </div>
+                                  {dose.vetName}
+                                </td>
+                                <td className={`py-sm px-md font-semibold ${
+                                  isExpired ? 'text-red-700' : 'text-slate-800'
+                                }`}>
+                                  {dose.expirationDate}
+                                </td>
+                                <td className="py-sm px-md">
+                                  {isExpired ? (
+                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold text-[10px]">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+                                      Vencida
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                      Al día
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-sm px-md">
+                                  <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                    Aplicada
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+
+                          {/* Vacunas Requeridas Pendientes */}
+                          {pendingReqs.map((req) => {
+                            const isExpired = req.suggestedDate < todayStr;
+                            return (
+                              <tr key={req.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                                <td className="py-sm px-md font-medium text-slate-900 text-xs">{req.vaccineName}</td>
+                                <td className="py-sm px-md font-medium text-slate-400">-</td>
+                                <td className="py-sm px-md font-medium text-slate-400">-</td>
+                                <td className={`py-sm px-md font-semibold ${
+                                  isExpired ? 'text-red-700' : 'text-slate-800'
+                                }`}>
+                                  {req.suggestedDate}
+                                </td>
+                                <td className="py-sm px-md">
+                                  {isExpired ? (
+                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold text-[10px]">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+                                      Vencida
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                      Al día
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-sm px-md">
+                                  <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-semibold text-[10px]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                                    Pendiente
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </>
+                      );
+                    })()}
                   </tbody>
                 </table>
               </div>
@@ -551,7 +599,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 <div>
                   <h3 className="font-label-md text-purple-100 text-[10px] mb-xs font-semibold">Próxima aplicación</h3>
                   <p className="font-display-lg text-lg mb-xs font-semibold">
-                    {dueOrExpiredDosis ? dueOrExpiredDosis.vaccineName : 'Antirrábica'}
+                    {dueOrExpiredDosis ? dueOrExpiredDosis.vaccineName : (activePatient.requiredVaccines?.[0]?.vaccineName || 'Antirrábica')}
                   </p>
                   <p className="font-body-md text-purple-100 text-xs flex items-center gap-xs mb-md font-medium">
                     <span className="material-symbols-outlined text-[14px]">warning</span>
@@ -561,10 +609,16 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                   </p>
                 </div>
                 <button
-                  onClick={() => onScheduleAppointment(activePatient.id)}
-                  className="w-full bg-white text-[#5C3C7B] hover:bg-purple-50 py-2.5 rounded-xl font-label-md text-xs transition-colors font-semibold shadow-xs cursor-pointer"
+                  onClick={() => {
+                    const vacName = dueOrExpiredDosis 
+                      ? dueOrExpiredDosis.vaccineName 
+                      : (activePatient.requiredVaccines?.[0]?.vaccineName || 'Antirrábica');
+                    onScheduleAppointment(activePatient.id, vacName);
+                  }}
+                  className="w-full bg-white text-[#5C3C7B] hover:bg-purple-50 py-2.5 rounded-xl font-label-md text-xs transition-colors font-semibold shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  Agendar turno
+                  <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                  <span>Agendar turno</span>
                 </button>
               </div>
 
@@ -607,26 +661,53 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 </h2>
               </div>
 
-              <div className="flex flex-col gap-sm relative">
-                <div className="relative z-10 flex gap-sm">
-                  <div className="w-7 h-7 rounded-full bg-purple-50 shadow-xs flex items-center justify-center border border-purple-200 shrink-0 mt-0.5">
-                    <span className="material-symbols-outlined text-[14px] text-[#9A7DB8]">sms</span>
-                  </div>
-                  <div className="flex-1 bg-purple-50/60 border border-purple-100 rounded-xl p-sm">
-                    <div className="flex justify-between items-start mb-0.5">
-                      <span className="font-label-md text-xs text-slate-900 font-semibold">Antirrábica</span>
-                      <span className="font-label-sm text-[10px] text-slate-500 font-medium">Hoy, 09:00</span>
+              {(() => {
+                const cleanPhone = (phone?: string) => phone ? phone.replace(/[^0-9]/g, '') : '';
+                const remVacName = dueOrExpiredDosis ? dueOrExpiredDosis.vaccineName : (activePatient.requiredVaccines?.[0]?.vaccineName || 'Antirrábica');
+                const remExpDate = dueOrExpiredDosis ? dueOrExpiredDosis.expirationDate : (activePatient.requiredVaccines?.[0]?.suggestedDate || '2026-10-15');
+                const reminderText = formatVaccineReminderMessage(
+                  activePatient.ownerName,
+                  remVacName,
+                  activePatient.name,
+                  remExpDate
+                );
+
+                return (
+                  <div className="flex flex-col gap-sm relative">
+                    <div className="relative z-10 flex gap-sm">
+                      <div className="w-7 h-7 rounded-full bg-purple-50 shadow-xs flex items-center justify-center border border-purple-200 shrink-0 mt-0.5">
+                        <span className="material-symbols-outlined text-[14px] text-[#9A7DB8]">sms</span>
+                      </div>
+                      <div className="flex-1 bg-purple-50/60 border border-purple-100 rounded-xl p-sm">
+                        <div className="flex justify-between items-start mb-0.5">
+                          <span className="font-label-md text-xs text-slate-900 font-semibold">{remVacName}</span>
+                          <span className="font-label-sm text-[10px] text-slate-500 font-medium">Hoy, 09:00</span>
+                        </div>
+                        <p className="font-body-md text-slate-700 text-[11px] mb-1 font-normal leading-relaxed">
+                          "{reminderText}"
+                        </p>
+                        <div className="flex items-center justify-between mt-1 pt-1 border-t border-purple-100/60">
+                          <div className="flex items-center gap-xs">
+                            <span className="material-symbols-outlined text-[13px] text-[#9A7DB8]">done_all</span>
+                            <span className="font-label-sm text-[10px] text-[#5C3C7B] font-semibold">Entregado</span>
+                          </div>
+                          {activePatient.ownerPhone && (
+                            <a
+                              href={`https://wa.me/${cleanPhone(activePatient.ownerPhone)}?text=${encodeURIComponent(reminderText)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[10px] font-bold text-[#25D366] hover:underline flex items-center gap-0.5"
+                            >
+                              <span className="material-symbols-outlined text-[12px]">chat</span>
+                              Enviar por WhatsApp
+                            </a>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <p className="font-body-md text-slate-700 text-[11px] mb-1 font-normal">
-                      "Hola {activePatient.ownerName}, te recordamos que la vacuna Antirrábica de {activePatient.name} está vencida..."
-                    </p>
-                    <div className="flex items-center gap-xs">
-                      <span className="material-symbols-outlined text-[13px] text-[#9A7DB8]">done_all</span>
-                      <span className="font-label-sm text-[10px] text-[#5C3C7B] font-semibold">Entregado</span>
-                    </div>
                   </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           </div>
         </div>

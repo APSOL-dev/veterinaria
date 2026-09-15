@@ -4,7 +4,8 @@ import {
   getUniqueTutores, 
   updateTutorAndPetInfo,
   calculateTutorAccountMovements,
-  getTutorAppointments
+  getTutorAppointments,
+  createPetForTutor
 } from './tutorService';
 
 describe('tutorService', () => {
@@ -99,6 +100,20 @@ describe('tutorService', () => {
     expect(movements[2].saldo).toBe(10000);
   });
 
+  it('calculateTutorAccountMovements should match receipts by petId when ownerName is undefined on receipt', () => {
+    const receipts = [
+      { id: 'r-db-1', receiptNumber: 'FC-C-0001-00007394', date: '2026-09-14', patientId: 'p1', totalAmount: 15000, paymentMethod: 'cuenta-corriente' }
+    ];
+
+    const movements = calculateTutorAccountMovements('Carlos Mendoza', receipts as any, [], ['p1', 'p2']);
+
+    expect(movements.length).toBe(1);
+    expect(movements[0].concept).toContain('FC-C-0001-00007394');
+    expect(movements[0].debe).toBe(15000);
+    expect(movements[0].haber).toBe(0);
+    expect(movements[0].saldo).toBe(15000);
+  });
+
   it('getTutorAppointments should retrieve medical and grooming appointments for a tutor', () => {
     const medical = [
       {
@@ -142,6 +157,52 @@ describe('tutorService', () => {
     expect(appointments[0].type).toBe('Peluquería / Estética');
     expect(appointments[1].id).toBe('med1');
     expect(appointments[1].type).toBe('Consulta Médica');
+  });
+
+  it('updateTutorAndPetInfo should update address, sex and birthDate', () => {
+    const updated = updateTutorAndPetInfo(
+      mockPatients,
+      'Carlos Mendoza',
+      {
+        newOwnerName: 'Carlos Mendoza',
+        newOwnerPhone: '+5491144556677',
+        newAddress: 'Av. Corrientes 1234',
+        petUpdates: {
+          p1: { name: 'Rocky', sex: 'Macho', birthDate: '2017-05-10', weightKg: 32.4 }
+        }
+      }
+    );
+
+    const p1 = updated.find(p => p.id === 'p1')!;
+    expect(p1.address).toBe('Av. Corrientes 1234');
+    expect(p1.birthDate).toBe('2017-05-10');
+  });
+
+  it('createPetForTutor should generate a new patient with tutor details', () => {
+    const { updatedPatients, newPet } = createPetForTutor(
+      mockPatients,
+      {
+        ownerId: 'ow1',
+        ownerName: 'Carlos Mendoza',
+        ownerPhone: '+5491144556677',
+        address: 'Av. Corrientes 1234'
+      },
+      {
+        name: 'Thor',
+        species: 'Canino',
+        breed: 'Bulldog',
+        sex: 'Macho',
+        birthDate: '2022-01-01',
+        weightKg: 15.0
+      }
+    );
+
+    expect(updatedPatients.length).toBe(3);
+    expect(newPet.name).toBe('Thor');
+    expect(newPet.ownerName).toBe('Carlos Mendoza');
+    expect(newPet.ownerId).toBe('ow1');
+    expect(newPet.address).toBe('Av. Corrientes 1234');
+    expect(newPet.species).toBe('Canino');
   });
 });
 

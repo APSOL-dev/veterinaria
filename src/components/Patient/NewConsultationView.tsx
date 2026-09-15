@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { Patient } from '../../domain/types';
-import { formatAttachmentFileList } from '../../domain/services/patientService';
+import { formatAttachmentFileList, prepareConsultationPrescriptionText, shouldAutoTriggerPdfOnSave } from '../../domain/services/patientService';
 import { uploadConsultationAttachmentToSupabase, uploadPrescriptionToSupabase } from '../../domain/services/supabaseService';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
+import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
 
 import { PrescriptionModal } from './PrescriptionModal';
 
@@ -39,6 +40,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [pendingConsultationData, setPendingConsultationData] = useState<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -93,7 +95,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
     type: 'success'
   });
 
-  const handleSave = async (generatePrescription: boolean = false) => {
+  const handleSave = async () => {
     if (!notes.trim()) {
       setModalNotif({
         isOpen: true,
@@ -117,7 +119,8 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
       }
     }
 
-    let finalPrescription = (showPrescription || generatePrescription) ? (prescriptionText || 'Receta generada en consulta médica') : undefined;
+    const hasGeneratedPrescription = shouldAutoTriggerPdfOnSave(showPrescription, prescriptionText);
+    let finalPrescription = hasGeneratedPrescription ? prescriptionText : undefined;
     let finalPrescriptionUrl: string | undefined = undefined;
 
     if (finalPrescription) {
@@ -130,7 +133,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
 
     setIsUploading(false);
 
-    onSaveConsultation({
+    const dataToSave = {
       patientId: currentPatient.id,
       vetName,
       vetLicenseNumber,
@@ -139,18 +142,32 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
       prescriptionUrl: finalPrescriptionUrl,
       attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
       attachmentUrls: uploadedAttachmentUrls.length > 0 ? uploadedAttachmentUrls : undefined
-    });
+    };
 
-    if (finalPrescription) {
+    if (hasGeneratedPrescription) {
+      setPendingConsultationData(dataToSave);
       setShowPrescriptionModal(true);
     } else {
+      onSaveConsultation(dataToSave);
       setNotes('');
       setPrescriptionText('');
       setShowPrescription(false);
       setAttachedFiles([]);
       setRawAttachedFiles([]);
-      onCancel();
     }
+  };
+
+  const handleConfirmSave = () => {
+    if (pendingConsultationData) {
+      onSaveConsultation(pendingConsultationData);
+    }
+    setShowPrescriptionModal(false);
+    setPendingConsultationData(null);
+    setNotes('');
+    setPrescriptionText('');
+    setShowPrescription(false);
+    setAttachedFiles([]);
+    setRawAttachedFiles([]);
   };
 
   const handleCloseNotif = () => {
@@ -174,20 +191,14 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-sm bg-surface-container-low p-xs px-md rounded-xl border border-outline-variant/40 self-stretch md:self-auto justify-between">
-          <div className="flex flex-col">
-            <label className="font-label-sm text-on-surface-variant text-[10px] font-medium">Cambiar paciente</label>
-            <select
-              value={targetPatientId}
-              onChange={(e) => setTargetPatientId(e.target.value)}
-              className="bg-transparent text-primary font-semibold text-xs outline-none cursor-pointer"
-            >
-              {patients.map(p => (
-                <option key={p.id} value={p.id}>{p.name} ({p.species} - {p.ownerName})</option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <SearchablePatientSelect
+          patients={patients}
+          selectedPatientId={targetPatientId}
+          onSelectPatient={setTargetPatientId}
+          labelPrefix="Cambiar paciente:"
+          variant="short"
+          className="w-auto"
+        />
       </div>
 
       {/* Main Form Body */}
@@ -334,22 +345,14 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
 
           <button
             type="button"
-            onClick={() => handleSave(false)}
-            className="px-4 py-2.5 rounded-xl bg-primary text-on-primary hover:bg-primary-container transition-all font-label-md text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+            onClick={() => handleSave()}
+            disabled={isUploading}
+            className="px-5 py-2.5 rounded-xl bg-primary text-on-primary hover:bg-primary-container transition-all font-label-md text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
               save
             </span>
-            Guardar consulta
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSave(true)}
-            className="px-4 py-2.5 rounded-xl bg-[#27AE60] text-white hover:bg-[#1E8449] transition-all font-label-md text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[16px]">check_circle</span>
-            Guardar y generar receta
+            {isUploading ? 'Guardando...' : 'Guardar consulta'}
           </button>
         </div>
       </div>
@@ -364,19 +367,12 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
       <PrescriptionModal
         isOpen={showPrescriptionModal}
         autoPrint={false}
-        onClose={() => {
-          setShowPrescriptionModal(false);
-          setNotes('');
-          setPrescriptionText('');
-          setShowPrescription(false);
-          setAttachedFiles([]);
-          setRawAttachedFiles([]);
-          onCancel();
-        }}
+        onClose={handleConfirmSave}
+        onSave={handleConfirmSave}
         patient={currentPatient}
         vetName={vetName}
         vetLicenseNumber={vetLicenseNumber}
-        prescriptionText={prescriptionText || 'Indicaciones registradas en la consulta médica.'}
+        prescriptionText={prepareConsultationPrescriptionText(notes, prescriptionText)}
       />
     </div>
   );

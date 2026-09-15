@@ -93,6 +93,30 @@ export function isSlotOccupiedByAppointment(
   return { isStart: false, isOccupied: false };
 }
 
+export function getAppointmentActionButton(status: string): { label: string; isCompleted: boolean } {
+  if (status === 'completed') {
+    return { label: 'Completado', isCompleted: true };
+  }
+  return { label: 'Cobrar turno', isCompleted: false };
+}
+
+export function prepareAppointmentReschedule(
+  newDate: string,
+  newTime: string,
+  durationMinutes: number = 60
+): { date: string; time: string; endTime: string } {
+  const endTime = calculateEndTime(newTime, durationMinutes);
+  return {
+    date: newDate,
+    time: newTime,
+    endTime
+  };
+}
+
+export function validateAppointmentNotes(notes: string): string {
+  return typeof notes === 'string' ? notes.trim() : '';
+}
+
 /**
  * Formats a Date object to YYYY-MM-DD string in local time.
  */
@@ -189,3 +213,66 @@ export function getWednesdayOfCurrentWeek(refDate?: Date | string): string {
   mon.setDate(mon.getDate() + 2);
   return formatDateToISO(mon);
 }
+
+/**
+ * Filters appointments that have non-empty notes, sorts them descending by date and time,
+ * and optionally filters by search query.
+ */
+export function filterAppointmentsWithNotes<
+  T extends { notes?: string; date: string; time?: string; patientName?: string; ownerName?: string }
+>(
+  appointments: T[],
+  searchQuery?: string
+): T[] {
+  if (!Array.isArray(appointments)) return [];
+
+  const withNotes = appointments.filter(a => typeof a.notes === 'string' && a.notes.trim().length > 0);
+
+  const query = searchQuery ? searchQuery.trim().toLowerCase() : '';
+  const filtered = query
+    ? withNotes.filter(a => {
+        const patientMatch = a.patientName ? a.patientName.toLowerCase().includes(query) : false;
+        const ownerMatch = a.ownerName ? a.ownerName.toLowerCase().includes(query) : false;
+        const notesMatch = a.notes ? a.notes.toLowerCase().includes(query) : false;
+        return patientMatch || ownerMatch || notesMatch;
+      })
+    : withNotes;
+
+  return [...filtered].sort((a, b) => {
+    const dateTimeA = `${a.date} ${a.time || '00:00'}`;
+    const dateTimeB = `${b.date} ${b.time || '00:00'}`;
+    return dateTimeB.localeCompare(dateTimeA);
+  });
+}
+
+/**
+ * Filters out an appointment from an array by id.
+ */
+export function deleteAppointmentFromList<T extends { id: string }>(list: T[], id: string): T[] {
+  if (!Array.isArray(list)) return [];
+  return list.filter(item => item.id !== id);
+}
+
+/**
+ * Returns green theme style configuration for all appointment cards in the calendar.
+ */
+export function getAppointmentCardTheme(): {
+  cardBg: string;
+  cardBorder: string;
+  headerText: string;
+  badgeBg: string;
+  badgeText: string;
+  buttonBg: string;
+} {
+  return {
+    cardBg: 'bg-[#F0FDF4]',
+    cardBorder: 'border-emerald-300',
+    headerText: 'text-emerald-950',
+    badgeBg: 'bg-emerald-100',
+    badgeText: 'text-emerald-900',
+    buttonBg: 'bg-emerald-600'
+  };
+}
+
+
+

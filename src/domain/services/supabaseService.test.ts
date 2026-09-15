@@ -27,7 +27,8 @@ describe('supabaseService row mappers', () => {
       birthDate: '2020-05-15',
       status: 'active',
       weightKg: 25.5,
-      alerts: ['Alergia a penicilina']
+      alerts: ['Alergia a penicilina'],
+      requiredVaccines: [{ id: 'req-1', vaccineName: 'Antirrábica', suggestedDate: '2026-10-15', status: 'pendiente' }]
     };
 
     const patient = mapRowToPatient(rawRow);
@@ -37,6 +38,8 @@ describe('supabaseService row mappers', () => {
     expect(patient.species).toBe('Canino');
     expect(patient.weightKg).toBe(25.5);
     expect(patient.alerts).toContain('Alergia a penicilina');
+    expect(patient.requiredVaccines).toHaveLength(1);
+    expect(patient.requiredVaccines![0].vaccineName).toBe('Antirrábica');
   });
 
   it('should map DB row to ClinicalNote domain model', () => {
@@ -147,6 +150,10 @@ describe('supabaseService row mappers', () => {
     const rawRow = {
       id: 'groom-1',
       patientId: 'pat-100',
+      patientName: 'Rocky',
+      species: 'Canino',
+      breed: 'Golden Retriever',
+      ownerName: 'Juan Pérez',
       serviceName: 'Baño y Corte',
       date: '2026-08-21',
       time: '14:30',
@@ -158,6 +165,8 @@ describe('supabaseService row mappers', () => {
     const groom = mapRowToGroomingAppointment(rawRow);
 
     expect(groom.id).toBe('groom-1');
+    expect(groom.patientName).toBe('Rocky');
+    expect(groom.ownerName).toBe('Juan Pérez');
     expect(groom.serviceName).toBe('Baño y Corte');
     expect(groom.price).toBe(3500);
   });

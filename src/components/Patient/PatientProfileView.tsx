@@ -1,9 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import { Patient, ClinicalNote, VaccineDosis, Species, Sex, PatientRequiredVaccine, VaccineCatalogItem, MedicalAppointment, GroomingAppointment } from '../../domain/types';
-import { filterPatients, calculateWeightTrend, updatePatientRecord } from '../../domain/services/patientService';
+import { filterPatients, calculateWeightTrend, updatePatientRecord, toggleAlertItem } from '../../domain/services/patientService';
 import { NewPatientModal } from './NewPatientModal';
 import { PrescriptionModal } from './PrescriptionModal';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
+import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
+
+const PREDEFINED_ALERTS = [
+  'Alérgico a Penicilina',
+  'Cuidados Especiales',
+  'Diabético',
+  'Sensibilidad digestiva',
+  'Agresivo / Muerde',
+  'Es miedoso / Asustadizo',
+  'Problema cardíaco',
+  'Esterilizado'
+];
 
 interface PatientProfileViewProps {
   patients: Patient[];
@@ -11,6 +23,8 @@ interface PatientProfileViewProps {
   onSelectPatient: (patient: Patient) => void;
   clinicalNotes: ClinicalNote[];
   onAddClinicalNote: (note: { notes: string; prescription?: string }) => void;
+  onUpdateClinicalNote?: (noteId: string, updatedFields: { notes?: string; prescription?: string }) => void;
+  onDeleteClinicalNote?: (noteId: string) => void;
   vaccineDoses: VaccineDosis[];
   onNavigateToTab: (tabName: string) => void;
   onAddPatient?: (patientData: any) => void;
@@ -20,6 +34,7 @@ interface PatientProfileViewProps {
   onAddVaccineToCatalog?: (name: string, frequencyDays: number) => void;
   medicalAppointments?: MedicalAppointment[];
   groomingAppointments?: GroomingAppointment[];
+  onScheduleAppointment?: (patientId: string, vaccineName?: string) => void;
 }
 
 export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
@@ -28,6 +43,8 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   onSelectPatient,
   clinicalNotes,
   onAddClinicalNote,
+  onUpdateClinicalNote,
+  onDeleteClinicalNote,
   vaccineDoses,
   onNavigateToTab,
   onAddPatient,
@@ -36,11 +53,16 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   onRegisterDosis,
   onAddVaccineToCatalog,
   medicalAppointments = [],
-  groomingAppointments = []
+  groomingAppointments = [],
+  onScheduleAppointment
 }) => {
   const [newNoteText, setNewNoteText] = useState('');
   const [newPrescriptionText, setNewPrescriptionText] = useState('');
   const [showPrescriptionInput, setShowPrescriptionInput] = useState(false);
+  const [editingNote, setEditingNote] = useState<ClinicalNote | null>(null);
+  const [editNoteText, setEditNoteText] = useState('');
+  const [editNotePrescription, setEditNotePrescription] = useState('');
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('Todos');
   const [showNewPatientModal, setShowNewPatientModal] = useState(false);
@@ -96,7 +118,8 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   const [editSex, setEditSex] = useState<Sex>('Macho');
   const [editBirthDate, setEditBirthDate] = useState('');
   const [editWeightKg, setEditWeightKg] = useState(0);
-  const [editAlertsStr, setEditAlertsStr] = useState('');
+  const [editAlerts, setEditAlerts] = useState<string[]>([]);
+  const [customAlertInput, setCustomAlertInput] = useState('');
   const [notifModal, setNotifModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
 
   const handleOpenEditPetModal = () => {
@@ -106,18 +129,32 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
     setEditSex(selectedPatient.sex);
     setEditBirthDate(selectedPatient.birthDate);
     setEditWeightKg(selectedPatient.weightKg || 0);
-    setEditAlertsStr((selectedPatient.alerts || []).join(', '));
+    setEditAlerts([...(selectedPatient.alerts || [])]);
+    setCustomAlertInput('');
     setShowEditPetModal(true);
+  };
+
+  const toggleEditAlertChip = (tag: string) => {
+    setEditAlerts(prev => toggleAlertItem(prev, tag));
+  };
+
+  const handleAddCustomAlert = (e?: React.FormEvent | React.KeyboardEvent) => {
+    if (e && 'key' in e && e.key !== 'Enter') return;
+    if (e) e.preventDefault();
+    const trimmed = customAlertInput.trim();
+    if (trimmed && !editAlerts.includes(trimmed)) {
+      setEditAlerts(prev => [...prev, trimmed]);
+      setCustomAlertInput('');
+    }
+  };
+
+  const removeEditAlert = (tag: string) => {
+    setEditAlerts(prev => prev.filter(a => a !== tag));
   };
 
   const handleSavePetEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editName.trim()) return;
-
-    const parsedAlerts = editAlertsStr
-      .split(',')
-      .map(a => a.trim())
-      .filter(Boolean);
 
     const updatedList = updatePatientRecord(patients, selectedPatient.id, {
       name: editName.trim(),
@@ -126,7 +163,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
       sex: editSex,
       birthDate: editBirthDate,
       weightKg: Number(editWeightKg),
-      alerts: parsedAlerts
+      alerts: editAlerts
     });
 
     if (onUpdatePatients) {
@@ -228,15 +265,6 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
     }
     onSelectPatient(updatedPatient);
 
-    // Agregar automáticamente al Historial de Vacunación del Paciente
-    if (onRegisterDosis && finalVacId) {
-      onRegisterDosis({
-        vaccineId: finalVacId,
-        applicationDate: reqVaccineDate,
-        vetName: 'Dr. J. Silva'
-      });
-    }
-
     setReqVaccineName('');
     setReqVaccineNotes('');
     setShowAddVaccineModal(false);
@@ -301,32 +329,26 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             Ficha del Paciente — {selectedPatient.name}
           </h1>
           <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
-            {selectedPatient.species} • {selectedPatient.breed} • Propietario: <strong className="text-slate-900 font-bold">{selectedPatient.ownerName}</strong>
+            {selectedPatient.species} • {selectedPatient.breed}
           </p>
         </div>
 
-        <div className="flex items-center gap-sm flex-wrap self-stretch md:self-auto justify-between">
-          <div className="flex items-center gap-2 bg-slate-100 p-1.5 px-3 rounded-xl border border-slate-300">
-            <label className="text-[10px] font-medium text-slate-500">Seleccionar paciente:</label>
-            <select
-              value={selectedPatient.id}
-              onChange={(e) => {
-                const found = patients.find(p => p.id === e.target.value);
-                if (found) onSelectPatient(found);
-              }}
-              className="bg-transparent font-semibold text-xs text-slate-900 outline-none cursor-pointer"
-            >
-              {patients.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.species} - {p.breed} | Tutor: {p.ownerName})
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="flex items-center gap-sm flex-nowrap shrink-0 w-full md:w-auto">
+          <SearchablePatientSelect
+            patients={patients}
+            selectedPatientId={selectedPatient.id}
+            onSelectPatient={(id) => {
+              const found = patients.find(p => p.id === id);
+              if (found) onSelectPatient(found);
+            }}
+            labelPrefix="Seleccionar paciente:"
+            variant="full"
+            className="w-full md:w-auto min-w-[280px]"
+          />
 
           <button
             onClick={() => setShowNewPatientModal(true)}
-            className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
             <span>Nuevo paciente</span>
@@ -334,97 +356,81 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
         </div>
       </div>
 
-        {/* Pet Hero Card */}
-        <header className="bg-white rounded-2xl shadow-sm p-md flex flex-col gap-sm border border-slate-200 shrink-0">
-          <div className="flex flex-col md:flex-row gap-md items-start md:items-center justify-between">
-            <div className="flex items-center gap-md">
-              <div className="relative w-20 h-20 md:w-22 md:h-22 rounded-2xl overflow-hidden shadow-md shrink-0 flex items-center justify-center bg-[#FAF5FF] border border-[#9A7DB8]/30">
-                {selectedPatient.photoUrl ? (
-                  <img 
-                    src={selectedPatient.photoUrl} 
-                    alt={selectedPatient.name} 
-                    className="w-full h-full object-cover relative z-10" 
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
-                ) : null}
-                <span className="material-symbols-outlined text-[40px] text-[#9A7DB8] absolute" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  pets
-                </span>
-                <div className="absolute bottom-1 right-1 bg-[#5C3C7B] text-white px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 z-20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]"></span>
-                  <span className="font-label-sm text-[9px] font-medium">Activo</span>
-                </div>
-              </div>
-
-              <div>
-                <h2 className="font-headline-sm text-lg text-slate-900 leading-tight font-semibold">
-                  {selectedPatient.name}
-                </h2>
-                <p className="font-body-md text-xs text-slate-600 font-medium flex flex-wrap items-center gap-1.5 mt-0.5">
-                  <span>{selectedPatient.species} • {selectedPatient.breed}</span>
-                  <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                  <span>{selectedPatient.sex}</span>
-                  <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                  <span>Nacimiento: {selectedPatient.birthDate}</span>
-                </p>
-
-                {/* Owner Contact Quick Action (WhatsApp Direct) */}
-                <div className="flex items-center gap-sm mt-1.5 text-xs text-slate-800">
-                  <span className="font-medium text-slate-900">Propietario: {selectedPatient.ownerName}</span>
-                  {selectedPatient.ownerPhone && (
-                    <a
-                      href={`https://wa.me/${cleanPhone(selectedPatient.ownerPhone)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="bg-[#25D366] text-white hover:brightness-105 px-3 py-1 rounded-full font-label-sm text-[11px] flex items-center gap-1 shadow-sm font-semibold transition-all"
-                      title="Enviar WhatsApp al dueño"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">chat</span>
-                      WhatsApp
-                    </a>
-                  )}
-
-                  <button
-                    onClick={handleOpenEditPetModal}
-                    className="bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-3 py-1 rounded-full font-label-sm text-[11px] font-semibold flex items-center gap-1 transition-all shadow-xs cursor-pointer ml-xs"
-                    title="Editar datos clínicos del paciente"
-                  >
-                    <span className="material-symbols-outlined text-[14px]">edit</span>
-                    Editar datos del paciente
-                  </button>
-                </div>
+      {/* Pet Hero Card con Datos de Cliente / Tutor Arriba a la Derecha */}
+      <header className="bg-white rounded-2xl shadow-sm p-md flex flex-col gap-md border border-slate-200 shrink-0">
+        <div className="flex flex-col md:flex-row gap-md items-start md:items-center justify-between">
+          {/* Pet Photo & Basic Meta */}
+          <div className="flex items-center gap-md">
+            <div className="relative w-20 h-20 md:w-22 md:h-22 rounded-2xl overflow-hidden shadow-md shrink-0 flex items-center justify-center bg-[#FAF5FF] border border-[#9A7DB8]/30">
+              {selectedPatient.photoUrl ? (
+                <img 
+                  src={selectedPatient.photoUrl} 
+                  alt={selectedPatient.name} 
+                  className="w-full h-full object-cover relative z-10" 
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ) : null}
+              <span className="material-symbols-outlined text-[40px] text-[#9A7DB8] absolute" style={{ fontVariationSettings: "'FILL' 1" }}>
+                pets
+              </span>
+              <div className="absolute bottom-1 right-1 bg-[#5C3C7B] text-white px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 z-20">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]"></span>
+                <span className="font-label-sm text-[9px] font-medium">Activo</span>
               </div>
             </div>
 
-            {/* Weight Evolution Sparkline Widget */}
-            <div className="bg-[#FAF8FC] text-slate-900 rounded-xl p-2 px-3 shadow-xs border border-purple-200 flex flex-col items-end min-w-[140px]">
-              <span className="font-label-sm text-[10px] text-slate-600 font-medium">Evolución de peso</span>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="font-headline-md text-base text-slate-900 font-semibold">
-                  {selectedPatient.weightKg || '0'}<span className="font-body-md text-xs text-slate-500 ml-0.5">kg</span>
+            <div className="flex flex-col gap-1">
+              <h2 className="font-headline-sm text-xl text-slate-900 leading-tight font-bold">
+                {selectedPatient.name}
+              </h2>
+              <p className="font-body-md text-xs text-slate-600 font-medium flex flex-wrap items-center gap-2">
+                <span className="bg-purple-50 text-[#5C3C7B] px-2.5 py-0.5 rounded-md font-semibold text-[11px] border border-purple-100">
+                  {selectedPatient.species}
                 </span>
-                <span className={`font-label-sm text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                  weightTrend.direction === 'up' ? 'bg-[#E8F5E9] text-[#27AE60]' : weightTrend.direction === 'down' ? 'bg-[#FDEDEC] text-[#C0392B]' : 'bg-slate-200 text-slate-700'
-                }`}>
-                  {weightTrend.formatted}
-                </span>
-              </div>
-
-              {/* Sparkline Graphic SVG */}
-              <div className="w-28 h-6 mt-1 flex items-center justify-end">
-                <svg className="w-full h-full overflow-visible" viewBox="0 0 100 24">
-                  <path
-                    d="M 0,20 Q 25,18 50,12 T 100,4"
-                    fill="none"
-                    stroke="#9A7DB8"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="100" cy="4" r="3" fill="#9A7DB8" />
-                </svg>
-              </div>
+                <span>{selectedPatient.breed}</span>
+                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                <span>{selectedPatient.sex}</span>
+                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                <span>Nacimiento: {selectedPatient.birthDate}</span>
+              </p>
             </div>
           </div>
+
+          {/* Datos del Cliente / Tutor Destacados en la Parte Superior Derecha */}
+          <div className="bg-slate-50/90 border border-slate-200 rounded-xl p-2.5 px-3.5 flex items-center gap-md self-stretch md:self-auto justify-between md:justify-end shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#5C3C7B] text-[20px]">person</span>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-slate-500 font-medium leading-none">Propietario / Tutor</span>
+                <span className="text-xs font-bold text-slate-900">{selectedPatient.ownerName}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {selectedPatient.ownerPhone && (
+                <a
+                  href={`https://wa.me/${cleanPhone(selectedPatient.ownerPhone)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-[#25D366] text-white hover:brightness-105 px-3 py-1.5 rounded-xl font-label-sm text-xs flex items-center gap-1 shadow-sm font-semibold transition-all"
+                  title="Enviar WhatsApp al dueño"
+                >
+                  <span className="material-symbols-outlined text-[15px]">chat</span>
+                  WhatsApp
+                </a>
+              )}
+
+              <button
+                onClick={handleOpenEditPetModal}
+                className="bg-white hover:bg-slate-100 text-[#5C3C7B] border border-slate-300 px-3 py-1.5 rounded-xl font-label-sm text-xs font-semibold flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
+                title="Editar datos clínicos del paciente"
+              >
+                <span className="material-symbols-outlined text-[15px]">edit</span>
+                Editar datos del paciente
+              </button>
+            </div>
+          </div>
+        </div>
 
           {/* Banner de Alertas Médicas (Sin emojis) */}
           {selectedPatient.alerts && selectedPatient.alerts.length > 0 && (
@@ -445,14 +451,14 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
           {/* Turnos Pendientes / Programados de este paciente */}
           {patientAppointments.length > 0 && (
-            <div className="bg-amber-50/70 border border-amber-200 p-2.5 px-3 rounded-xl flex flex-col gap-1.5 text-xs">
+            <div className="bg-emerald-50/80 border border-emerald-200 p-2.5 px-3 rounded-xl flex flex-col gap-1.5 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-amber-900 flex items-center gap-1.5 text-[11px]">
-                  <span className="material-symbols-outlined text-[16px] text-amber-700">calendar_month</span>
+                <span className="font-semibold text-emerald-950 flex items-center gap-1.5 text-[11px]">
+                  <span className="material-symbols-outlined text-[16px] text-emerald-700">calendar_month</span>
                   Turnos programados ({patientAppointments.length}):
                 </span>
                 {pendingAppointments.length > 0 && (
-                  <span className="bg-amber-200 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  <span className="bg-emerald-200 text-emerald-950 text-[10px] font-bold px-2 py-0.5 rounded-full">
                     {pendingAppointments.length} {pendingAppointments.length === 1 ? 'pendiente' : 'pendientes'}
                   </span>
                 )}
@@ -462,12 +468,12 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                   const isPending = app.status === 'pending' || app.status === 'confirmed';
                   return (
                     <div key={app.id} className={`px-2.5 py-1 rounded-lg border text-[11px] flex items-center gap-2 ${
-                      isPending ? 'bg-amber-100/90 border-amber-300 font-semibold text-amber-950' : 'bg-white border-slate-200 text-slate-700'
+                      isPending ? 'bg-emerald-100/90 border-emerald-300 font-semibold text-emerald-950' : 'bg-white border-slate-200 text-slate-700'
                     }`}>
                       <span>{app.type} ({app.date} {app.time}hs)</span>
-                      <span className="text-slate-500 font-normal">• {app.detail}</span>
+                      <span className="text-slate-600 font-normal">• {app.detail}</span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
-                        app.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : isPending ? 'bg-amber-200 text-amber-900' : 'bg-slate-100 text-slate-700'
+                        app.status === 'completed' ? 'bg-emerald-200 text-emerald-950' : isPending ? 'bg-emerald-200 text-emerald-950' : 'bg-slate-100 text-slate-700'
                       }`}>
                         {app.status === 'completed' ? '✓ Cobrado' : isPending ? 'Pendiente' : app.status}
                       </span>
@@ -506,7 +512,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
           <span className="material-symbols-outlined text-[18px]">vaccines</span>
           <span>2. Vacunas requeridas & plan sanitario</span>
           {selectedPatient.requiredVaccines && selectedPatient.requiredVaccines.length > 0 && (
-            <span className="px-2 py-0.2 bg-amber-100 text-amber-900 rounded-full text-[10px] font-semibold">
+            <span className="px-2 py-0.2 bg-emerald-100 text-emerald-950 rounded-full text-[10px] font-bold">
               {selectedPatient.requiredVaccines.length}
             </span>
           )}
@@ -607,9 +613,33 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                     <div className="flex flex-col gap-xs flex-1">
                       <div className="flex flex-wrap items-center justify-between gap-1">
                         <span className="font-headline-sm text-xs font-semibold text-slate-900">Consulta médica</span>
-                        <span className="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full font-label-sm text-[9px] font-medium">
-                          Atención clínica
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full font-label-sm text-[9px] font-medium">
+                            Atención clínica
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingNote(note);
+                              setEditNoteText(note.notes);
+                              setEditNotePrescription(note.prescription || '');
+                            }}
+                            className="px-2 py-0.5 rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                            title="Editar esta consulta"
+                          >
+                            <span className="material-symbols-outlined text-[13px]">edit</span>
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingNoteId(note.id)}
+                            className="px-2 py-0.5 rounded-md border border-red-200 bg-white text-red-600 hover:bg-red-50 text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                            title="Eliminar esta consulta"
+                          >
+                            <span className="material-symbols-outlined text-[13px]">delete</span>
+                            Eliminar
+                          </button>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1 text-slate-700 text-[11px] mb-0.5">
                         <span className="material-symbols-outlined text-[13px] text-[#9A7DB8]">stethoscope</span>
@@ -628,10 +658,10 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                                 type="button"
                                 onClick={() => setActivePrescriptionNote(note)}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#5C3C7B] text-white hover:bg-[#4A2F66] shadow-2xs transition-colors cursor-pointer"
-                                title="Ver receta en PDF y enviar por WhatsApp"
+                                title="Ver receta PDF"
                               >
                                 <span className="material-symbols-outlined text-[14px]">prescriptions</span>
-                                <span>Ver receta PDF / WhatsApp</span>
+                                <span>Ver receta PDF</span>
                               </button>
                               {note.prescriptionUrl && (
                                 <a
@@ -689,18 +719,18 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
       {/* CONTENIDO PESTAÑA 2: VACUNAS REQUERIDAS & PLAN SANITARIO */}
       {activeTab === 'vacunas' && (
         <section className="flex flex-col gap-md flex-1 min-h-0 overflow-y-auto pr-1">
-          <div className="bg-white rounded-2xl shadow-sm p-md border border-slate-200 flex flex-col gap-xs shrink-0">
-            <div className="flex items-center justify-between">
+          <div className="bg-emerald-50/50 rounded-2xl shadow-sm p-md border border-emerald-300 flex flex-col gap-xs shrink-0 w-full">
+            <div className="flex items-center justify-between flex-wrap gap-sm">
               <div className="flex items-center gap-xs">
-                <span className="material-symbols-outlined text-[#9A7DB8] text-[20px]">vaccines</span>
-                <h3 className="font-headline-sm text-xs font-semibold text-slate-900">
+                <span className="material-symbols-outlined text-emerald-700 text-[20px]">vaccines</span>
+                <h3 className="font-headline-sm text-xs font-bold text-emerald-950">
                   Vacunas necesarias / requeridas por paciente
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAddVaccineModal(true)}
-                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
               >
                 <span className="material-symbols-outlined text-[16px]">add</span>
                 <span>Agregar vacuna requerida</span>
@@ -708,40 +738,49 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             </div>
 
             {(!selectedPatient.requiredVaccines || selectedPatient.requiredVaccines.length === 0) ? (
-              <p className="text-slate-500 text-xs italic py-3 text-center">
+              <p className="text-emerald-800 text-xs italic py-3 text-center font-medium">
                 No hay vacunas sugeridas/requeridas cargadas manualmente para este paciente. Presione "Agregar vacuna requerida".
               </p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-xs mt-1">
+              <div className="flex flex-col gap-xs mt-1 w-full">
                 {selectedPatient.requiredVaccines.map(vac => (
                   <div
                     key={vac.id}
-                    className={`p-3 rounded-xl border flex items-center justify-between gap-sm text-xs ${
-                      vac.status === 'aplicada'
-                        ? 'bg-emerald-50/60 border-emerald-200 text-emerald-950'
-                        : 'bg-amber-50/60 border-amber-200 text-amber-950'
-                    }`}
+                    className="p-3 rounded-xl border border-emerald-200 bg-emerald-100/60 text-emerald-950 flex items-center justify-between gap-sm text-xs w-full shadow-2xs"
                   >
                     <div className="flex flex-col gap-0.5">
-                      <span className="font-semibold text-xs">{vac.vaccineName}</span>
-                      <span className="text-[10px] text-slate-600 font-medium">
+                      <span className="font-bold text-xs text-emerald-950">{vac.vaccineName}</span>
+                      <span className="text-[11px] text-emerald-800 font-medium">
                         Fecha sugerida: <strong>{vac.suggestedDate}</strong>
                         {vac.appliedDate && ` • Aplicada el: ${vac.appliedDate}`}
                       </span>
-                      {vac.notes && <span className="text-[10px] text-slate-500 italic">{vac.notes}</span>}
+                      {vac.notes && <span className="text-[11px] text-emerald-700 italic">{vac.notes}</span>}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleToggleVaccineApplied(vac.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
-                        vac.status === 'aplicada'
-                          ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                          : 'bg-amber-500 text-white hover:bg-amber-600'
-                      }`}
-                    >
-                      {vac.status === 'aplicada' ? '✓ Aplicada' : 'Marcar aplicada'}
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {onScheduleAppointment && vac.status !== 'aplicada' && (
+                        <button
+                          type="button"
+                          onClick={() => onScheduleAppointment(selectedPatient.id, vac.vaccineName)}
+                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#5C3C7B] text-white hover:bg-[#4A2F66] shadow-2xs cursor-pointer whitespace-nowrap transition-all flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">calendar_month</span>
+                          <span>Agendar turno</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleVaccineApplied(vac.id)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
+                          vac.status === 'aplicada'
+                            ? 'bg-emerald-800 text-white hover:bg-emerald-900'
+                            : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        }`}
+                      >
+                        {vac.status === 'aplicada' ? '✓ Aplicada' : 'Marcar aplicada'}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -874,17 +913,75 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  Alertas Médicas / Alergias (separadas por comas)
+              <div className="flex flex-col gap-2">
+                <label className="font-bold text-slate-700 block text-xs">
+                  Alertas médicas y conductuales
                 </label>
-                <input
-                  type="text"
-                  value={editAlertsStr}
-                  onChange={(e) => setEditAlertsStr(e.target.value)}
-                  placeholder="Ej: Alérgico a Penicilina, Diabético, Sensibilidad digestiva"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-medium outline-none focus:ring-2 focus:ring-[#9A7DB8]"
-                />
+
+                {/* Predefined chips */}
+                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-300 rounded-xl">
+                  {PREDEFINED_ALERTS.map(tag => {
+                    const isSelected = editAlerts.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => toggleEditAlertChip(tag)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                          isSelected
+                            ? 'bg-amber-500 text-white shadow-xs'
+                            : 'bg-white text-slate-600 hover:bg-amber-50 border border-slate-300'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[14px]">
+                          {isSelected ? 'check_circle' : 'warning_amber'}
+                        </span>
+                        <span>{tag}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom alert input */}
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="text"
+                    value={customAlertInput}
+                    onChange={(e) => setCustomAlertInput(e.target.value)}
+                    onKeyDown={handleAddCustomAlert}
+                    placeholder="Agregar otra alerta + Enter..."
+                    className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 outline-none text-slate-900 font-medium text-xs focus:ring-2 focus:ring-[#9A7DB8]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomAlert}
+                    className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3.5 py-1.5 rounded-xl font-semibold text-xs cursor-pointer"
+                  >
+                    Agregar
+                  </button>
+                </div>
+
+                {/* Selected Alerts Chips */}
+                {editAlerts.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    <span className="text-[10px] text-slate-500 font-semibold self-center">Seleccionadas ({editAlerts.length}):</span>
+                    {editAlerts.map(tag => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold"
+                      >
+                        <span>{tag}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeEditAlert(tag)}
+                          className="hover:text-red-700 rounded-full p-0.5 transition-colors cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[12px]">close</span>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-sm pt-xs border-t border-slate-200 mt-xs">
@@ -1039,6 +1136,121 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Editar Consulta */}
+      {editingNote && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="font-headline-sm text-base font-bold text-slate-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#9A7DB8]">edit_note</span>
+                Editar Consulta Médica
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingNote(null)}
+                className="text-slate-400 hover:text-slate-600 rounded-lg p-1 transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Notas / Observaciones *</label>
+                <textarea
+                  value={editNoteText}
+                  onChange={(e) => setEditNoteText(e.target.value)}
+                  rows={4}
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 resize-none"
+                  placeholder="Detalles de la consulta..."
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-xs text-slate-700 block mb-1">Indicaciones / Receta médica (opcional)</label>
+                <textarea
+                  value={editNotePrescription}
+                  onChange={(e) => setEditNotePrescription(e.target.value)}
+                  rows={3}
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 resize-none"
+                  placeholder="Medicamentos, posología..."
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingNote(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (editingNote && onUpdateClinicalNote) {
+                    onUpdateClinicalNote(editingNote.id, {
+                      notes: editNoteText,
+                      prescription: editNotePrescription || undefined
+                    });
+                  }
+                  setEditingNote(null);
+                }}
+                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-[16px]">save</span>
+                <span>Guardar cambios</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirmación Eliminar Consulta */}
+      {deletingNoteId && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-2xl">warning</span>
+              </div>
+              <div>
+                <h3 className="font-headline-sm text-base font-bold text-slate-900">Eliminar Consulta</h3>
+                <p className="text-xs text-slate-500 mt-0.5">¿Estás seguro de que deseas eliminar esta consulta clínica?</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 font-medium">
+              Esta acción eliminará la entrada seleccionada de la historia clínica.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeletingNoteId(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (deletingNoteId && onDeleteClinicalNote) {
+                    onDeleteClinicalNote(deletingNoteId);
+                  }
+                  setDeletingNoteId(null);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-[16px]">delete</span>
+                <span>Eliminar consulta</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -51,3 +51,26 @@ export function createDosisRecord(
     status
   };
 }
+
+export function formatVaccineReminderMessage(
+  ownerName: string,
+  vaccineName: string,
+  patientName: string,
+  expirationDate: string
+): string {
+  return `Hola ${ownerName}, te recordamos que la vacuna ${vaccineName} para ${patientName} vence el ${expirationDate} podemos agendar una visita para poner a ${patientName} al día!`;
+}
+
+export function getVencimientoLabel(status: string): 'Al día' | 'Vencida' {
+  if (status === 'expired') {
+    return 'Vencida';
+  }
+  return 'Al día';
+}
+
+export function getEstadoLabel(status: string): 'Aplicada' | 'Pendiente' {
+  if (status === 'pendiente') {
+    return 'Pendiente';
+  }
+  return 'Aplicada';
+}

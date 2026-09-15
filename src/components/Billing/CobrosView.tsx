@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Patient, BillReceipt, DocumentType, PaymentMethod, BillItem, Product, ServiceCatalogItem } from '../../domain/types';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
+import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
+import { formatPriceInputDisplay, parsePriceInput } from '../../domain/services/billingService';
 
 interface CobrosViewProps {
   patients: Patient[];
@@ -262,18 +264,13 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
 
         <div className="flex items-center gap-sm">
           {/* Patient Selector */}
-          <div className="flex items-center gap-xs bg-slate-50 p-xs px-sm rounded-xl border border-slate-300">
-            <label className="font-label-sm text-slate-700 text-[11px] font-medium">Cambiar paciente:</label>
-            <select
-              value={targetPatientId}
-              onChange={(e) => setTargetPatientId(e.target.value)}
-              className="bg-transparent text-slate-900 font-semibold text-xs outline-none cursor-pointer"
-            >
-              {patients.map(p => (
-                <option key={p.id} value={p.id}>{p.name} ({p.species} - {p.ownerName})</option>
-              ))}
-            </select>
-          </div>
+          <SearchablePatientSelect
+            patients={patients}
+            selectedPatientId={targetPatientId}
+            onSelectPatient={setTargetPatientId}
+            labelPrefix="Cambiar paciente:"
+            variant="short"
+          />
 
           {onNavigateToHistorial && (
             <button
@@ -368,6 +365,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                                 step={100}
                                 value={item.unitPrice}
                                 onChange={(e) => handleUpdatePrice(item.id, e.target.value)}
+                                onFocus={(e) => e.target.select()}
                                 className="w-24 text-right bg-white border border-slate-300 rounded py-0.5 px-1.5 text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-[#9A7DB8] outline-none shadow-xs"
                               />
                             </div>
@@ -379,6 +377,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                               max={100}
                               value={item.discountPercent}
                               onChange={(e) => handleUpdateDiscount(item.id, e.target.value)}
+                              onFocus={(e) => e.target.select()}
                               className="w-12 text-center bg-white border border-slate-300 rounded py-0.5 text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-[#9A7DB8] outline-none"
                             />
                           </td>
@@ -716,9 +715,10 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                 </label>
                 <input
                   type="number"
-                  value={newItemPrice}
-                  onChange={(e) => setNewItemPrice(Number(e.target.value))}
-                  required
+                  value={formatPriceInputDisplay(newItemPrice)}
+                  onChange={(e) => setNewItemPrice(parsePriceInput(e.target.value))}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="0"
                   min={0}
                   step={100}
                   className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs"

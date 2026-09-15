@@ -3,8 +3,8 @@ import { ActiveModule } from '../../components/Navigation/Sidebar';
 export type UserRoleType = 'Administrador' | 'Veterinario' | 'Peluquero';
 
 const ROLE_MODULE_PERMISSIONS: Record<UserRoleType, ActiveModule[]> = {
-  Administrador: ['proveedores', 'clinica', 'peluqueria', 'pacientes', 'inventario', 'cobros'],
-  Veterinario: ['clinica', 'pacientes', 'cobros'],
+  Administrador: ['pacientes', 'clinica', 'peluqueria', 'inventario', 'cobros', 'whatsapp', 'proveedores'],
+  Veterinario: ['pacientes', 'clinica', 'cobros', 'whatsapp'],
   Peluquero: ['peluqueria']
 };
 

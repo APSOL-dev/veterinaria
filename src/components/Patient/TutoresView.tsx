@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Patient, BillReceipt, MedicalAppointment, GroomingAppointment } from '../../domain/types';
-import { getUniqueTutores, updateTutorAndPetInfo, calculateTutorAccountMovements, getTutorAppointments, TutorAppointmentSummary, TutorPaymentRecord } from '../../domain/services/tutorService';
+import { Patient, Species, Sex, BillReceipt, MedicalAppointment, GroomingAppointment } from '../../domain/types';
+import { getUniqueTutores, updateTutorAndPetInfo, createPetForTutor, calculateTutorAccountMovements, getTutorAppointments, TutorAppointmentSummary, TutorPaymentRecord } from '../../domain/services/tutorService';
+import { updateTutorInSupabase, insertPatientToSupabase, updatePatientInSupabase } from '../../domain/services/supabaseService';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 
 interface TutoresViewProps {
@@ -47,7 +48,8 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
   // Account movements for active tutor
   const accountMovements = useMemo(() => {
     if (!activeTutor) return [];
-    return calculateTutorAccountMovements(activeTutor.ownerName, receipts, tutorPayments);
+    const petIds = activeTutor.pets.map(p => p.id);
+    return calculateTutorAccountMovements(activeTutor.ownerName, receipts, tutorPayments, petIds);
   }, [activeTutor, receipts, tutorPayments]);
 
   const currentTutorSaldo = useMemo(() => {
@@ -70,45 +72,112 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
   const [editOwnerName, setEditOwnerName] = useState('');
   const [editOwnerPhone, setEditOwnerPhone] = useState('');
   const [editAddress, setEditAddress] = useState('');
-  const [editPetFields, setEditPetFields] = useState<Record<string, { name: string; species: any; breed: string; weightKg: number }>>({});
+  const [editPetFields, setEditPetFields] = useState<Record<string, { name: string; species: Species; breed: string; sex: Sex; birthDate: string; weightKg: number }>>({});
+
+  // New pet form state inside tutor modal
+  const [showAddPetSection, setShowAddPetSection] = useState(false);
+  const [newPetName, setNewPetName] = useState('');
+  const [newPetSpecies, setNewPetSpecies] = useState<Species>('Canino');
+  const [newPetBreed, setNewPetBreed] = useState('');
+  const [newPetSex, setNewPetSex] = useState<Sex>('Macho');
+  const [newPetBirthDate, setNewPetBirthDate] = useState(new Date().toISOString().substring(0, 10));
+  const [newPetWeightKg, setNewPetWeightKg] = useState<number | ''>('');
 
   const handleOpenEdit = () => {
     if (!activeTutor) return;
     setEditOwnerName(activeTutor.ownerName);
-    setEditOwnerPhone(activeTutor.ownerPhone);
+    setEditOwnerPhone(activeTutor.ownerPhone === 'Sin teléfono' ? '' : activeTutor.ownerPhone);
     setEditAddress(activeTutor.address || '');
 
-    const initialPetState: Record<string, { name: string; species: any; breed: string; weightKg: number }> = {};
+    const initialPetState: Record<string, { name: string; species: Species; breed: string; sex: Sex; birthDate: string; weightKg: number }> = {};
     activeTutor.pets.forEach(p => {
       initialPetState[p.id] = {
         name: p.name,
         species: p.species,
         breed: p.breed,
+        sex: p.sex || 'Macho',
+        birthDate: p.birthDate || new Date().toISOString().substring(0, 10),
         weightKg: p.weightKg || 0
       };
     });
     setEditPetFields(initialPetState);
+    setShowAddPetSection(false);
+    setNewPetName('');
+    setNewPetSpecies('Canino');
+    setNewPetBreed('');
+    setNewPetSex('Macho');
+    setNewPetBirthDate(new Date().toISOString().substring(0, 10));
+    setNewPetWeightKg('');
     setShowEditModal(true);
   };
 
   const [notifModal, setNotifModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeTutor || !editOwnerName.trim()) return;
 
-    const updated = updateTutorAndPetInfo(patients, activeTutor.ownerName, {
-      newOwnerName: editOwnerName.trim(),
-      newOwnerPhone: editOwnerPhone.trim(),
+    const ownerId = activeTutor.pets[0]?.ownerId || `owner-${Date.now()}`;
+    const newName = editOwnerName.trim();
+    const newPhone = editOwnerPhone.trim() || 'Sin teléfono';
+    const newAddr = editAddress.trim();
+
+    // 1. Update existing tutor and existing pets
+    let updated = updateTutorAndPetInfo(patients, activeTutor.ownerName, {
+      newOwnerName: newName,
+      newOwnerPhone: newPhone,
+      newAddress: newAddr,
       petUpdates: editPetFields
     });
 
+    // 2. Add new pet if specified
+    let addedPet: Patient | null = null;
+    if (newPetName.trim()) {
+      const res = createPetForTutor(
+        updated,
+        {
+          ownerId,
+          ownerName: newName,
+          ownerPhone: newPhone,
+          address: newAddr
+        },
+        {
+          name: newPetName.trim(),
+          species: newPetSpecies,
+          breed: newPetBreed.trim(),
+          sex: newPetSex,
+          birthDate: newPetBirthDate,
+          weightKg: Number(newPetWeightKg) || 0
+        }
+      );
+      updated = res.updatedPatients;
+      addedPet = res.newPet;
+    }
+
+    // 3. Update local state
     onUpdatePatients(updated);
-    setSelectedTutorName(editOwnerName.trim());
+    setSelectedTutorName(newName);
     setShowEditModal(false);
+
+    // 4. Persist to Supabase DB
+    await updateTutorInSupabase(ownerId, newName, newPhone, newAddr);
+
+    if (addedPet) {
+      await insertPatientToSupabase(addedPet);
+    }
+
+    const matchingPets = updated.filter(p => p.ownerName.toLowerCase() === newName.toLowerCase());
+    for (const pet of matchingPets) {
+      if (pet.id !== addedPet?.id) {
+        updatePatientInSupabase(pet);
+      }
+    }
+
     setNotifModal({
       isOpen: true,
-      message: '¡Datos del tutor y sus mascotas actualizados correctamente!'
+      message: addedPet 
+        ? `¡Tutor guardado y nueva mascota "${addedPet.name}" agregada correctamente!`
+        : '¡Datos del tutor y sus mascotas actualizados correctamente!'
     });
   };
 
@@ -234,7 +303,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                 </span>
                 <span className="flex items-center gap-xs">
                   <span className="material-symbols-outlined text-[15px]">location_on</span>
-                  {activeTutor.address || 'San Juan 450'}
+                  {activeTutor.address || 'Sin dirección registrada'}
                 </span>
               </p>
             </div>
@@ -363,7 +432,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                 const isPending = app.status === 'pending' || app.status === 'confirmed';
                 return (
                   <div key={app.id} className={`p-sm rounded-xl border flex flex-col justify-between text-xs gap-xs ${
-                    isPending ? 'bg-amber-50/60 border-amber-200' : 'bg-surface-container-low border-outline-variant/20'
+                    isPending ? 'bg-emerald-50/80 border-emerald-200' : 'bg-surface-container-low border-outline-variant/20'
                   }`}>
                     <div className="flex justify-between items-start">
                       <div>
@@ -372,9 +441,9 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         app.status === 'completed'
-                          ? 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-emerald-200 text-emerald-950'
                           : isPending
-                          ? 'bg-amber-100 text-amber-900'
+                          ? 'bg-emerald-200 text-emerald-950'
                           : 'bg-slate-200 text-slate-700'
                       }`}>
                         {app.status === 'completed' ? '✓ Cobrado / Completado' : isPending ? 'Pendiente' : app.status}
@@ -542,14 +611,15 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveEdit} className="flex flex-col gap-md">
-              {/* Tutor Section */}
+              {/* 1. Tutor Section */}
               <div className="bg-surface-container-low p-md rounded-xl flex flex-col gap-sm border border-outline-variant/30">
-                <h4 className="font-label-md text-xs text-primary font-semibold">
+                <h4 className="font-label-md text-xs text-primary font-bold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px]">person</span>
                   1. Datos del tutor (Propietario)
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-sm text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-sm text-xs">
                   <div>
-                    <label className="font-label-md text-on-surface-variant block mb-1">Nombre completo</label>
+                    <label className="font-label-md text-on-surface-variant block mb-1">Nombre completo *</label>
                     <input
                       type="text"
                       value={editOwnerName}
@@ -564,10 +634,227 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                       type="text"
                       value={editOwnerPhone}
                       onChange={(e) => setEditOwnerPhone(e.target.value)}
+                      placeholder="Ej. +5493425681359"
+                      className="w-full bg-surface-container border border-outline-variant/80 rounded-lg p-2 text-on-surface font-semibold outline-none focus:ring-2 focus:ring-secondary"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-label-md text-on-surface-variant block mb-1">Dirección / Domicilio</label>
+                    <input
+                      type="text"
+                      value={editAddress}
+                      onChange={(e) => setEditAddress(e.target.value)}
+                      placeholder="Ej. San Juan 450"
                       className="w-full bg-surface-container border border-outline-variant/80 rounded-lg p-2 text-on-surface font-semibold outline-none focus:ring-2 focus:ring-secondary"
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* 2. Existing Pets Section */}
+              <div className="bg-surface-container-low p-md rounded-xl flex flex-col gap-sm border border-outline-variant/30">
+                <h4 className="font-label-md text-xs text-primary font-bold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px]">pets</span>
+                  2. Mascotas registradas ({activeTutor.pets.length})
+                </h4>
+
+                <div className="flex flex-col gap-md">
+                  {activeTutor.pets.map((pet) => {
+                    const petState = editPetFields[pet.id] || {
+                      name: pet.name,
+                      species: pet.species,
+                      breed: pet.breed,
+                      sex: pet.sex || 'Macho',
+                      birthDate: pet.birthDate || '',
+                      weightKg: pet.weightKg || 0
+                    };
+
+                    return (
+                      <div key={pet.id} className="bg-white p-sm rounded-xl border border-slate-200 flex flex-col gap-xs shadow-2xs">
+                        <div className="flex justify-between items-center border-b border-slate-100 pb-1">
+                          <span className="font-bold text-xs text-[#5C3C7B] flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">pets</span>
+                            {pet.name} (ID: {pet.id})
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-xs text-xs">
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Nombre</label>
+                            <input
+                              type="text"
+                              value={petState.name}
+                              onChange={(e) => setEditPetFields(prev => ({
+                                ...prev,
+                                [pet.id]: { ...prev[pet.id], name: e.target.value }
+                              }))}
+                              className="w-full bg-slate-50 border border-slate-300 rounded-md p-1.5 font-medium outline-none text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Especie</label>
+                            <select
+                              value={petState.species}
+                              onChange={(e) => setEditPetFields(prev => ({
+                                ...prev,
+                                [pet.id]: { ...prev[pet.id], species: e.target.value as Species }
+                              }))}
+                              className="w-full bg-slate-50 border border-slate-300 rounded-md p-1.5 font-medium outline-none text-xs"
+                            >
+                              <option value="Canino">Canino</option>
+                              <option value="Felino">Felino</option>
+                              <option value="Ave">Ave</option>
+                              <option value="Roedor">Roedor</option>
+                              <option value="Reptil">Reptil</option>
+                              <option value="Otro">Otro</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Raza</label>
+                            <input
+                              type="text"
+                              value={petState.breed}
+                              onChange={(e) => setEditPetFields(prev => ({
+                                ...prev,
+                                [pet.id]: { ...prev[pet.id], breed: e.target.value }
+                              }))}
+                              className="w-full bg-slate-50 border border-slate-300 rounded-md p-1.5 font-medium outline-none text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Sexo</label>
+                            <select
+                              value={petState.sex}
+                              onChange={(e) => setEditPetFields(prev => ({
+                                ...prev,
+                                [pet.id]: { ...prev[pet.id], sex: e.target.value as Sex }
+                              }))}
+                              className="w-full bg-slate-50 border border-slate-300 rounded-md p-1.5 font-medium outline-none text-xs"
+                            >
+                              <option value="Macho">Macho</option>
+                              <option value="Hembra">Hembra</option>
+                              <option value="Indeterminado">Indeterminado</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">F. Nacimiento</label>
+                            <input
+                              type="date"
+                              value={petState.birthDate}
+                              onChange={(e) => setEditPetFields(prev => ({
+                                ...prev,
+                                [pet.id]: { ...prev[pet.id], birthDate: e.target.value }
+                              }))}
+                              className="w-full bg-slate-50 border border-slate-300 rounded-md p-1 font-medium outline-none text-[11px]"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Peso (kg)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={petState.weightKg}
+                              onChange={(e) => setEditPetFields(prev => ({
+                                ...prev,
+                                [pet.id]: { ...prev[pet.id], weightKg: Number(e.target.value) }
+                              }))}
+                              className="w-full bg-slate-50 border border-slate-300 rounded-md p-1.5 font-medium outline-none text-xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3. Add New Pet Section */}
+              <div className="bg-purple-50/60 p-md rounded-xl flex flex-col gap-sm border border-purple-200">
+                <button
+                  type="button"
+                  onClick={() => setShowAddPetSection(!showAddPetSection)}
+                  className="flex items-center justify-between w-full font-label-md text-xs text-[#5C3C7B] font-bold cursor-pointer hover:opacity-80 transition-opacity text-left"
+                >
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                    3. Agregar nueva mascota a este tutor...
+                  </span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    {showAddPetSection ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+                  </span>
+                </button>
+
+                {showAddPetSection && (
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-xs text-xs pt-xs border-t border-purple-200">
+                    <div>
+                      <label className="text-[10px] text-slate-700 font-semibold block mb-0.5">Nombre mascota *</label>
+                      <input
+                        type="text"
+                        value={newPetName}
+                        onChange={(e) => setNewPetName(e.target.value)}
+                        placeholder="Ej. Fido"
+                        className="w-full bg-white border border-purple-300 rounded-md p-1.5 font-medium outline-none text-xs focus:border-[#5C3C7B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-700 font-semibold block mb-0.5">Especie *</label>
+                      <select
+                        value={newPetSpecies}
+                        onChange={(e) => setNewPetSpecies(e.target.value as Species)}
+                        className="w-full bg-white border border-purple-300 rounded-md p-1.5 font-medium outline-none text-xs focus:border-[#5C3C7B]"
+                      >
+                        <option value="Canino">Canino</option>
+                        <option value="Felino">Felino</option>
+                        <option value="Ave">Ave</option>
+                        <option value="Roedor">Roedor</option>
+                        <option value="Reptil">Reptil</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-700 font-semibold block mb-0.5">Raza</label>
+                      <input
+                        type="text"
+                        value={newPetBreed}
+                        onChange={(e) => setNewPetBreed(e.target.value)}
+                        placeholder="Ej. Poodle"
+                        className="w-full bg-white border border-purple-300 rounded-md p-1.5 font-medium outline-none text-xs focus:border-[#5C3C7B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-700 font-semibold block mb-0.5">Sexo</label>
+                      <select
+                        value={newPetSex}
+                        onChange={(e) => setNewPetSex(e.target.value as Sex)}
+                        className="w-full bg-white border border-purple-300 rounded-md p-1.5 font-medium outline-none text-xs focus:border-[#5C3C7B]"
+                      >
+                        <option value="Macho">Macho</option>
+                        <option value="Hembra">Hembra</option>
+                        <option value="Indeterminado">Indeterminado</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-700 font-semibold block mb-0.5">F. Nacimiento</label>
+                      <input
+                        type="date"
+                        value={newPetBirthDate}
+                        onChange={(e) => setNewPetBirthDate(e.target.value)}
+                        className="w-full bg-white border border-purple-300 rounded-md p-1 font-medium outline-none text-[11px] focus:border-[#5C3C7B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-700 font-semibold block mb-0.5">Peso (kg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={newPetWeightKg}
+                        onChange={(e) => setNewPetWeightKg(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder="Ej. 8.5"
+                        className="w-full bg-white border border-purple-300 rounded-md p-1.5 font-medium outline-none text-xs focus:border-[#5C3C7B]"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-sm pt-xs border-t">
@@ -580,7 +867,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                  className="bg-[#5C3C7B] hover:bg-[#4A2F66] text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[16px]">save</span>
                   <span>Guardar cambios</span>

@@ -14,12 +14,15 @@ El módulo **Cobros** administra la emisión de facturas electrónicas, remitos 
    - Permite filtrar por categorías dinámicas registradas en el sistema (ej. `Clínica`, `Peluquería`, `Medicamentos`, `Alimentación`, `Accesorios`, `Insumos Clínicos`).
    - El desplegable lista los ítems existentes en el catálogo con sus precios de referencia, autocompletando la descripción y el costo.
 
-3. **Edición Directa de Precios Unitarios (Precio Editable):**
-   - El precio unitario de cualquier concepto en la tabla de detalle de la factura es **completamente editable en tiempo real** mediante campos de ingreso numérico (`<input type="number">`).
-   - Al cambiar el precio unitario de un renglón, se recalculan automáticamente el subtotal, los descuentos y el total general de la factura.
+3. **Edición Directa de Precios Unitarios (Precio Editable sin ceros pre-cargados):**
+   - El precio unitario de cualquier concepto en la tabla de detalle y en el modal de agregación de conceptos es **completamente editable en tiempo real**.
+   - Los campos numéricos utilizan la función `formatPriceInputDisplay` para mostrar el recuadro **en blanco** cuando el valor es 0 (con `placeholder="0"`), evitando que el usuario tenga que borrar ceros antes de escribir.
+   - Incluyen la propiedad `onFocus={(e) => e.target.select()}`, lo que selecciona automáticamente todo el texto al hacer clic para facilitar la tipeación directa.
+   - Al cambiar el precio unitario de un renglón, se recalculan automáticamente el subtotal, los descuentos y el total general de la factura mediante `parsePriceInput`.
 
 4. **Historial de Comprobantes Simplificado:**
    - Se eliminó la columna CAE AFIP de la tabla de historial de cobros (`CobrosView.tsx`), manteniendo una tabla limpia con Comprobante Nº, Fecha, Paciente/Dueño, Tipo Doc, Medio de Pago, Total y Acciones de impresión PDF.
 
 **Casos borde conocidos:**
 - **Facturas A / B vs C:** Si el usuario decide cambiar manualmente a Factura A o B, se activa el cálculo de IVA (21% por defecto), manteniendo todos los precios editados por el usuario.
+

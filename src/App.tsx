@@ -56,7 +56,7 @@ import {
 import { createDosisRecord } from './domain/services/vaccineService';
 import { getLowStockAlerts, recordStockEntry, recordStockAdjustment, processStockReceiptFromBill } from './domain/services/inventoryService';
 import { processCheckout } from './domain/services/billingService';
-import { createNewPatientRecord } from './domain/services/patientService';
+import { createNewPatientRecord, updateClinicalNoteRecord, deleteClinicalNoteRecord } from './domain/services/patientService';
 import { createSupplierBillRecord, createSupplierQuoteRecord, saveSupplierCreditTerm } from './domain/services/supplierService';
 import { createExpenseRecord } from './domain/services/expenseService';
 import { createPaymentRecord, getTotalPaidForBill } from './domain/services/paymentService';
@@ -79,6 +79,8 @@ import {
   updatePatientInSupabase,
   insertVaccineDosisToSupabase,
   insertClinicalNoteToSupabase,
+  updateClinicalNoteInSupabase,
+  deleteClinicalNoteFromSupabase,
   insertMedicalAppointmentToSupabase,
   insertGroomingAppointmentToSupabase,
   insertProductToSupabase,
@@ -100,8 +102,13 @@ import {
   deleteServiceCatalogItemFromSupabase,
   updateProductInSupabase,
   upsertProductToSupabase,
-  deleteProductFromSupabase
+  deleteProductFromSupabase,
+  updateMedicalAppointmentInSupabase,
+  updateGroomingAppointmentInSupabase,
+  deleteMedicalAppointmentFromSupabase,
+  deleteGroomingAppointmentFromSupabase
 } from './domain/services/supabaseService';
+import { deleteAppointmentFromList } from './domain/services/agendaService';
 
 import { AppNotificationModal } from './components/Common/AppNotificationModal';
 import { LowStockAlertModal } from './components/Inventory/LowStockAlertModal';
@@ -111,6 +118,19 @@ export const App: React.FC = () => {
   const [showLowStockModal, setShowLowStockModal] = useState<boolean>(false);
   const [activeModule, setActiveModuleState] = useState<ActiveModule>('pacientes');
   const [activeSubmodule, setActiveSubmodule] = useState<string>('ficha-pacientes');
+
+  // Schedule appointment prefill state
+  const [schedulePrefill, setSchedulePrefill] = useState<{ patientId?: string; reason?: string; autoOpen?: boolean }>({});
+
+  const handleScheduleAppointmentFromVaccines = useCallback((patientId: string, vaccineName?: string) => {
+    setSchedulePrefill({
+      patientId,
+      reason: vaccineName ? `Vacunación: ${vaccineName}` : 'Vacunación',
+      autoOpen: true
+    });
+    setActiveModuleState('clinica');
+    setActiveSubmodule('calendario-clinica');
+  }, []);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     return typeof window !== 'undefined' ? window.innerWidth < 1280 : false;
   });
@@ -260,7 +280,11 @@ export const App: React.FC = () => {
 
         if (dbPatients && dbPatients.length > 0) {
           setPatients(dbPatients);
-          setSelectedPatient(dbPatients[0]);
+          setSelectedPatient(prev => {
+            if (!prev) return dbPatients[0];
+            const match = dbPatients.find(p => p.id === prev.id);
+            return match || dbPatients[0];
+          });
         }
         if (dbBills && dbBills.length > 0) {
           setSupplierBills(dbBills);
@@ -288,11 +312,21 @@ export const App: React.FC = () => {
         if (dbNotes && dbNotes.length > 0) {
           setClinicalNotes(dbNotes);
         }
+        const activePatientsList = (dbPatients && dbPatients.length > 0) ? dbPatients : patients;
+
         if (dbMedApps && dbMedApps.length > 0) {
-          setMedicalAppointments(dbMedApps);
+          const enrichedMed = dbMedApps.map(m => {
+            const match = activePatientsList.find(p => p.id === m.patientId);
+            return match ? { ...m, patientName: match.name, species: match.species, breed: match.breed, ownerName: match.ownerName } : m;
+          });
+          setMedicalAppointments(enrichedMed);
         }
         if (dbGroomApps && dbGroomApps.length > 0) {
-          setGroomingAppointments(dbGroomApps);
+          const enrichedGroom = dbGroomApps.map(g => {
+            const match = activePatientsList.find(p => p.id === g.patientId);
+            return match ? { ...g, patientName: match.name, species: match.species, breed: match.breed, ownerName: match.ownerName } : g;
+          });
+          setGroomingAppointments(enrichedGroom);
         }
         if (dbReceipts && dbReceipts.length > 0) {
           setReceipts(dbReceipts);
@@ -345,8 +379,23 @@ export const App: React.FC = () => {
     };
     setClinicalNotes([newNote, ...clinicalNotes]);
     insertClinicalNoteToSupabase(newNote);
-    setActiveModuleState('clinica');
-    setActiveSubmodule('fichas-medicas');
+
+    const pat = patients.find(p => p.id === data.patientId);
+    if (pat) {
+      setSelectedPatient(pat);
+    }
+    setActiveModuleState('pacientes');
+    setActiveSubmodule('ficha-pacientes');
+  };
+
+  const handleUpdateClinicalNote = (noteId: string, updatedFields: { notes?: string; prescription?: string }) => {
+    setClinicalNotes(prev => updateClinicalNoteRecord(prev, noteId, updatedFields));
+    updateClinicalNoteInSupabase(noteId, updatedFields);
+  };
+
+  const handleDeleteClinicalNote = (noteId: string) => {
+    setClinicalNotes(prev => deleteClinicalNoteRecord(prev, noteId));
+    deleteClinicalNoteFromSupabase(noteId);
   };
 
   const handleAddVaccineToCatalog = (name: string, frequencyDays: number) => {
@@ -380,6 +429,11 @@ export const App: React.FC = () => {
 
   const handleUpdatePatients = (updatedPatients: Patient[]) => {
     setPatients(updatedPatients);
+    setSelectedPatient(prev => {
+      if (!prev) return updatedPatients[0];
+      const match = updatedPatients.find(p => p.id === prev.id);
+      return match || prev;
+    });
     updatedPatients.forEach(p => {
       updatePatientInSupabase(p);
     });
@@ -394,6 +448,16 @@ export const App: React.FC = () => {
     insertMedicalAppointmentToSupabase(newApp);
   };
 
+  const handleUpdateMedicalAppointment = (id: string, updates: Partial<MedicalAppointment>) => {
+    setMedicalAppointments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    updateMedicalAppointmentInSupabase(id, updates);
+  };
+
+  const handleDeleteMedicalAppointment = (id: string) => {
+    setMedicalAppointments(prev => deleteAppointmentFromList(prev, id));
+    deleteMedicalAppointmentFromSupabase(id);
+  };
+
   const handleAddGroomingAppointment = (app: Omit<GroomingAppointment, 'id'>) => {
     const newApp: GroomingAppointment = {
       ...app,
@@ -401,6 +465,16 @@ export const App: React.FC = () => {
     };
     setGroomingAppointments([...groomingAppointments, newApp]);
     insertGroomingAppointmentToSupabase(newApp);
+  };
+
+  const handleUpdateGroomingAppointment = (id: string, updates: Partial<GroomingAppointment>) => {
+    setGroomingAppointments(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
+    updateGroomingAppointmentInSupabase(id, updates);
+  };
+
+  const handleDeleteGroomingAppointment = (id: string) => {
+    setGroomingAppointments(prev => deleteAppointmentFromList(prev, id));
+    deleteGroomingAppointmentFromSupabase(id);
   };
 
   const handleAddStockEntry = (productId: string, quantity: number, provider?: string) => {
@@ -681,9 +755,10 @@ export const App: React.FC = () => {
     setProducts(result.updatedProducts);
     insertReceiptToSupabase(result.receipt);
 
-    // Marcar turnos del paciente como cobrados en la agenda
+    // Marcar turnos del paciente como cobrados en la agenda y persistir en Supabase DB
     setMedicalAppointments(prev => prev.map(app => {
       if (app.patientId === pat.id && app.status !== 'cancelled') {
+        updateMedicalAppointmentInSupabase(app.id, { status: 'completed' });
         return { ...app, status: 'completed' as const };
       }
       return app;
@@ -691,6 +766,7 @@ export const App: React.FC = () => {
 
     setGroomingAppointments(prev => prev.map(app => {
       if (app.patientId === pat.id && app.status !== 'cancelled') {
+        updateGroomingAppointmentInSupabase(app.id, { status: 'completed' });
         return { ...app, status: 'completed' as const };
       }
       return app;
@@ -808,10 +884,7 @@ export const App: React.FC = () => {
                   onDeleteVaccineFromCatalog={handleDeleteVaccineFromCatalog}
                   vaccineDoses={vaccineDoses}
                   onRegisterDosis={handleRegisterDosis}
-                  onScheduleAppointment={() => {
-                    setActiveModuleState('clinica');
-                    setActiveSubmodule('calendario-clinica');
-                  }}
+                  onScheduleAppointment={handleScheduleAppointmentFromVaccines}
                 />
               )}
 
@@ -820,11 +893,18 @@ export const App: React.FC = () => {
                   patients={patients}
                   medicalAppointments={medicalAppointments}
                   onAddMedicalAppointment={handleAddMedicalAppointment}
+                  onUpdateMedicalAppointment={handleUpdateMedicalAppointment}
+                  onDeleteMedicalAppointment={handleDeleteMedicalAppointment}
                   groomingAppointments={groomingAppointments}
                   groomingServices={groomingServices}
                   onAddGroomingAppointment={handleAddGroomingAppointment}
+                  onUpdateGroomingAppointment={handleUpdateGroomingAppointment}
+                  onDeleteGroomingAppointment={handleDeleteGroomingAppointment}
                   onNavigateToBilling={handleNavigateToBillingFromAppointment}
                   fixedMode="medica"
+                  initialPatientId={schedulePrefill.patientId}
+                  initialReason={schedulePrefill.reason}
+                  autoOpenNewModal={schedulePrefill.autoOpen}
                 />
               )}
             </>
@@ -836,9 +916,13 @@ export const App: React.FC = () => {
               patients={patients}
               medicalAppointments={medicalAppointments}
               onAddMedicalAppointment={handleAddMedicalAppointment}
+              onUpdateMedicalAppointment={handleUpdateMedicalAppointment}
+              onDeleteMedicalAppointment={handleDeleteMedicalAppointment}
               groomingAppointments={groomingAppointments}
               groomingServices={groomingServices}
               onAddGroomingAppointment={handleAddGroomingAppointment}
+              onUpdateGroomingAppointment={handleUpdateGroomingAppointment}
+              onDeleteGroomingAppointment={handleDeleteGroomingAppointment}
               onNavigateToBilling={handleNavigateToBillingFromAppointment}
               fixedMode="peluqueria"
             />
@@ -859,10 +943,7 @@ export const App: React.FC = () => {
                   onDeleteVaccineFromCatalog={handleDeleteVaccineFromCatalog}
                   vaccineDoses={vaccineDoses}
                   onRegisterDosis={handleRegisterDosis}
-                  onScheduleAppointment={() => {
-                    setActiveModuleState('clinica');
-                    setActiveSubmodule('calendario-clinica');
-                  }}
+                  onScheduleAppointment={handleScheduleAppointmentFromVaccines}
                   onUpdatePatients={handleUpdatePatients}
                 />
               )}
@@ -884,6 +965,8 @@ export const App: React.FC = () => {
                   onSelectPatient={setSelectedPatient}
                   clinicalNotes={clinicalNotes}
                   onAddClinicalNote={handleAddClinicalNote}
+                  onUpdateClinicalNote={handleUpdateClinicalNote}
+                  onDeleteClinicalNote={handleDeleteClinicalNote}
                   vaccineDoses={vaccineDoses}
                   onNavigateToTab={handleNavigateFromShortcut}
                   onAddPatient={handleAddPatient}
@@ -893,6 +976,7 @@ export const App: React.FC = () => {
                   onAddVaccineToCatalog={handleAddVaccineToCatalog}
                   medicalAppointments={medicalAppointments}
                   groomingAppointments={groomingAppointments}
+                  onScheduleAppointment={handleScheduleAppointmentFromVaccines}
                 />
               )}
             </>

@@ -32,13 +32,13 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   onLogout
 }) => {
   const allModules: { id: ActiveModule; label: string; icon: string }[] = [
-    { id: 'proveedores', label: 'Proveedores', icon: 'local_shipping' },
+    { id: 'pacientes', label: 'Pacientes', icon: 'pets' },
     { id: 'clinica', label: 'Clínica', icon: 'stethoscope' },
     { id: 'peluqueria', label: 'Peluquería', icon: 'content_cut' },
-    { id: 'pacientes', label: 'Pacientes', icon: 'pets' },
     { id: 'inventario', label: 'Inventario', icon: 'inventory_2' },
     { id: 'cobros', label: 'Cobros', icon: 'point_of_sale' },
     { id: 'whatsapp', label: 'WhatsApp', icon: 'chat' },
+    { id: 'proveedores', label: 'Proveedores', icon: 'local_shipping' },
   ];
 
   const modules = allModules.filter(m => canAccessModule(userRoleType, m.id));
