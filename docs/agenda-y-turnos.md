@@ -10,8 +10,7 @@ En la vista **Agenda & Turnos** (tanto en el calendario de Área Médica como de
   - **Flechas `<` y `>`:** Permiten desplazarse semana a semana hacia el pasado o el futuro.
   - **Filtro exacto por fecha (`YYYY-MM-DD`):** Los turnos (médicos y de peluquería) se ubican estrictamente en la columna correspondiente a su fecha asignada.
 
-**Flujo de Navegación Directa a Cobros:**
-1. Al presionar **`Cobrar Turno`** en una tarjeta de la agenda, el sistema obtiene el paciente y la prestación agendada.
-2. Deriva automáticamente al usuario hacia el módulo **Cobros** $\rightarrow$ `nueva-facturacion` (Punto de Venta POS).
-3. Preselecciona al paciente asignado al turno para agilizar la emisión del comprobante de cobranza.
-4. **Actualización Automática a Estado Cobrado:** Al confirmar y cobrar la venta en el punto de cobro, el turno correspondiente cambia automáticamente su estado a `completado`. En el calendario de la Agenda, el botón "Cobrar Turno" se reemplaza automáticamente por una insignia verde resaltada de **`✓ Cobrado`**.
+**Flujo de Acciones de Turno (Completar sin cobrar / Cobrar):**
+1. **Completar turno (sin necesidad de cobrar):** En las tarjetas de turnos de la grilla y en el modal de detalle del turno, se incluye el botón **`Completar`** (o *Marcar completado (sin cobrar)*). Al accionarlo, el turno cambia inmediatamente su estado a `completed` sin requerir la emisión de un cobro. En la agenda se muestra la insignia de **`Completado`**.
+2. **Cobrar Turno:** Al presionar **`Cobrar`**, deriva al módulo **Cobros** preseleccionando al paciente y servicio. Al emitir el cobro, el turno se marca automáticamente como completado.
+3. **Modal de Detalle:** El modal del turno incluye botones de acción rápida para marcar como completado directamente o derivar al cobro.

@@ -122,13 +122,18 @@ export function calculateTutorAccountMovements(
   const trimmed = (tutorName || '').trim().toLowerCase();
   const petIdSet = new Set((petIds || []).map(id => String(id)));
 
+  const ccReceipts = receipts.filter(r => {
+    const pm = (r.paymentMethod || '').toLowerCase().trim();
+    return pm === 'cuenta-corriente' || pm === 'cuenta_corriente';
+  });
+
   const filteredReceipts = trimmed
-    ? receipts.filter(r => {
+    ? ccReceipts.filter(r => {
         const ownerMatch = Boolean((r.ownerName || r.clientName || '').trim().toLowerCase() === trimmed);
         const petMatch = Boolean(r.patientId && petIdSet.has(String(r.patientId)));
         return ownerMatch || petMatch;
       })
-    : receipts;
+    : ccReceipts;
 
   const filteredPayments = trimmed
     ? tutorPayments.filter(tp => (tp.tutorName || '').trim().toLowerCase() === trimmed)

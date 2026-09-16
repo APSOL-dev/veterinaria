@@ -70,15 +70,15 @@ describe('agendaService', () => {
   describe('getAppointmentActionButton', () => {
     it('returns label "Completado" and isCompleted: true for completed appointments', () => {
       const res = getAppointmentActionButton('completed');
-      expect(res).toEqual({ label: 'Completado', isCompleted: true });
+      expect(res).toEqual({ label: 'Completado', isCompleted: true, completeWithoutPayingLabel: 'Completado' });
     });
 
     it('returns label "Cobrar turno" and isCompleted: false for non-completed appointments', () => {
       const res1 = getAppointmentActionButton('pending');
-      expect(res1).toEqual({ label: 'Cobrar turno', isCompleted: false });
+      expect(res1).toEqual({ label: 'Cobrar turno', isCompleted: false, completeWithoutPayingLabel: 'Marcar completado' });
 
       const res2 = getAppointmentActionButton('in_progress');
-      expect(res2).toEqual({ label: 'Cobrar turno', isCompleted: false });
+      expect(res2).toEqual({ label: 'Cobrar turno', isCompleted: false, completeWithoutPayingLabel: 'Marcar completado' });
     });
   });
 

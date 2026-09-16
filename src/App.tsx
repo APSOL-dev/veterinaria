@@ -421,13 +421,48 @@ export const App: React.FC = () => {
     deleteVaccineCatalogItemFromSupabase(id);
   };
 
-  const handleRegisterDosis = (data: { vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => {
-    const vac = vaccineCatalog.find(v => v.id === data.vaccineId);
-    if (!vac) return;
+  const handleRegisterDosis = (data: { patientId?: string; vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => {
+    const targetPatientId = data.patientId || selectedPatient.id;
+    let vac = vaccineCatalog.find(v => v.id === data.vaccineId || v.name.toLowerCase() === data.vaccineId.toLowerCase());
 
-    const newDosis = createDosisRecord(selectedPatient.id, vac, data.applicationDate, data.vetName || (userSession ? userSession.name : 'Dr. J. Silva'), undefined, data.batch);
-    setVaccineDoses([newDosis, ...vaccineDoses]);
+    if (!vac) {
+      vac = {
+        id: data.vaccineId || `vac-${Date.now()}`,
+        name: data.vaccineId || 'Vacuna General',
+        frequencyDays: 365
+      };
+    }
+
+    const newDosis = createDosisRecord(
+      targetPatientId,
+      vac,
+      data.applicationDate,
+      data.vetName || (userSession ? userSession.name : 'Dr. J. Silva'),
+      undefined,
+      data.batch
+    );
+
+    setVaccineDoses(prev => [newDosis, ...prev]);
     insertVaccineDosisToSupabase(newDosis);
+
+    // Sync patient's requiredVaccines status to 'aplicada'
+    setPatients(prevPatients => {
+      const updated = prevPatients.map(p => {
+        if (p.id === targetPatientId && p.requiredVaccines) {
+          const updatedReqs = p.requiredVaccines.map(req => {
+            if (req.vaccineName.toLowerCase() === vac!.name.toLowerCase()) {
+              return { ...req, status: 'aplicada' as const, appliedDate: data.applicationDate };
+            }
+            return req;
+          });
+          const updatedPatient = { ...p, requiredVaccines: updatedReqs };
+          updatePatientInSupabase(updatedPatient);
+          return updatedPatient;
+        }
+        return p;
+      });
+      return updated;
+    });
   };
 
   const handleDeleteDosis = (dosisId: string) => {
@@ -787,7 +822,7 @@ export const App: React.FC = () => {
       posNumber: data.posNumber,
       customInvoiceNumber: data.customInvoiceNumber
     });
-    setReceipts([result.receipt, ...receipts]);
+    setReceipts(prev => [result.receipt, ...prev]);
     setProducts(result.updatedProducts);
     insertReceiptToSupabase(result.receipt);
 

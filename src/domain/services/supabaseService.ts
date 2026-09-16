@@ -160,21 +160,21 @@ export function mapRowToServiceCatalogItem(row: any): ServiceCatalogItem {
 export function mapRowToBillReceipt(row: any): BillReceipt {
   return {
     id: String(row.id || ''),
-    receiptNumber: String(row.invoiceNumber || row.receipt_number || row.id || ''),
+    receiptNumber: String(row.receiptNumber || row.invoiceNumber || row.receipt_number || row.invoice_number || row.id || ''),
     documentType: row.documentType || row.document_type || 'factura-b',
-    emitAfip: Boolean(row.emitAfip ?? false),
-    afipCae: row.afipCae || undefined,
-    afipCaeExpiration: row.afipCaeExpiration || undefined,
+    emitAfip: Boolean(row.emitAfip ?? row.emit_afip ?? false),
+    afipCae: row.afipCae || row.afip_cae || undefined,
+    afipCaeExpiration: row.afipCaeExpiration || row.afip_cae_expiration || undefined,
     date: String(row.date || new Date().toISOString()),
     patientId: row.patientId || row.patient_id || undefined,
-    patientName: row.patientName || undefined,
-    ownerName: row.ownerName || undefined,
+    patientName: row.patientName || row.patient_name || undefined,
+    ownerName: row.ownerName || row.owner_name || undefined,
     paymentMethod: row.paymentMethod || row.payment_method || 'efectivo',
     items: Array.isArray(row.items) ? row.items : [],
     subtotal: Number(row.subtotal ?? 0),
-    discountTotal: Number(row.discountTotal ?? 0),
+    discountTotal: Number(row.discountTotal ?? row.discount_total ?? 0),
     taxAmount: Number(row.taxAmount ?? row.tax_amount ?? 0),
-    total: Number(row.total ?? row.totalAmount ?? row.total ?? 0),
+    total: Number(row.total ?? row.totalAmount ?? row.total_amount ?? 0),
     totalAmount: Number(row.totalAmount ?? row.total_amount ?? row.total ?? 0)
   };
 }
@@ -322,7 +322,12 @@ export async function fetchGroomingAppointmentsFromSupabase(): Promise<GroomingA
 export async function fetchReceiptsFromSupabase(): Promise<BillReceipt[] | null> {
   try {
     const { data, error } = await supabase.from('vetsoft_vw_recibos').select('*');
-    if (error || !data || data.length === 0) return null;
+    if (error) {
+      const { data: rawData, error: rawError } = await supabase.from('vetsoft_recibos').select('*');
+      if (rawError || !rawData || rawData.length === 0) return null;
+      return rawData.map(mapRowToBillReceipt);
+    }
+    if (!data || data.length === 0) return null;
     return data.map(mapRowToBillReceipt);
   } catch {
     return null;

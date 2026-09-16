@@ -93,11 +93,11 @@ export function isSlotOccupiedByAppointment(
   return { isStart: false, isOccupied: false };
 }
 
-export function getAppointmentActionButton(status: string): { label: string; isCompleted: boolean } {
+export function getAppointmentActionButton(status: string): { label: string; isCompleted: boolean; completeWithoutPayingLabel: string } {
   if (status === 'completed') {
-    return { label: 'Completado', isCompleted: true };
+    return { label: 'Completado', isCompleted: true, completeWithoutPayingLabel: 'Completado' };
   }
-  return { label: 'Cobrar turno', isCompleted: false };
+  return { label: 'Cobrar turno', isCompleted: false, completeWithoutPayingLabel: 'Marcar completado' };
 }
 
 export function prepareAppointmentReschedule(

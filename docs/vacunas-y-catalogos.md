@@ -21,3 +21,4 @@ Hola (Nombre tutor), te recordamos que la vacuna (Nombre vacuna) para (Nombre pa
 **Operaciones CRUD y Sincronización en Base de Datos:**
 - **Catálogo de Vacunas (`public.vetsoft_vacunas_catalogo`):** Permite **Agregar**, **Editar** y **Eliminar** ítems del catálogo general, sincronizando en tiempo real con Supabase.
 - **Dosis Aplicadas (`public.vetsoft_dosis_vacunas`):** Inserta (`insertVaccineDosisToSupabase`) y elimina (`deleteVaccineDosisFromSupabase` / `deleteVaccineDosesByPatientAndVaccineFromSupabase`) las dosis aplicadas del historial y la base de datos.
+- **Búsqueda con Fallback e Identificación del Paciente:** El registro de dosis acepta tanto el ID del ítem en catálogo como el nombre de la vacuna (`vaccineId` o `vaccineName`), garantizando la creación de la dosis sin fallar aunque la vacuna no existiese previamente en la lista en memoria. Sincroniza automáticamente el estado de la vacuna del paciente a `aplicada`.

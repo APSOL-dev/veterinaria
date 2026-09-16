@@ -77,8 +77,8 @@ describe('tutorService', () => {
 
   it('calculateTutorAccountMovements should calculate Debe, Haber and running Saldo for a tutor', () => {
     const receipts = [
-      { id: 'r1', receiptNumber: 'FC-B-0001', date: '2026-08-01', clientName: 'Carlos Mendoza', total: 15000 },
-      { id: 'r2', receiptNumber: 'FC-B-0002', date: '2026-08-10', clientName: 'Carlos Mendoza', total: 5000 }
+      { id: 'r1', receiptNumber: 'FC-B-0001', date: '2026-08-01', clientName: 'Carlos Mendoza', total: 15000, paymentMethod: 'cuenta-corriente' },
+      { id: 'r2', receiptNumber: 'FC-B-0002', date: '2026-08-10', clientName: 'Carlos Mendoza', total: 5000, paymentMethod: 'cuenta-corriente' }
     ];
     const tutorPayments = [
       { id: 'tp1', tutorName: 'Carlos Mendoza', date: '2026-08-05', amount: 10000, concept: 'Abono a cuenta' }
@@ -98,6 +98,22 @@ describe('tutorService', () => {
     // 3. FC-B-0002 (2026-08-10): Debe = 5000, Haber = 0, Saldo = 10000
     expect(movements[2].debe).toBe(5000);
     expect(movements[2].saldo).toBe(10000);
+  });
+
+  it('calculateTutorAccountMovements should only include receipts paid via cuenta-corriente', () => {
+    const receipts = [
+      { id: 'r1', receiptNumber: 'FC-B-0001', date: '2026-08-01', clientName: 'Carlos Mendoza', total: 15000, paymentMethod: 'efectivo' },
+      { id: 'r2', receiptNumber: 'FC-B-0002', date: '2026-08-02', clientName: 'Carlos Mendoza', total: 8000, paymentMethod: 'tarjeta' },
+      { id: 'r3', receiptNumber: 'FC-B-0003', date: '2026-08-03', clientName: 'Carlos Mendoza', total: 12000, paymentMethod: 'transferencia' },
+      { id: 'r4', receiptNumber: 'FC-B-0004', date: '2026-08-04', clientName: 'Carlos Mendoza', total: 20000, paymentMethod: 'cuenta-corriente' }
+    ];
+
+    const movements = calculateTutorAccountMovements('Carlos Mendoza', receipts as any, []);
+
+    expect(movements.length).toBe(1);
+    expect(movements[0].concept).toContain('FC-B-0004');
+    expect(movements[0].debe).toBe(20000);
+    expect(movements[0].saldo).toBe(20000);
   });
 
   it('calculateTutorAccountMovements should match receipts by petId when ownerName is undefined on receipt', () => {

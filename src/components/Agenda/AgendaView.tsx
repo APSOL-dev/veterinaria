@@ -408,16 +408,30 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                                   Completado
                                 </div>
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onNavigateToBilling?.(app.patientId, 'Consulta Médica', 15000);
-                                  }}
-                                  className="mt-1 bg-emerald-600 text-white hover:bg-emerald-700 px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs transition-all cursor-pointer"
-                                >
-                                  Cobrar turno
-                                </button>
+                                <div className="mt-1 flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onUpdateMedicalAppointment?.(app.id, { status: 'completed' });
+                                    }}
+                                    className="flex-1 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-1 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center transition-all cursor-pointer"
+                                    title="Marcar como completado sin cobrar"
+                                  >
+                                    <span className="material-symbols-outlined text-[12px] mr-0.5">check_circle</span>
+                                    Completar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onNavigateToBilling?.(app.patientId, 'Consulta Médica', 15000);
+                                    }}
+                                    className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700 px-1 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs transition-all cursor-pointer"
+                                  >
+                                    Cobrar
+                                  </button>
+                                </div>
                               )}
                             </div>
                           );
@@ -476,16 +490,30 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                                   Completado
                                 </div>
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onNavigateToBilling?.(g.patientId, g.serviceName, g.price || 12000);
-                                  }}
-                                  className="mt-1 bg-emerald-600 text-white hover:bg-emerald-700 px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs transition-all cursor-pointer"
-                                >
-                                  Cobrar turno
-                                </button>
+                                <div className="mt-1 flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onUpdateGroomingAppointment?.(g.id, { status: 'completed' });
+                                    }}
+                                    className="flex-1 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-1 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center transition-all cursor-pointer"
+                                    title="Marcar como completado sin cobrar"
+                                  >
+                                    <span className="material-symbols-outlined text-[12px] mr-0.5">check_circle</span>
+                                    Completar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onNavigateToBilling?.(g.patientId, g.serviceName, g.price || 12000);
+                                    }}
+                                    className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700 px-1 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs transition-all cursor-pointer"
+                                  >
+                                    Cobrar
+                                  </button>
+                                </div>
                               )}
                             </div>
                           );
@@ -685,6 +713,40 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
+
+            {/* Quick Actions: Completar sin cobrar o Cobrar */}
+            {detailModal.appointment.status !== 'completed' && (
+              <div className="flex items-center gap-2 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (detailModal.mode === 'medica') {
+                      onUpdateMedicalAppointment?.(detailModal.appointment.id, { status: 'completed' });
+                    } else {
+                      onUpdateGroomingAppointment?.(detailModal.appointment.id, { status: 'completed' });
+                    }
+                    setDetailModal(null);
+                  }}
+                  className="flex-1 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-3 py-1.5 rounded-lg font-label-md text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                  Marcar completado (sin cobrar)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const price = detailModal.mode === 'medica' ? 15000 : (detailModal.appointment as GroomingAppointment).price || 12000;
+                    const name = detailModal.mode === 'medica' ? 'Consulta Médica' : (detailModal.appointment as GroomingAppointment).serviceName;
+                    onNavigateToBilling?.(detailModal.appointment.patientId, name, price);
+                    setDetailModal(null);
+                  }}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-label-md text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-[16px]">payments</span>
+                  Cobrar turno
+                </button>
+              </div>
+            )}
 
             {/* Action Tabs Header */}
             <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200">

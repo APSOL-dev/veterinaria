@@ -16,9 +16,14 @@ Gestión centralizada del padrón de tutores (propietarios) y sus mascotas asoci
 - **Alta Directa de Nueva Mascota:**
   - Sección en el modal para vincular una nueva mascota al tutor actual sin necesidad de salir del módulo.
 
+- **Cuenta Corriente (CC) del Tutor:**
+  - Los cobros/comprobantes generados a un tutor solo se registran en los movimientos de su Cuenta Corriente (`Debe` y cálculo de `Saldo`) cuando el medio de pago seleccionado es **Cuenta Corriente** (`paymentMethod: 'cuenta-corriente'`).
+  - Los cobros realizados en Efectivo, Tarjeta o Transferencia no impactan como deuda en la Cuenta Corriente del tutor.
+
 **Casos borde conocidos:**
 - **Tutores sin teléfono o sin dirección:** Se guarda el valor por defecto legible ("Sin teléfono" / "Sin dirección registrada") sin romper el formato ni causar errores nulos en base de datos.
 - **Creación de nueva mascota:** Genera automáticamente un ID persistible (`patient-timestamp-rand`) vinculado al `owner_id` del tutor actual y ejecuta `insertPatientToSupabase`.
+- **Cobros con Medios de Pago Inmediatos:** Los comprobantes emitidos con medio de pago `efectivo`, `tarjeta` o `transferencia` quedan excluidos de los cargos en Cuenta Corriente para no inflar saldos deudores de tutores que ya abonaron.
 
 **Restricciones o supuestos:**
 - Al cambiar el nombre o la dirección del tutor, se actualizan automáticamente todos los registros de pacientes y movimientos de cuenta corriente vinculados a ese `owner_id`.

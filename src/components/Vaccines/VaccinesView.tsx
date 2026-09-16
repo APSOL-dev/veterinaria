@@ -12,7 +12,7 @@ interface VaccinesViewProps {
   onUpdateVaccineInCatalog?: (id: string, name: string, frequencyDays: number) => void;
   onDeleteVaccineFromCatalog?: (id: string) => void;
   vaccineDoses: VaccineDosis[];
-  onRegisterDosis: (dosis: { vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => void;
+  onRegisterDosis: (dosis: { patientId?: string; vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => void;
   onScheduleAppointment: (patientId: string, vaccineName?: string) => void;
   onDeleteDosis?: (dosisId: string) => void;
   onRemoveDosisByVaccine?: (patientId: string, vaccineName: string) => void;
@@ -72,14 +72,13 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
 
     // Agregar o Remover del Historial de Vacunación
     if (isNowApplied && onRegisterDosis) {
-      const matchedCat = vaccineCatalog.find(c => c.name.toLowerCase() === toggledVacName.toLowerCase()) || vaccineCatalog[0];
-      if (matchedCat) {
-        onRegisterDosis({
-          vaccineId: matchedCat.id,
-          applicationDate: new Date().toISOString().split('T')[0],
-          vetName: currentVetName || 'Dr. J. Silva'
-        });
-      }
+      const matchedCat = vaccineCatalog.find(c => c.name.toLowerCase() === toggledVacName.toLowerCase());
+      onRegisterDosis({
+        patientId: selectedPatient.id,
+        vaccineId: matchedCat ? matchedCat.id : toggledVacName,
+        applicationDate: new Date().toISOString().split('T')[0],
+        vetName: currentVetName || 'Dr. J. Silva'
+      });
     } else if (!isNowApplied && onRemoveDosisByVaccine) {
       onRemoveDosisByVaccine(selectedPatient.id, toggledVacName);
     }
@@ -143,6 +142,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
     e.preventDefault();
     if (!selectedVacId) return;
     onRegisterDosis({
+      patientId: selectedPatient.id,
       vaccineId: selectedVacId,
       applicationDate: appDate,
       vetName,

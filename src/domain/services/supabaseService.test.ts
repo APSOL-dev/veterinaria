@@ -11,7 +11,8 @@ import {
   mapRowToVaccineCatalogItem,
   mapRowToServiceCatalogItem,
   mapRowToVaccineDosis,
-  mapRowToSupplierQuote
+  mapRowToSupplierQuote,
+  mapRowToBillReceipt
 } from './supabaseService';
 
 describe('supabaseService row mappers', () => {
@@ -288,6 +289,36 @@ describe('supabaseService row mappers', () => {
     expect(quote.title).toBe('Presupuesto Alimento');
     expect(quote.amount).toBe(150000);
     expect(quote.status).toBe('draft');
+  });
+
+  it('should map DB row with snake_case columns to BillReceipt domain model', () => {
+    const rawRow = {
+      id: 'rec-1',
+      invoice_number: 'FC-B-0001-00005432',
+      document_type: 'factura-b',
+      date: '2026-09-15T12:00:00.000Z',
+      patient_id: 'pat-100',
+      patient_name: 'Firu',
+      owner_name: 'Mateo',
+      payment_method: 'cuenta-corriente',
+      subtotal: 15000,
+      discount_total: 1000,
+      tax_amount: 2940,
+      total_amount: 16940
+    };
+
+    const receipt = mapRowToBillReceipt(rawRow);
+
+    expect(receipt.id).toBe('rec-1');
+    expect(receipt.receiptNumber).toBe('FC-B-0001-00005432');
+    expect(receipt.patientId).toBe('pat-100');
+    expect(receipt.patientName).toBe('Firu');
+    expect(receipt.ownerName).toBe('Mateo');
+    expect(receipt.paymentMethod).toBe('cuenta-corriente');
+    expect(receipt.subtotal).toBe(15000);
+    expect(receipt.discountTotal).toBe(1000);
+    expect(receipt.taxAmount).toBe(2940);
+    expect(receipt.totalAmount).toBe(16940);
   });
 });
 
