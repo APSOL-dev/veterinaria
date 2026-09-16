@@ -22,7 +22,8 @@ import {
   calculateInvoiceSubtotalAndTax,
   filterPaymentsByDeletedBill,
   filterAndSortSupplierBills,
-  prepareDuplicatedExpenseInput
+  prepareDuplicatedExpenseInput,
+  getDeleteBillConfirmationDetails
 } from './supplierService';
 
 describe('supplierService', () => {
@@ -152,7 +153,7 @@ describe('supplierService', () => {
 
   it('calculateSupplierTotals should calculate totals correctly including purchasedThisMonth and committed30Days', () => {
     const bills: SupplierBill[] = [
-      { id: 'b1', supplierName: 'Sup A', invoiceNumber: '001', date: '2026-08-01', paymentDate: '2026-08-15', amount: 100, itemsCount: 2, status: 'pending' },
+      { id: 'b1', supplierName: 'Sup A', invoiceNumber: '001', date: '2026-08-01', paymentDate: '2026-09-01', amount: 100, itemsCount: 2, status: 'pending' },
       { id: 'b2', supplierName: 'Sup B', invoiceNumber: '002', date: '2026-08-02', paymentDate: '2026-08-20', amount: 200, itemsCount: 5, status: 'paid' }
     ];
     const quotes: SupplierQuote[] = [
@@ -160,11 +161,72 @@ describe('supplierService', () => {
     ];
 
     const totals = calculateSupplierTotals(bills, quotes, [], '2026-08-01');
-    expect(totals.purchasedThisMonthTotal).toBe(300);
-    expect(totals.pendingBillsTotal).toBe(100);
+    expect(totals.purchasedThisMonthTotal).toBe(200);
+    expect(totals.pendingBillsTotal).toBe(0);
     expect(totals.paidBillsTotal).toBe(200);
     expect(totals.committed30DaysTotal).toBe(100);
     expect(totals.approvedQuotesTotal).toBe(300);
+  });
+
+  describe('KPIs de Proveedores — Facturas de Compras (Modelo Proyección)', () => {
+    const mockBills: SupplierBill[] = [
+      // Septiembre 2026 (mes actual): Factura por $719.625,04 con vencimiento el 20/09/2026
+      { id: 'b-sep', supplierName: 'FarmaVet SA', invoiceNumber: '0001-0001', date: '2026-08-10', paymentDate: '2026-09-20', amount: 719625.04, itemsCount: 5, status: 'pending' },
+      // Octubre 2026 (mes siguiente / 30 días): Factura por $1.155.668,50 con vencimiento el 10/10/2026
+      { id: 'b-oct', supplierName: 'Zoonosis SRL', invoiceNumber: '0002-0002', date: '2026-09-01', paymentDate: '2026-10-10', amount: 1155668.50, itemsCount: 3, status: 'pending' },
+      // Noviembre 2026 (60 días): Factura por $200.000,00 con vencimiento el 30/11/2026
+      { id: 'b-nov', supplierName: 'Insumos Sur', invoiceNumber: '0003-0003', date: '2026-09-10', paymentDate: '2026-11-30', amount: 200000.00, itemsCount: 1, status: 'pending' }
+    ];
+
+    const mockPayments: SupplierPayment[] = [
+      // Pago registrado en Septiembre por $100.000,00
+      { id: 'p1', billId: 'b-old', billInvoiceNumber: '0000-0000', supplierName: 'FarmaVet SA', date: '2026-09-12', amount: 100000.00, paymentMethod: 'Efectivo' }
+    ];
+
+    const mockExpenses: ExpenseRecord[] = [
+      // Gasto operativo registrado en Septiembre por $28.500,00
+      { id: 'exp1', category: 'Gastos Varios', description: 'Caja chica', amount: 28500.00, date: '2026-09-05', responsible: 'Admin', allocation: 'Santo Tomé', paymentMethod: 'Efectivo' }
+    ];
+
+    it('1. Comprado este mes debe calcular las erogaciones totales del mes (Adeudado + Pagado + Gastos = $848.125,04)', () => {
+      const totals = calculateSupplierTotals(mockBills, [], mockPayments, '2026-09-16', mockExpenses);
+      // $719.625,04 + $100.000,00 + $28.500,00 = $848.125,04
+      expect(totals.purchasedThisMonthTotal).toBeCloseTo(848125.04, 2);
+    });
+
+    it('2. Facturas pagadas debe reflejar únicamente los pagos de facturas del mes ($100.000,00), excluyendo los gastos', () => {
+      const totals = calculateSupplierTotals(mockBills, [], mockPayments, '2026-09-16', mockExpenses);
+      expect(totals.paidBillsTotal).toBeCloseTo(100000.00, 2);
+    });
+
+    it('3. Pendiente de pago debe reflejar exclusivamente el saldo adeudado del mes actual ($719.625,04)', () => {
+      const totals = calculateSupplierTotals(mockBills, [], mockPayments, '2026-09-16', mockExpenses);
+      expect(totals.pendingBillsTotal).toBeCloseTo(719625.04, 2);
+    });
+
+    it('4. Comprometido a 30 días debe calcular la proyección adeudada del mes siguiente ($1.155.668,50)', () => {
+      const totals = calculateSupplierTotals(mockBills, [], mockPayments, '2026-09-16', mockExpenses);
+      expect(totals.committed30DaysTotal).toBeCloseTo(1155668.50, 2);
+    });
+
+    it('debe manejar correctamente el salto de año (diciembre a enero) para Comprometido a 30 días', () => {
+      const yearEndBills: SupplierBill[] = [
+        { id: 'b-dec', supplierName: 'Sup A', invoiceNumber: '001', date: '2026-12-01', paymentDate: '2026-12-15', amount: 500000, itemsCount: 1, status: 'pending' },
+        { id: 'b-jan', supplierName: 'Sup B', invoiceNumber: '002', date: '2026-12-10', paymentDate: '2027-01-20', amount: 750000, itemsCount: 1, status: 'pending' }
+      ];
+
+      const totals = calculateSupplierTotals(yearEndBills, [], [], '2026-12-16');
+      expect(totals.pendingBillsTotal).toBe(500000);
+      expect(totals.committed30DaysTotal).toBe(750000); // Enero 2027 projection
+    });
+
+    it('debe retornar 0 en todos los KPIs si no existen comprobantes ni movimientos en el período', () => {
+      const totals = calculateSupplierTotals([], [], [], '2026-09-16', []);
+      expect(totals.purchasedThisMonthTotal).toBe(0);
+      expect(totals.paidBillsTotal).toBe(0);
+      expect(totals.pendingBillsTotal).toBe(0);
+      expect(totals.committed30DaysTotal).toBe(0);
+    });
   });
 
   describe('calculateMonthlyExpenditureProjections', () => {
@@ -293,7 +355,7 @@ describe('supplierService', () => {
         { id: 'p1', billId: 'b1', billInvoiceNumber: '001', supplierName: 'Sup A', date: '2026-08-05', amount: 600, paymentMethod: 'Efectivo' as const }
       ];
 
-      const totals = calculateSupplierTotals(bills, [], payments);
+      const totals = calculateSupplierTotals(bills, [], payments, '2026-08-01');
       expect(totals.paidBillsTotal).toBe(600);
       expect(totals.pendingBillsTotal).toBe(400);
     });
@@ -551,6 +613,22 @@ describe('supplierService', () => {
       expect(copy.amount).toBe(source.amount);
       expect(copy.voucherFile).toBeUndefined();
       expect(copy.voucherUrl).toBeUndefined();
+    });
+  });
+
+  describe('getDeleteBillConfirmationDetails', () => {
+    it('should generate clear confirmation title and message including full invoice number and supplier', () => {
+      const bill = {
+        documentType: 'Factura A',
+        invoiceNumber: '0002-00001503',
+        supplierName: 'Distribuidora FarmaVet SA'
+      };
+
+      const details = getDeleteBillConfirmationDetails(bill);
+      expect(details.title).toBe('Confirmar eliminación de factura');
+      expect(details.message).toContain('A-0002-00001503');
+      expect(details.message).toContain('Distribuidora FarmaVet SA');
+      expect(details.message).toContain('Esta acción eliminará el comprobante y todos sus pagos asociados.');
     });
   });
 });

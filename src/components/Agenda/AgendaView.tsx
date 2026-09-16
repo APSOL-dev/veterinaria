@@ -33,6 +33,7 @@ interface AgendaViewProps {
   initialPatientId?: string;
   initialReason?: string;
   autoOpenNewModal?: boolean;
+  currentVetName?: string;
 }
 
 const extendedTimeSlots = [
@@ -57,7 +58,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   fixedMode,
   initialPatientId,
   initialReason,
-  autoOpenNewModal
+  autoOpenNewModal,
+  currentVetName = 'Dr. J. Silva'
 }) => {
   const [agendaMode, setAgendaMode] = useState<'medica' | 'peluqueria'>(fixedMode || 'medica');
   const [showNewModal, setShowNewModal] = useState(false);
@@ -92,7 +94,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
   // New Medical / Grooming Appointment form state
   const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId || patients[0]?.id || '');
-  const [vetName, setVetName] = useState('Dr. J. Silva');
+  const [vetName, setVetName] = useState(currentVetName || 'Dr. J. Silva');
   const [appDate, setAppDate] = useState(() => formatDateToISO(new Date()));
   const [appTime, setAppTime] = useState('10:00');
   const [appEndTime, setAppEndTime] = useState('11:00');
@@ -547,7 +549,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                       type="text"
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      placeholder="Ej. Vacunación, Chequeo..."
+                      placeholder=""
                       required
                       className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs"
                     />

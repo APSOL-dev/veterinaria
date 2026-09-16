@@ -159,6 +159,47 @@ describe('tutorService', () => {
     expect(appointments[1].type).toBe('Consulta Médica');
   });
 
+  it('getTutorAppointments should exclude completed (cobrados) or cancelled appointments', () => {
+    const medical = [
+      {
+        id: 'med-completed',
+        patientId: 'p1',
+        patientName: 'Rocky',
+        species: 'Canino' as const,
+        breed: 'Golden Retriever',
+        ownerName: 'Carlos Mendoza',
+        vetName: 'Silva',
+        date: '2026-09-10',
+        time: '10:00',
+        reason: 'Consulta general',
+        status: 'completed' as const
+      }
+    ];
+
+    const grooming = [
+      {
+        id: 'groom-pending',
+        patientId: 'p1',
+        patientName: 'Rocky',
+        species: 'Canino' as const,
+        breed: 'Golden Retriever',
+        ownerName: 'Carlos Mendoza',
+        serviceId: 's1',
+        serviceName: 'Baño Completo',
+        date: '2026-09-25',
+        time: '14:00',
+        durationMinutes: 45,
+        price: 3500,
+        status: 'pending' as const
+      }
+    ];
+
+    const appointments = getTutorAppointments('Carlos Mendoza', ['p1'], medical, grooming);
+
+    expect(appointments.length).toBe(1);
+    expect(appointments[0].id).toBe('groom-pending');
+  });
+
   it('updateTutorAndPetInfo should update address, sex and birthDate', () => {
     const updated = updateTutorAndPetInfo(
       mockPatients,

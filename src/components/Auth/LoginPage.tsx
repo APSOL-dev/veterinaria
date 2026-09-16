@@ -83,7 +83,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   autoComplete="email"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="ejemplo@vetsoft.com"
+                  placeholder=""
                   required
                   className="block w-full pl-10 pr-3 py-3 border border-transparent rounded-lg text-gray-900 bg-[#F5EFF9] focus:outline-none focus:ring-2 focus:ring-[#9A7DB8] focus:border-transparent sm:text-sm font-medium"
                 />

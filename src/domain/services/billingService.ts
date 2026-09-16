@@ -1,4 +1,4 @@
-import { BillItem, BillReceipt, DocumentType, PaymentMethod, Product, StockMovement } from '../types';
+import { BillItem, BillReceipt, DocumentType, PaymentMethod, Product, StockMovement, MedicalAppointment, GroomingAppointment } from '../types';
 import { recordStockSale } from './inventoryService';
 
 export function calculateItemSubtotal(unitPrice: number, quantity: number, discountPercent: number = 0): number {
@@ -46,10 +46,18 @@ function generateAfipCae(): { cae: string; expirationDate: string } {
   return { cae, expirationDate };
 }
 
-export function generateReceiptNumber(docType: DocumentType): string {
+export function generateReceiptNumber(docType: DocumentType, posNumber?: string, invoiceNumber?: string): string {
   const prefix = docType === 'factura-a' ? 'FC-A' : docType === 'factura-b' ? 'FC-B' : docType === 'factura-c' ? 'FC-C' : 'REM';
-  const num = Math.floor(1000 + Math.random() * 9000);
-  return `${prefix}-0001-0000${num}`;
+  
+  const cleanPos = posNumber ? String(posNumber).replace(/\D/g, '').padStart(4, '0') : '0001';
+  
+  let cleanNum = invoiceNumber ? String(invoiceNumber).replace(/\D/g, '') : '';
+  if (!cleanNum) {
+    cleanNum = Math.floor(1000 + Math.random() * 9000).toString();
+  }
+  const paddedNum = cleanNum.padStart(8, '0');
+
+  return `${prefix}-${cleanPos || '0001'}-${paddedNum}`;
 }
 
 export interface CheckoutParams {
@@ -63,6 +71,10 @@ export interface CheckoutParams {
   taxRate?: number;
   items: BillItem[];
   productsCatalog: Product[];
+  voucherName?: string;
+  voucherUrl?: string;
+  posNumber?: string;
+  customInvoiceNumber?: string;
 }
 
 export interface CheckoutResult {
@@ -80,7 +92,11 @@ export function processCheckout(params: CheckoutParams): CheckoutResult {
     emitAfip,
     paymentMethod,
     items,
-    productsCatalog
+    productsCatalog,
+    voucherName,
+    voucherUrl,
+    posNumber,
+    customInvoiceNumber
   } = params;
 
   if (items.length === 0) {
@@ -123,10 +139,10 @@ export function processCheckout(params: CheckoutParams): CheckoutResult {
 
   const receipt: BillReceipt = {
     id: 'receipt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-    receiptNumber: generateReceiptNumber(documentType),
+    receiptNumber: generateReceiptNumber(documentType, posNumber, customInvoiceNumber),
     patientId,
-    patientName,
-    ownerName,
+    patientName: (patientName && patientName.trim()) || 'Cliente General',
+    ownerName: (ownerName && ownerName.trim()) || 'Sin tutor',
     documentType,
     emitAfip: Boolean(afipCae),
     afipCae,
@@ -138,6 +154,8 @@ export function processCheckout(params: CheckoutParams): CheckoutResult {
     taxAmount: summary.taxAmount,
     total: summary.total,
     totalAmount: summary.total,
+    voucherName,
+    voucherUrl,
     date: new Date().toISOString()
   };
 
@@ -166,5 +184,73 @@ export function parsePriceInput(input: string): number {
   if (!input || input.trim() === '') return 0;
   const num = Number(input);
   return isNaN(num) ? 0 : Math.max(0, num);
+}
+
+export function determineAppointmentsToComplete(
+  items: BillItem[],
+  patientId: string,
+  medicalAppointments: MedicalAppointment[],
+  groomingAppointments: GroomingAppointment[]
+): {
+  medicalIdsToComplete: string[];
+  groomingIdsToComplete: string[];
+} {
+  const medicalIdsToComplete: string[] = [];
+  const groomingIdsToComplete: string[] = [];
+
+  const patientMedical = medicalAppointments.filter(app => app.patientId === patientId && app.status !== 'cancelled' && app.status !== 'completed');
+  const patientGrooming = groomingAppointments.filter(g => g.patientId === patientId && g.status !== 'cancelled' && g.status !== 'completed');
+
+  for (const item of items) {
+    if (item.appointmentId) {
+      if (item.appointmentType === 'medical' || patientMedical.some(m => m.id === item.appointmentId)) {
+        if (!medicalIdsToComplete.includes(item.appointmentId)) {
+          medicalIdsToComplete.push(item.appointmentId);
+        }
+      } else if (item.appointmentType === 'grooming' || patientGrooming.some(g => g.id === item.appointmentId)) {
+        if (!groomingIdsToComplete.includes(item.appointmentId)) {
+          groomingIdsToComplete.push(item.appointmentId);
+        }
+      }
+    } else {
+      if (item.type === 'product') {
+        continue;
+      }
+      const descLower = (item.description || '').toLowerCase();
+      const catLower = (item.category || '').toLowerCase();
+
+      const isMedicalItem = item.appointmentType === 'medical' ||
+        catLower.includes('médica') ||
+        catLower.includes('consulta') ||
+        descLower.includes('consulta') ||
+        descLower.includes('clínica') ||
+        descLower.includes('médica') ||
+        descLower.includes('ecografía') ||
+        descLower.includes('radiografía');
+
+      const isGroomingItem = item.appointmentType === 'grooming' ||
+        catLower.includes('peluquería') ||
+        catLower.includes('baño') ||
+        descLower.includes('peluquería') ||
+        descLower.includes('baño') ||
+        descLower.includes('corte');
+
+      if (isMedicalItem) {
+        const nextPendingMed = patientMedical.find(m => !medicalIdsToComplete.includes(m.id));
+        if (nextPendingMed) {
+          medicalIdsToComplete.push(nextPendingMed.id);
+        }
+      }
+
+      if (isGroomingItem) {
+        const nextPendingGroom = patientGrooming.find(g => !groomingIdsToComplete.includes(g.id));
+        if (nextPendingGroom) {
+          groomingIdsToComplete.push(nextPendingGroom.id);
+        }
+      }
+    }
+  }
+
+  return { medicalIdsToComplete, groomingIdsToComplete };
 }
 

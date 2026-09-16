@@ -14,6 +14,9 @@ interface VaccinesViewProps {
   vaccineDoses: VaccineDosis[];
   onRegisterDosis: (dosis: { vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => void;
   onScheduleAppointment: (patientId: string, vaccineName?: string) => void;
+  onDeleteDosis?: (dosisId: string) => void;
+  onRemoveDosisByVaccine?: (patientId: string, vaccineName: string) => void;
+  currentVetName?: string;
   isGeneralCatalog?: boolean;
   onUpdatePatients?: (updatedPatients: Patient[]) => void;
 }
@@ -26,9 +29,12 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   onAddVaccineToCatalog,
   onUpdateVaccineInCatalog,
   onDeleteVaccineFromCatalog,
-  vaccineDoses,
+  vaccineDoses = [],
   onRegisterDosis,
   onScheduleAppointment,
+  onDeleteDosis,
+  onRemoveDosisByVaccine,
+  currentVetName = 'Dr. J. Silva',
   isGeneralCatalog = false,
   onUpdatePatients
 }) => {
@@ -64,16 +70,18 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
     onUpdatePatients(updatedList);
     if (onSelectPatient) onSelectPatient(updatedPatient);
 
-    // Agregar al Historial de Vacunación
+    // Agregar o Remover del Historial de Vacunación
     if (isNowApplied && onRegisterDosis) {
       const matchedCat = vaccineCatalog.find(c => c.name.toLowerCase() === toggledVacName.toLowerCase()) || vaccineCatalog[0];
       if (matchedCat) {
         onRegisterDosis({
           vaccineId: matchedCat.id,
           applicationDate: new Date().toISOString().split('T')[0],
-          vetName: 'Dr. J. Silva'
+          vetName: currentVetName || 'Dr. J. Silva'
         });
       }
+    } else if (!isNowApplied && onRemoveDosisByVaccine) {
+      onRemoveDosisByVaccine(selectedPatient.id, toggledVacName);
     }
   };
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; vaccineId: string; vaccineName: string }>({
@@ -90,7 +98,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   // Register dosis state
   const [selectedVacId, setSelectedVacId] = useState(vaccineCatalog[0]?.id || '');
   const [appDate, setAppDate] = useState(new Date().toISOString().split('T')[0]);
-  const [vetName, setVetName] = useState('Dr. J. Silva');
+  const [vetName, setVetName] = useState(currentVetName || 'Dr. J. Silva');
   const [batchNum, setBatchNum] = useState('');
 
   const activePatient = selectedPatient;
@@ -254,7 +262,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                     type="text"
                     value={newVacName}
                     onChange={(e) => setNewVacName(e.target.value)}
-                    placeholder="Ej. Séxtuple, Antirrábica..."
+                    placeholder=""
                     required
                     className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs"
                   />
@@ -623,31 +631,33 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
               </div>
 
               {/* Cobertura Actual Card */}
-              <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 flex flex-col justify-between">
-                <div>
-                  <h3 className="font-label-md text-slate-600 text-[10px] mb-xs font-semibold">Cobertura actual</h3>
-                  <div className="flex items-end gap-sm mb-sm">
-                    <span className="font-display-lg text-2xl text-slate-900 font-semibold">
-                      {patientDoses.length > 0 
-                        ? Math.round((patientDoses.filter(d => d.status === 'ok').length / patientDoses.length) * 100)
-                        : 0}%
-                    </span>
-                    <span className="font-body-md text-xs text-slate-600 pb-0.5 font-medium">
-                      {patientDoses.filter(d => d.status === 'ok').length} de {patientDoses.length} al día
-                    </span>
+              {(() => {
+                const reqList = activePatient.requiredVaccines || [];
+                const reqTotal = reqList.length;
+                const reqApplied = reqList.filter(v => v.status === 'aplicada').length;
+                const reqPct = reqTotal > 0 ? Math.round((reqApplied / reqTotal) * 100) : 0;
+                return (
+                  <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-label-md text-slate-600 text-[10px] mb-xs font-semibold">Cobertura actual</h3>
+                      <div className="flex items-end gap-sm mb-sm">
+                        <span className="font-display-lg text-2xl text-slate-900 font-semibold">
+                          {reqPct}%
+                        </span>
+                        <span className="font-body-md text-xs text-slate-600 pb-0.5 font-medium">
+                          {reqApplied} de {reqTotal} aplicadas
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
+                      <div 
+                        className="bg-[#9A7DB8] h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${reqPct}%` }}
+                      ></div>
+                    </div>
                   </div>
-                </div>
-                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
-                  <div 
-                    className="bg-[#9A7DB8] h-full rounded-full transition-all duration-500" 
-                    style={{ 
-                      width: `${patientDoses.length > 0 
-                        ? (patientDoses.filter(d => d.status === 'ok').length / patientDoses.length) * 100 
-                        : 0}%` 
-                    }}
-                  ></div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           </div>
 

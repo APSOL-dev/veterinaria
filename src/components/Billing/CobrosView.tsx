@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import html2pdf from 'html2pdf.js';
 import { Patient, BillReceipt, DocumentType, PaymentMethod, BillItem, Product, ServiceCatalogItem } from '../../domain/types';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
@@ -20,6 +21,10 @@ interface CobrosViewProps {
     taxRate?: number;
     items: BillItem[];
     patientId: string;
+    voucherName?: string;
+    voucherUrl?: string;
+    posNumber?: string;
+    customInvoiceNumber?: string;
   }) => void;
   onNavigateToHistorial?: () => void;
 }
@@ -54,14 +59,17 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
 
   // Settings state: Default to Factura C
   const [documentType, setDocumentType] = useState<DocumentType>('factura-c');
+  const [posNumber, setPosNumber] = useState<string>('0001');
+  const [customInvoiceNumber, setCustomInvoiceNumber] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
   const [isAfip, setIsAfip] = useState(true);
   const [applyTax, setApplyTax] = useState(false);
   const [taxPercent, setTaxPercent] = useState(21);
+  const [voucherName, setVoucherName] = useState<string>('');
+  const [voucherUrl, setVoucherUrl] = useState<string>('');
 
   // Modal Add Item state with Catalog Selection
   const [showAddItemModal, setShowAddItemModal] = useState(false);
-  const [viewReceiptModal, setViewReceiptModal] = useState<BillReceipt | null>(null);
   const [itemType, setItemType] = useState<'servicio' | 'producto'>('servicio');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('');
   const [selectedCatalogItemId, setSelectedCatalogItemId] = useState<string>('');
@@ -179,10 +187,18 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
       applyTax,
       taxRate: taxPercent,
       items,
-      patientId: currentPatient.id
+      patientId: currentPatient.id,
+      voucherName: voucherName || undefined,
+      voucherUrl: voucherUrl || undefined,
+      posNumber: posNumber || '0001',
+      customInvoiceNumber: customInvoiceNumber || undefined
     });
 
     setItems([]);
+    setVoucherName('');
+    setVoucherUrl('');
+    setPosNumber('0001');
+    setCustomInvoiceNumber('');
     if (onNavigateToHistorial) {
       onNavigateToHistorial();
     }
@@ -208,11 +224,11 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                 <tr className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 text-[11px]">
                   <th className="p-sm px-md">Comprobante Nº</th>
                   <th className="p-sm px-md">Fecha</th>
-                  <th className="p-sm px-md">Paciente / dueño</th>
+                  <th className="p-sm px-md">Tutor / Paciente</th>
                   <th className="p-sm px-md">Tipo doc</th>
                   <th className="p-sm px-md">Medio pago</th>
                   <th className="p-sm px-md text-right">Total</th>
-                  <th className="p-sm px-md text-center">Acciones</th>
+                  <th className="p-sm px-md text-center">Comprobante</th>
                 </tr>
               </thead>
               <tbody className="text-slate-800">
@@ -227,18 +243,46 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                     <tr key={rec.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
                       <td className="p-sm px-md font-medium text-slate-900">{rec.receiptNumber}</td>
                       <td className="p-sm px-md text-slate-700">{new Date(rec.date).toLocaleDateString('es-AR')}</td>
-                      <td className="p-sm px-md font-normal text-slate-800">{rec.patientName} ({rec.ownerName})</td>
+                      <td className="p-sm px-md font-medium text-slate-900">
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-900">{rec.ownerName || 'Sin tutor'}</span>
+                          {rec.patientName && (
+                            <span className="text-slate-500 font-normal text-[11px]">
+                              Mascota: {rec.patientName}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-sm px-md font-semibold text-[#5C3C7B]">{rec.documentType}</td>
                       <td className="p-sm px-md capitalize text-slate-800">{rec.paymentMethod}</td>
                       <td className="p-sm px-md text-right font-semibold text-slate-900">$ {rec.totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
                       <td className="p-sm px-md text-center">
-                        <button
-                          onClick={() => setViewReceiptModal(rec)}
-                          className="bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-xs cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
-                          PDF / Imprimir
-                        </button>
+                        {rec.voucherUrl ? (
+                          <a
+                            href={rec.voucherUrl}
+                            download={rec.voucherName || `Factura_${rec.receiptNumber || rec.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                              if (rec.voucherUrl?.startsWith('data:')) {
+                                e.preventDefault();
+                                const link = document.createElement('a');
+                                link.href = rec.voucherUrl;
+                                link.download = rec.voucherName || `Factura_${rec.receiptNumber || rec.id}`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }
+                            }}
+                            className="bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer text-decoration-none shadow-2xs"
+                            title={`Descargar comprobante adjunto: ${rec.voucherName || 'Factura'}`}
+                          >
+                            <span className="material-symbols-outlined text-[15px]">description</span>
+                            <span className="max-w-[140px] truncate">{rec.voucherName || 'Factura'}</span>
+                          </a>
+                        ) : (
+                          <span className="text-slate-400 text-[11px] font-normal italic">Sin adjunto</span>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -460,11 +504,40 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                   }}
                   className="w-full bg-white border border-slate-300 rounded-xl py-2 px-md text-slate-900 font-semibold text-xs outline-none focus:ring-2 focus:ring-[#9A7DB8] cursor-pointer"
                 >
-                  <option value="factura-b">Factura B (Consumidor final)</option>
-                  <option value="factura-a">Factura A (Responsable inscripto)</option>
+                  <option value="factura-b">Factura B</option>
+                  <option value="factura-a">Factura A</option>
                   <option value="factura-c">Factura C</option>
-                  <option value="remito">Remito interno (Sin valor fiscal)</option>
+                  <option value="remito">Remito</option>
                 </select>
+              </div>
+
+              {/* Punto de venta y Número de factura */}
+              <div className="grid grid-cols-2 gap-xs">
+                <div className="flex flex-col gap-xs">
+                  <label className="font-label-md text-slate-700 text-[11px] font-medium">
+                    Punto de venta
+                  </label>
+                  <input
+                    type="text"
+                    value={posNumber}
+                    onChange={(e) => setPosNumber(e.target.value)}
+                    placeholder=""
+                    className="w-full bg-white border border-slate-300 rounded-xl py-2 px-md text-slate-900 font-semibold text-xs outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-xs">
+                  <label className="font-label-md text-slate-700 text-[11px] font-medium">
+                    Número de factura
+                  </label>
+                  <input
+                    type="text"
+                    value={customInvoiceNumber}
+                    onChange={(e) => setCustomInvoiceNumber(e.target.value)}
+                    placeholder=""
+                    className="w-full bg-white border border-slate-300 rounded-xl py-2 px-md text-slate-900 font-semibold text-xs outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                  />
+                </div>
               </div>
 
               {/* Payment Method */}
@@ -533,6 +606,55 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                     </div>
                   </label>
                 </div>
+              </div>
+
+              {/* Insertar Comprobante (La Factura) */}
+              <div className="pt-xs border-t border-slate-200 flex flex-col gap-xs">
+                <label className="font-label-md text-slate-700 text-[11px] font-semibold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px] text-[#9A7DB8]">attach_file</span>
+                  Comprobante / Factura adjunta
+                </label>
+
+                {voucherName ? (
+                  <div className="flex items-center justify-between bg-purple-50 p-2 px-3 rounded-xl border border-purple-200 text-xs">
+                    <div className="flex items-center gap-2 truncate">
+                      <span className="material-symbols-outlined text-[#5C3C7B] text-[18px]">description</span>
+                      <span className="font-semibold text-slate-900 truncate">{voucherName}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVoucherName('');
+                        setVoucherUrl('');
+                      }}
+                      className="text-slate-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
+                      title="Quitar comprobante"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">close</span>
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 hover:border-[#9A7DB8] rounded-xl p-3 text-xs text-slate-600 cursor-pointer transition-all">
+                    <span className="material-symbols-outlined text-[18px] text-[#9A7DB8]">upload_file</span>
+                    <span className="font-medium">Insertar comprobante (Factura)</span>
+                    <input
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setVoucherName(file.name);
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            setVoucherUrl(event.target?.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                )}
               </div>
 
               {/* Configuración de IVA */}
@@ -746,118 +868,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
         </div>
       )}
 
-      {/* Modal / Diálogo de Comprobante Imprimible en PDF */}
-      {viewReceiptModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in print:p-0 print:static print:bg-white">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200 print:shadow-none print:border-none print:p-0">
-            {/* Modal Top Actions Header (Oculto en Impresión) */}
-            <div className="flex items-center justify-between border-b border-slate-200 pb-sm print:hidden">
-              <h3 className="font-headline-sm text-slate-900 font-semibold text-base flex items-center gap-xs">
-                <span className="material-symbols-outlined text-[#9A7DB8]">receipt_long</span>
-                Comprobante Digital de Cobro
-              </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-4 py-2 bg-[#9A7DB8] hover:bg-[#8362A5] text-white rounded-xl font-label-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[18px]">print</span>
-                  <span>Imprimir / Descargar PDF</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewReceiptModal(null)}
-                  className="p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[20px]">close</span>
-                </button>
-              </div>
-            </div>
 
-            {/* ÁREA IMPRIMIBLE DEL COMPROBANTE */}
-            <div id="printable-receipt-area" className="p-md bg-white text-slate-900 text-xs flex flex-col gap-md font-sans">
-              {/* Header Clínica */}
-              <div className="flex justify-between items-start border-b border-slate-300 pb-sm">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 tracking-tight">VETSOFT</h2>
-                  <p className="text-xs text-slate-700 font-semibold">Clínica Veterinaria & PetShop</p>
-                  <p className="text-[11px] text-slate-500">CUIT: 30-71234567-8 • IVA Responsable Inscripto</p>
-                  <p className="text-[11px] text-slate-500">Av. San Martín 1420, Santa Fe, Argentina • Tel: (0342) 447-6596</p>
-                </div>
-                <div className="text-right">
-                  <span className="inline-block px-3 py-1 bg-purple-100 text-[#5C3C7B] font-bold text-xs rounded-lg uppercase mb-1 border border-purple-200">
-                    {viewReceiptModal.documentType.replace('-', ' ')}
-                  </span>
-                  <p className="font-mono text-sm font-bold text-slate-900">N° {viewReceiptModal.receiptNumber}</p>
-                  <p className="text-xs text-slate-600">Fecha: {new Date(viewReceiptModal.date).toLocaleDateString('es-AR')}</p>
-                  {viewReceiptModal.afipCae && (
-                    <p className="text-[11px] text-emerald-700 font-mono font-semibold mt-0.5">CAE AFIP: {viewReceiptModal.afipCae}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Datos Cliente / Mascota */}
-              <div className="bg-slate-50 p-sm rounded-xl border border-slate-200 grid grid-cols-2 gap-sm text-xs">
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Tutor / Cliente:</span>
-                  <span className="font-bold text-slate-900 text-sm">{viewReceiptModal.ownerName}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Paciente / Mascota:</span>
-                  <span className="font-bold text-slate-900 text-sm">{viewReceiptModal.patientName}</span>
-                </div>
-              </div>
-
-              {/* Tabla de Conceptos */}
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b-2 border-slate-300 bg-purple-50/60 text-[#5C3C7B] font-bold text-[11px]">
-                    <th className="py-2 px-2">Concepto / Servicio</th>
-                    <th className="py-2 px-2 text-center w-16">Cant.</th>
-                    <th className="py-2 px-2 text-right w-24">P. Unit.</th>
-                    <th className="py-2 px-2 text-right w-28">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {viewReceiptModal.items.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="py-2.5 px-2">
-                        <span className="font-semibold text-slate-900 block">{item.description}</span>
-                        <span className="text-[10px] text-slate-500">{item.category}</span>
-                      </td>
-                      <td className="py-2.5 px-2 text-center font-semibold">{item.quantity}</td>
-                      <td className="py-2.5 px-2 text-right font-medium">$ {item.unitPrice.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
-                      <td className="py-2.5 px-2 text-right font-bold text-slate-900">
-                        $ {(item.unitPrice * item.quantity * (1 - (item.discountPercent || 0) / 100)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {/* Resumen Final */}
-              <div className="border-t-2 border-slate-300 pt-sm flex justify-between items-end">
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Forma de Pago:</span>
-                  <span className="font-bold text-slate-900 uppercase text-xs bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                    {viewReceiptModal.paymentMethod}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs text-slate-600 block font-medium">Total Facturado:</span>
-                  <span className="text-2xl font-bold text-slate-900">$ {viewReceiptModal.totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
-                </div>
-              </div>
-
-              {/* Pie de Página */}
-              <div className="text-center text-[10px] text-slate-400 mt-md border-t border-slate-200 pt-xs font-medium">
-                Gracias por confiar en VetSoft • Documento impreso / comprobante digital
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <AppNotificationModal
         isOpen={notifModal.isOpen}

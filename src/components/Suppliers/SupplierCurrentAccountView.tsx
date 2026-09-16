@@ -189,7 +189,7 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Buscar por comprobante (ej: F. A 2722)..."
+                placeholder="Buscar por comprobante..."
                 className="w-full pl-9 pr-3 py-2 bg-surface-container/40 border border-outline-variant/30 rounded-xl text-xs text-on-surface outline-none focus:border-primary font-medium"
               />
             </div>

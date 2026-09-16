@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { SupplierBill, SupplierQuote, ExpenseRecord, SupplierPayment, SupplierPaymentMethod, SupplierCreditTerm, Product } from '../../domain/types';
-import { calculateSupplierTotals, calculateMonthlyExpenditureProjections, groupProjectionsByYear, formatInvoiceFullNumber, filterBillsByDateRange, filterPaymentsByDateRange, getDefaultDateRange, filterAndSortSupplierBills } from '../../domain/services/supplierService';
+import { calculateSupplierTotals, calculateMonthlyExpenditureProjections, groupProjectionsByYear, formatInvoiceFullNumber, filterBillsByDateRange, filterPaymentsByDateRange, getDefaultDateRange, filterAndSortSupplierBills, getDeleteBillConfirmationDetails } from '../../domain/services/supplierService';
 import { filterExpenseRecords, calculateExpenseTotals } from '../../domain/services/expenseService';
 import { getTotalPaidForBill, getRemainingBalance } from '../../domain/services/paymentService';
 import { NewInvoiceDrawer } from './NewInvoiceDrawer';
@@ -61,7 +61,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   const [showInvoiceDrawer, setShowInvoiceDrawer] = useState(false);
   const [editingBill, setEditingBill] = useState<SupplierBill | null>(null);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; type: 'bill' | 'expense'; id: string; name: string }>({
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; type: 'bill' | 'expense'; id: string; name: string; customTitle?: string; customMessage?: string }>({
     isOpen: false,
     type: 'bill',
     id: '',
@@ -98,6 +98,18 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   const filteredBills = useMemo(() => filterBillsByDateRange(bills, filterStartDate, filterEndDate), [bills, filterStartDate, filterEndDate]);
   const filteredPayments = useMemo(() => filterPaymentsByDateRange(payments, filterStartDate, filterEndDate), [payments, filterStartDate, filterEndDate]);
 
+  const handleDeleteBillClick = (bill: SupplierBill) => {
+    const details = getDeleteBillConfirmationDetails(bill);
+    setDeleteConfirm({
+      isOpen: true,
+      type: 'bill',
+      id: bill.id,
+      name: `Factura N° ${formatInvoiceFullNumber(bill)} (${bill.supplierName})`,
+      customTitle: details.title,
+      customMessage: details.message
+    });
+  };
+
   // Submodule: Facturas list filters and sorting state
   const [billFilterSupplier, setBillFilterSupplier] = useState<string>('');
   const [billFilterInvoiceNumber, setBillFilterInvoiceNumber] = useState<string>('');
@@ -132,7 +144,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
     }
   };
 
-  const totals = useMemo(() => calculateSupplierTotals(filteredBills, quotes, filteredPayments), [filteredBills, quotes, filteredPayments]);
+  const totals = useMemo(() => calculateSupplierTotals(bills, quotes, payments, undefined, expenses, creditTerms), [bills, quotes, payments, expenses, creditTerms]);
   const projections = useMemo(() => calculateMonthlyExpenditureProjections(bills, monthlyBudgets, payments, filterStartDate, filterEndDate, creditTerms, expenses), [bills, monthlyBudgets, payments, filterStartDate, filterEndDate, creditTerms, expenses]);
 
   const yearlyProjections = useMemo(() => {
@@ -324,15 +336,6 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
     setShowInvoiceDrawer(true);
   };
 
-  const handleDeleteBillClick = (bill: SupplierBill) => {
-    setDeleteConfirm({
-      isOpen: true,
-      type: 'bill',
-      id: bill.id,
-      name: `Factura N° ${bill.invoiceNumber} (${bill.supplierName})`
-    });
-  };
-
   const handleOpenAddExpenseModal = () => {
     setEditingExpenseId(null);
     setExpDate(new Date().toISOString().split('T')[0]);
@@ -456,7 +459,14 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           payments={payments}
           creditTerms={creditTerms}
           onSaveCreditTerm={onSaveCreditTerm}
-          onDeleteBill={onDeleteBill}
+          onDeleteBill={(billId) => {
+            const targetBill = bills.find(b => b.id === billId);
+            if (targetBill) {
+              handleDeleteBillClick(targetBill);
+            } else if (onDeleteBill) {
+              onDeleteBill(billId);
+            }
+          }}
           onNavigateToPlazos={() => onNavigateSubModule && onNavigateSubModule('plazos')}
           onOpenRegisterPayment={(billId) => handleOpenPaymentModal(bills.find(b => b.id === billId))}
         />
@@ -546,19 +556,19 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-md">
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
               <span className="font-label-md text-[11px] text-on-surface-variant font-semibold">Comprado este mes</span>
-              <span className="font-display-lg text-2xl font-semibold text-primary mt-xs">${totals.purchasedThisMonthTotal.toLocaleString('es-AR')}</span>
+              <span className="font-display-lg text-2xl font-semibold text-primary mt-xs">${totals.purchasedThisMonthTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
               <span className="font-label-md text-[11px] text-on-surface-variant font-semibold">Facturas pagadas</span>
-              <span className="font-display-lg text-2xl font-semibold text-[#27AE60] mt-xs">${totals.paidBillsTotal.toLocaleString('es-AR')}</span>
+              <span className="font-display-lg text-2xl font-semibold text-[#27AE60] mt-xs">${totals.paidBillsTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
               <span className="font-label-md text-[11px] text-on-surface-variant font-semibold">Pendiente de pago</span>
-              <span className="font-display-lg text-2xl font-semibold text-error mt-xs">${totals.pendingBillsTotal.toLocaleString('es-AR')}</span>
+              <span className="font-display-lg text-2xl font-semibold text-error mt-xs">${totals.pendingBillsTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
               <span className="font-label-md text-[11px] text-on-surface-variant font-semibold">Comprometido a 30 días</span>
-              <span className="font-display-lg text-2xl font-semibold text-amber-600 mt-xs">${totals.committed30DaysTotal.toLocaleString('es-AR')}</span>
+              <span className="font-display-lg text-2xl font-semibold text-amber-600 mt-xs">${totals.committed30DaysTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           </div>
 
@@ -1527,7 +1537,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   type="text"
                   value={expDescription}
                   onChange={(e) => setExpDescription(e.target.value)}
-                  placeholder="ej. Carga Nafta Super Móvil 1"
+                  placeholder=""
                   required
                   className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
                 />
@@ -1629,7 +1639,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   type="text"
                   value={expNote}
                   onChange={(e) => setExpNote(e.target.value)}
-                  placeholder="ej. Ticket N° 0001-4451"
+                  placeholder=""
                   className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
                 />
               </div>
@@ -1672,8 +1682,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
       {/* Delete Confirmation Modal */}
       <AppConfirmModal
         isOpen={deleteConfirm.isOpen}
-        title={deleteConfirm.type === 'bill' ? 'Confirmar eliminación de factura' : 'Confirmar eliminación de gasto'}
-        message={`¿Está seguro de que desea eliminar ${deleteConfirm.name}?`}
+        title={deleteConfirm.customTitle || (deleteConfirm.type === 'bill' ? 'Confirmar eliminación de factura' : 'Confirmar eliminación de gasto')}
+        message={deleteConfirm.customMessage || `¿Está seguro de que desea eliminar ${deleteConfirm.name}?`}
         confirmText="Sí, eliminar"
         cancelText="Cancelar"
         isDanger={true}

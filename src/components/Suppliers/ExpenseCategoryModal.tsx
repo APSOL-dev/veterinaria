@@ -146,7 +146,7 @@ export const ExpenseCategoryModal: React.FC<ExpenseCategoryModalProps> = ({
                   type="text"
                   value={newCategoryInput}
                   onChange={(e) => setNewCategoryInput(e.target.value)}
-                  placeholder="Ej: Marketing y Publicidad, Insumos de Limpieza..."
+                  placeholder=""
                   className="flex-1 bg-surface-container p-2.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface outline-none focus:border-primary font-medium"
                 />
                 <button
@@ -202,7 +202,7 @@ export const ExpenseCategoryModal: React.FC<ExpenseCategoryModalProps> = ({
                   type="text"
                   value={newAllocationInput}
                   onChange={(e) => setNewAllocationInput(e.target.value)}
-                  placeholder="Ej: Sucursal Centro, Quirófano 2, Administración..."
+                  placeholder=""
                   className="flex-1 bg-surface-container p-2.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface outline-none focus:border-primary font-medium"
                 />
                 <button
@@ -258,7 +258,7 @@ export const ExpenseCategoryModal: React.FC<ExpenseCategoryModalProps> = ({
                   type="text"
                   value={newResponsibleInput}
                   onChange={(e) => setNewResponsibleInput(e.target.value)}
-                  placeholder="Ej: Dr. Pérez, Recepción, Logística..."
+                  placeholder=""
                   className="flex-1 bg-surface-container p-2.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface outline-none focus:border-primary font-medium"
                 />
                 <button

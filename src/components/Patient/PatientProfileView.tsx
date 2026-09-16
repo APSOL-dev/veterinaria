@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import html2pdf from 'html2pdf.js';
 import { Patient, ClinicalNote, VaccineDosis, Species, Sex, PatientRequiredVaccine, VaccineCatalogItem, MedicalAppointment, GroomingAppointment } from '../../domain/types';
 import { filterPatients, calculateWeightTrend, updatePatientRecord, toggleAlertItem } from '../../domain/services/patientService';
 import { NewPatientModal } from './NewPatientModal';
@@ -31,6 +32,8 @@ interface PatientProfileViewProps {
   onUpdatePatients?: (updatedPatients: Patient[]) => void;
   vaccineCatalog?: VaccineCatalogItem[];
   onRegisterDosis?: (dosis: { vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => void;
+  onRemoveDosisByVaccine?: (patientId: string, vaccineName: string) => void;
+  currentVetName?: string;
   onAddVaccineToCatalog?: (name: string, frequencyDays: number) => void;
   medicalAppointments?: MedicalAppointment[];
   groomingAppointments?: GroomingAppointment[];
@@ -51,6 +54,8 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   onUpdatePatients,
   vaccineCatalog = [],
   onRegisterDosis,
+  onRemoveDosisByVaccine,
+  currentVetName = 'Dr. J. Silva',
   onAddVaccineToCatalog,
   medicalAppointments = [],
   groomingAppointments = [],
@@ -70,7 +75,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   const patientAppointments = useMemo(() => {
     if (!selectedPatient) return [];
     const med = (medicalAppointments || [])
-      .filter(app => app.patientId === selectedPatient.id && app.status !== 'cancelled')
+      .filter(app => app.patientId === selectedPatient.id && app.status !== 'cancelled' && app.status !== 'completed')
       .map(app => ({
         id: app.id,
         type: 'Consulta Médica' as const,
@@ -81,7 +86,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
       }));
 
     const groom = (groomingAppointments || [])
-      .filter(app => app.patientId === selectedPatient.id && app.status !== 'cancelled')
+      .filter(app => app.patientId === selectedPatient.id && app.status !== 'cancelled' && app.status !== 'completed')
       .map(app => ({
         id: app.id,
         type: 'Peluquería / Estética' as const,
@@ -101,6 +106,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   // Active Tab state for redesigned layout (No Sidebar)
   const [activeTab, setActiveTab] = useState<'ficha' | 'vacunas'>('ficha');
   const [activePrescriptionNote, setActivePrescriptionNote] = useState<ClinicalNote | null>(null);
+  const [showClinicalHistoryModal, setShowClinicalHistoryModal] = useState(false);
 
   // Required Vaccines State
   const [showAddVaccineModal, setShowAddVaccineModal] = useState(false);
@@ -297,7 +303,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
     }
     onSelectPatient(updatedPatient);
 
-    // Si se marca como aplicada, registrar dosis en el Historial de Vacunación
+    // Si se marca como aplicada, registrar dosis; si se desmarca, eliminar del historial
     const foundTarget = currentReqs.find(v => v.id === vacId);
     if (foundTarget && foundTarget.status === 'pendiente' && onRegisterDosis) {
       const matchedCat = vaccineCatalog.find(c => c.name.toLowerCase() === toggledVacName.toLowerCase()) || vaccineCatalog[0];
@@ -305,14 +311,36 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
         onRegisterDosis({
           vaccineId: matchedCat.id,
           applicationDate: new Date().toISOString().split('T')[0],
-          vetName: 'Dr. J. Silva'
+          vetName: currentVetName || 'Dr. J. Silva'
         });
       }
+    } else if (foundTarget && foundTarget.status === 'aplicada' && onRemoveDosisByVaccine) {
+      onRemoveDosisByVaccine(selectedPatient.id, toggledVacName);
     }
   };
 
-  const handleExportPDF = () => {
-    window.print();
+  const handleDownloadClinicalHistoryPDF = () => {
+    const element = document.getElementById('clinical-history-printable-card');
+    if (!element) {
+      window.print();
+      return;
+    }
+    const cleanPatientName = (selectedPatient.name || 'Paciente').replace(/\s+/g, '_');
+    const opt = {
+      margin: [10, 10, 10, 10] as [number, number, number, number],
+      filename: `Historia_Clinica_${cleanPatientName}.pdf`,
+      image: { type: 'jpeg' as const, quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF: { unit: 'mm' as const, format: 'a4', orientation: 'portrait' as const },
+      pagebreak: { mode: ['css', 'legacy'] }
+    };
+    try {
+      html2pdf().set(opt).from(element).save().catch(() => {
+        window.print();
+      });
+    } catch {
+      window.print();
+    }
   };
 
   const cleanPhone = (phone?: string) => {
@@ -519,7 +547,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
         </button>
 
         <button
-          onClick={handleExportPDF}
+          onClick={() => setShowClinicalHistoryModal(true)}
           className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-xs font-semibold transition-all ml-auto cursor-pointer"
           title="Imprimir o guardar en PDF la historia clínica"
         >
@@ -1090,7 +1118,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                     type="text"
                     value={reqVaccineName}
                     onChange={(e) => setReqVaccineName(e.target.value)}
-                    placeholder="Ej. Bordetella, Giardia..."
+                    placeholder=""
                     required={reqVaccineSource === 'new'}
                     className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-xs focus:border-[#9A7DB8] placeholder:text-slate-400 shadow-xs"
                   />
@@ -1249,6 +1277,168 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               >
                 <span className="material-symbols-outlined text-[16px]">delete</span>
                 <span>Eliminar consulta</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Visor de Historia Clínica (Vista previa + Descargar PDF / Imprimir) */}
+      {showClinicalHistoryModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in overflow-y-auto print:bg-white print:p-8 print:static print:block print:inset-auto print:backdrop-blur-none">
+          <div className="relative bg-white rounded-2xl max-w-4xl w-full p-8 shadow-2xl flex flex-col gap-6 border border-slate-200 my-auto text-slate-900 font-body-md print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:m-0">
+            
+            {/* Botón Cerrar (X) Arriba a la Derecha */}
+            <button
+              type="button"
+              onClick={() => setShowClinicalHistoryModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1.5 rounded-full transition-colors cursor-pointer print:hidden"
+              title="Cerrar ventana"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+
+            {/* Documento Imprimible de Historia Clínica */}
+            <div id="clinical-history-printable-card" className="flex flex-col gap-6 bg-white p-2 rounded-xl">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b-2 border-purple-900/30 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#1D1426] text-white flex items-center justify-center leading-none shadow-md shrink-0">
+                    <span className="material-symbols-outlined text-[28px] leading-none text-[#CBB5E2] block text-center">pets</span>
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <h1 className="font-display-lg text-2xl font-bold text-[#1D1426] leading-snug">
+                      Veterinaria Arlekyn
+                    </h1>
+                    <p className="text-xs text-slate-600 font-medium leading-none mt-0.5">
+                      Historia Clínica Oficial • Expediente de Salud Mascota
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end shrink-0">
+                  <span className="inline-flex items-center justify-center px-4 py-1.5 bg-purple-50 text-[#5C3C7B] border border-purple-200 rounded-full text-xs font-bold leading-none">
+                    Fecha de emisión: {new Date().toLocaleDateString('es-AR')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Patient & Owner Summary */}
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ficha de la Mascota</span>
+                  <span className="font-bold text-base text-slate-900">{selectedPatient.name}</span>
+                  <span className="text-slate-700 font-medium">{selectedPatient.species} • {selectedPatient.breed} ({selectedPatient.sex})</span>
+                  <span className="text-slate-700 font-medium">Nacimiento: {selectedPatient.birthDate}</span>
+                  <span className="text-slate-700 font-medium">Peso actual: <strong>{selectedPatient.weightKg || '--'} kg</strong></span>
+                  {selectedPatient.alerts && selectedPatient.alerts.length > 0 && (
+                    <span className="text-red-700 font-semibold mt-1">
+                      Alertas: {selectedPatient.alerts.join(', ')}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1 text-right">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Datos del Tutor / Dueño</span>
+                  <span className="font-bold text-sm text-slate-900">{selectedPatient.ownerName}</span>
+                  <span className="text-slate-700 font-medium">Contacto: {selectedPatient.ownerPhone || 'Sin teléfono'}</span>
+                  <span className="text-[#5C3C7B] font-semibold mt-1">Profesional habitual: {currentVetName}</span>
+                </div>
+              </div>
+
+              {/* Clinical Consultations List */}
+              <div className="flex flex-col gap-4">
+                <h2 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-1 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base text-[#5C3C7B]">medical_services</span>
+                  Historial de Consultas Médicas ({patientNotes.length})
+                </h2>
+
+                {patientNotes.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-2">No existen consultas médicas registradas para este paciente.</p>
+                ) : (
+                  patientNotes.map((note, index) => (
+                    <div key={note.id || index} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col gap-2 break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-1 text-xs">
+                        <span className="font-bold text-[#5C3C7B]">
+                          Fecha: {new Date(note.date).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </span>
+                        <span className="text-slate-600 font-semibold">Vet: {note.vetName}</span>
+                      </div>
+
+                      <div className="text-xs text-slate-900 font-medium leading-relaxed whitespace-pre-line">
+                        <strong className="text-slate-700">Observaciones y Diagnóstico:</strong>
+                        <p className="mt-0.5">{note.notes}</p>
+                      </div>
+
+                      {note.prescription && (
+                        <div className="mt-1 p-3 bg-purple-50/60 rounded-lg border border-purple-200 text-xs flex flex-col gap-1 break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                          <span className="font-bold text-[#5C3C7B]">RP / Receta Médica:</span>
+                          <p className="text-slate-900 font-medium whitespace-pre-line">{note.prescription}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Sanitary Plan / Vaccines Summary */}
+              {selectedPatient.requiredVaccines && selectedPatient.requiredVaccines.length > 0 && (
+                <div className="flex flex-col gap-3 break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                  <h2 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-1 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base text-emerald-700">vaccines</span>
+                    Plan Sanitario y Vacunación
+                  </h2>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {selectedPatient.requiredVaccines.map((v, i) => (
+                      <div key={i} className="p-2.5 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between">
+                        <span className="font-semibold text-slate-900">{v.vaccineName}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${v.status === 'aplicada' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                          {v.status === 'aplicada' ? `Aplicada (${v.appliedDate || ''})` : `Sugerida (${v.suggestedDate})`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Report Footer */}
+              <div className="flex items-end justify-between pt-6 border-t-2 border-slate-300 mt-4 text-xs break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                <div className="text-slate-500 font-medium">
+                  <p>Documento oficial emitido por Veterinaria Arlekyn.</p>
+                  <p>Válido como resumen de historia clínica.</p>
+                </div>
+                <div className="flex flex-col items-center min-w-[200px] border-t border-slate-400 pt-1 text-center">
+                  <span className="font-semibold text-slate-900">{currentVetName}</span>
+                  <span className="text-[10px] text-slate-500 font-medium">Firma y Sello Veterinario</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Acciones del Modal (Ocultas en Impresión) */}
+            <div className="flex items-center justify-end gap-3 pt-2 print:hidden border-t border-slate-100">
+              <button
+                type="button"
+                onClick={handleDownloadClinicalHistoryPDF}
+                className="bg-[#9A7DB8] hover:bg-[#8666A6] text-white px-5 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">download</span>
+                <span>Descargar PDF</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="bg-slate-700 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">print</span>
+                <span>Imprimir</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowClinicalHistoryModal(false)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-semibold text-xs font-semibold transition-all cursor-pointer"
+              >
+                Cerrar
               </button>
             </div>
           </div>

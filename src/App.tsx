@@ -55,7 +55,7 @@ import {
 
 import { createDosisRecord } from './domain/services/vaccineService';
 import { getLowStockAlerts, recordStockEntry, recordStockAdjustment, processStockReceiptFromBill } from './domain/services/inventoryService';
-import { processCheckout } from './domain/services/billingService';
+import { processCheckout, determineAppointmentsToComplete } from './domain/services/billingService';
 import { createNewPatientRecord, updateClinicalNoteRecord, deleteClinicalNoteRecord } from './domain/services/patientService';
 import { createSupplierBillRecord, createSupplierQuoteRecord, saveSupplierCreditTerm, filterPaymentsByDeletedBill, formatInvoiceFullNumber } from './domain/services/supplierService';
 import { createExpenseRecord } from './domain/services/expenseService';
@@ -78,6 +78,8 @@ import {
   insertPatientToSupabase,
   updatePatientInSupabase,
   insertVaccineDosisToSupabase,
+  deleteVaccineDosisFromSupabase,
+  deleteVaccineDosesByPatientAndVaccineFromSupabase,
   insertClinicalNoteToSupabase,
   updateClinicalNoteInSupabase,
   deleteClinicalNoteFromSupabase,
@@ -423,9 +425,19 @@ export const App: React.FC = () => {
     const vac = vaccineCatalog.find(v => v.id === data.vaccineId);
     if (!vac) return;
 
-    const newDosis = createDosisRecord(selectedPatient.id, vac, data.applicationDate, data.vetName, undefined, data.batch);
+    const newDosis = createDosisRecord(selectedPatient.id, vac, data.applicationDate, data.vetName || (userSession ? userSession.name : 'Dr. J. Silva'), undefined, data.batch);
     setVaccineDoses([newDosis, ...vaccineDoses]);
     insertVaccineDosisToSupabase(newDosis);
+  };
+
+  const handleDeleteDosis = (dosisId: string) => {
+    setVaccineDoses(prev => prev.filter(d => d.id !== dosisId));
+    deleteVaccineDosisFromSupabase(dosisId);
+  };
+
+  const handleRemoveDosisByVaccine = (patientId: string, vaccineName: string) => {
+    setVaccineDoses(prev => prev.filter(d => !(d.patientId === patientId && d.vaccineName.toLowerCase() === vaccineName.toLowerCase())));
+    deleteVaccineDosesByPatientAndVaccineFromSupabase(patientId, vaccineName);
   };
 
   const handleUpdatePatients = (updatedPatients: Patient[]) => {
@@ -668,7 +680,13 @@ export const App: React.FC = () => {
 
   const [pendingBillingItems, setPendingBillingItems] = useState<BillItem[] | undefined>(undefined);
 
-  const handleNavigateToBillingFromAppointment = useCallback((patientId: string, serviceName: string, amount: number) => {
+  const handleNavigateToBillingFromAppointment = useCallback((
+    patientId: string, 
+    serviceName: string, 
+    amount: number, 
+    appointmentId?: string, 
+    appointmentType?: 'medical' | 'grooming'
+  ) => {
     const pat = patients.find(p => p.id === patientId);
     if (pat) {
       setSelectedPatient(pat);
@@ -679,7 +697,9 @@ export const App: React.FC = () => {
       category: 'Servicio agendado',
       quantity: 1,
       unitPrice: amount || 15000,
-      discountPercent: 0
+      discountPercent: 0,
+      appointmentId,
+      appointmentType
     };
     setPendingBillingItems([autoItem]);
     setActiveModuleState('cobros');
@@ -747,6 +767,10 @@ export const App: React.FC = () => {
     paymentMethod: PaymentMethod;
     isAfip: boolean;
     items: BillItem[];
+    voucherName?: string;
+    voucherUrl?: string;
+    posNumber?: string;
+    customInvoiceNumber?: string;
   }) => {
     const pat = patients.find(p => p.id === data.patientId) || selectedPatient;
     const result = processCheckout({
@@ -757,28 +781,43 @@ export const App: React.FC = () => {
       emitAfip: data.isAfip,
       paymentMethod: data.paymentMethod,
       items: data.items,
-      productsCatalog: products
+      productsCatalog: products,
+      voucherName: data.voucherName,
+      voucherUrl: data.voucherUrl,
+      posNumber: data.posNumber,
+      customInvoiceNumber: data.customInvoiceNumber
     });
     setReceipts([result.receipt, ...receipts]);
     setProducts(result.updatedProducts);
     insertReceiptToSupabase(result.receipt);
 
-    // Marcar turnos del paciente como cobrados en la agenda y persistir en Supabase DB
-    setMedicalAppointments(prev => prev.map(app => {
-      if (app.patientId === pat.id && app.status !== 'cancelled') {
-        updateMedicalAppointmentInSupabase(app.id, { status: 'completed' });
-        return { ...app, status: 'completed' as const };
-      }
-      return app;
-    }));
+    // Marcar solo los turnos correspondientes cobrados en la agenda y persistir en Supabase DB
+    const { medicalIdsToComplete, groomingIdsToComplete } = determineAppointmentsToComplete(
+      data.items,
+      pat.id,
+      medicalAppointments,
+      groomingAppointments
+    );
 
-    setGroomingAppointments(prev => prev.map(app => {
-      if (app.patientId === pat.id && app.status !== 'cancelled') {
-        updateGroomingAppointmentInSupabase(app.id, { status: 'completed' });
-        return { ...app, status: 'completed' as const };
-      }
-      return app;
-    }));
+    if (medicalIdsToComplete.length > 0) {
+      setMedicalAppointments(prev => prev.map(app => {
+        if (medicalIdsToComplete.includes(app.id)) {
+          updateMedicalAppointmentInSupabase(app.id, { status: 'completed' });
+          return { ...app, status: 'completed' as const };
+        }
+        return app;
+      }));
+    }
+
+    if (groomingIdsToComplete.length > 0) {
+      setGroomingAppointments(prev => prev.map(app => {
+        if (groomingIdsToComplete.includes(app.id)) {
+          updateGroomingAppointmentInSupabase(app.id, { status: 'completed' });
+          return { ...app, status: 'completed' as const };
+        }
+        return app;
+      }));
+    }
 
     setNotifModal({
       isOpen: true,
@@ -879,6 +918,7 @@ export const App: React.FC = () => {
                   selectedPatient={selectedPatient}
                   onSaveConsultation={handleSaveFullConsultation}
                   onCancel={() => handleSetActiveModule('clinica')}
+                  currentVetName={userSession?.name}
                 />
               )}
 
@@ -892,6 +932,9 @@ export const App: React.FC = () => {
                   onDeleteVaccineFromCatalog={handleDeleteVaccineFromCatalog}
                   vaccineDoses={vaccineDoses}
                   onRegisterDosis={handleRegisterDosis}
+                  onDeleteDosis={handleDeleteDosis}
+                  onRemoveDosisByVaccine={handleRemoveDosisByVaccine}
+                  currentVetName={userSession?.name}
                   onScheduleAppointment={handleScheduleAppointmentFromVaccines}
                 />
               )}
@@ -913,6 +956,7 @@ export const App: React.FC = () => {
                   initialPatientId={schedulePrefill.patientId}
                   initialReason={schedulePrefill.reason}
                   autoOpenNewModal={schedulePrefill.autoOpen}
+                  currentVetName={userSession?.name}
                 />
               )}
             </>
@@ -933,6 +977,7 @@ export const App: React.FC = () => {
               onDeleteGroomingAppointment={handleDeleteGroomingAppointment}
               onNavigateToBilling={handleNavigateToBillingFromAppointment}
               fixedMode="peluqueria"
+              currentVetName={userSession?.name}
             />
           )}
 
@@ -951,6 +996,9 @@ export const App: React.FC = () => {
                   onDeleteVaccineFromCatalog={handleDeleteVaccineFromCatalog}
                   vaccineDoses={vaccineDoses}
                   onRegisterDosis={handleRegisterDosis}
+                  onDeleteDosis={handleDeleteDosis}
+                  onRemoveDosisByVaccine={handleRemoveDosisByVaccine}
+                  currentVetName={userSession?.name}
                   onScheduleAppointment={handleScheduleAppointmentFromVaccines}
                   onUpdatePatients={handleUpdatePatients}
                 />
@@ -981,6 +1029,8 @@ export const App: React.FC = () => {
                   onUpdatePatients={handleUpdatePatients}
                   vaccineCatalog={vaccineCatalog}
                   onRegisterDosis={handleRegisterDosis}
+                  onRemoveDosisByVaccine={handleRemoveDosisByVaccine}
+                  currentVetName={userSession?.name}
                   onAddVaccineToCatalog={handleAddVaccineToCatalog}
                   medicalAppointments={medicalAppointments}
                   groomingAppointments={groomingAppointments}

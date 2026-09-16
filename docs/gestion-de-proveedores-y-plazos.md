@@ -26,6 +26,13 @@ El módulo **Proveedores** integra el control de facturas comerciales de compra,
    - **Formulario Multilínea (`NewInvoiceDrawer`):** Permite registrar la factura del proveedor asociando $N$ productos del catálogo de inventario con sus cantidades recibidas y precios de costo unitarios.
    - **Actualización Automática de Inventario:** Al guardar la factura, el sistema actualiza de manera simultánea el stock físico (`currentStock += cantidad`) y opcionalmente el precio de catálogo de cada producto, registrando el comprobante en Cuentas Corrientes.
 
+7. **Cálculo de Tarjetas KPI de Resumen en Facturas (Modelo Proyección / Vencimientos):**
+   - **Comprado este mes:** Suma total de erogaciones proyectadas del mes actual (Adeudado que vence en el mes + Pagado en el mes + Gastos operativos del mes) -> **$848.125,04**.
+   - **Facturas pagadas:** Suma total exclusiva de los pagos realizados en el mes actual sobre facturas de proveedores (`totalPagado` del mes) -> **$100.000,00**.
+   - **Pendiente de pago:** Saldo adeudado proyectado con vencimiento exclusivo en el mes actual (`totalAdeudado` del mes en curso) -> **$719.625,04**.
+   - **Comprometido a 30 días:** Saldo total adeudado proyectado a vencer en el próximo mes / próximos 30 días (`totalAdeudado` del mes siguiente en proyección) -> **$1.155.668,50**.
+   - **Formato decimal de moneda:** Todos los montos en las tarjetas KPI se formatean siempre con 2 decimales explícitos.
+
 **Casos borde conocidos y mejoras de persistencia:**
 - **Persistencia de Ítems en Supabase:** Los ítems/productos vinculados a cada factura se persisten íntegramente en la columna `items` (JSONB) de `vetsoft_facturas_proveedores` y se exponen mediante la vista `vetsoft_vw_facturas_proveedores`.
 - **Buscadores Interactivos por Texto:** Tanto la selección de proveedores (`SearchableSupplierSelect`) como la selección de productos/mercadería (`SearchableProductSelect`) cuentan con autocompletado en tiempo real al escribir.

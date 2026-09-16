@@ -573,7 +573,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                   inputMode="numeric"
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="Ej: 000100012345"
+                  placeholder=""
                   required
                   className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] font-mono"
                 />

@@ -6,7 +6,8 @@ import {
   recordStockAdjustment, 
   findProductByBarcode, 
   getLowStockAlerts,
-  processStockReceiptFromBill
+  processStockReceiptFromBill,
+  createNewProductRecord
 } from './inventoryService';
 
 describe('inventoryService', () => {
@@ -273,6 +274,96 @@ describe('inventoryService', () => {
       const updatedCatalog = processStockReceiptFromBill(billWithStringQty, catalogWithStrStock);
       const prod = updatedCatalog.find(p => p.id === 'prod-2');
       expect(prod?.currentStock).toBe(21); // 4 + 17 = 21, NOT '417'
+    });
+  });
+
+  describe('createNewProductRecord', () => {
+    it('creates a new product record with generated ID, clean values, priceLastUpdated and updateFrequencyDays', () => {
+      const product = createNewProductRecord({
+        sku: ' VET-MED-999 ',
+        name: ' Shampú Antiséptico ',
+        category: 'Insumos Clínicos',
+        currentStock: 15,
+        minStock: 3,
+        price: 8500,
+        barcode: ' 7799999999999 ',
+        updateFrequencyDays: 60
+      });
+
+      expect(product.id).toMatch(/^prod-/);
+      expect(product.sku).toBe('VET-MED-999');
+      expect(product.name).toBe('Shampú Antiséptico');
+      expect(product.category).toBe('Insumos Clínicos');
+      expect(product.currentStock).toBe(15);
+      expect(product.minStock).toBe(3);
+      expect(product.price).toBe(8500);
+      expect(product.barcode).toBe('7799999999999');
+      expect(product.updateFrequencyDays).toBe(60);
+      expect(product.priceLastUpdated).toBeDefined();
+    });
+
+    it('updates priceLastUpdated when catalog price is updated via processStockReceiptFromBill', () => {
+      const catalog: Product[] = [
+        {
+          id: 'prod-1',
+          sku: 'VET-MED-001',
+          name: 'Bravecto Perros 10-20kg',
+          category: 'Medicamentos',
+          currentStock: 10,
+          minStock: 5,
+          price: 32.5,
+          priceLastUpdated: '2026-01-01',
+          updateFrequencyDays: 30
+        }
+      ];
+
+      const bill = {
+        id: 'bill-200',
+        supplierName: 'Distribuidora FarmaVet SA',
+        invoiceNumber: '0001-00001234',
+        date: '2026-09-16',
+        amount: 350,
+        itemsCount: 1,
+        status: 'pending' as const,
+        items: [
+          {
+            id: 'item-1',
+            productId: 'prod-1',
+            productName: 'Bravecto Perros 10-20kg',
+            quantity: 10,
+            unitCost: 40.0,
+            subtotal: 400.0,
+            updateCatalogPrice: true
+          }
+        ]
+      };
+
+      const updated = processStockReceiptFromBill(bill, catalog);
+      expect(updated[0].price).toBe(40.0);
+      expect(updated[0].priceLastUpdated).toBe('2026-09-16');
+    });
+
+    it('generates auto SKU if SKU is empty', () => {
+      const product = createNewProductRecord({
+        name: 'Termómetro Digital',
+        category: 'Insumos Clínicos',
+        currentStock: 5,
+        minStock: 1,
+        price: 4500
+      });
+
+      expect(product.sku).toMatch(/^VET-PRD-\d{3}$/);
+      expect(product.barcode).toBeUndefined();
+    });
+
+    it('throws error if product name is empty', () => {
+      expect(() => createNewProductRecord({
+        name: '   ',
+        category: 'Accesorios',
+        currentStock: 1,
+        minStock: 1,
+        price: 1000
+      })).toThrowError(/nombre del producto es obligatorio/);
     });
   });
 });

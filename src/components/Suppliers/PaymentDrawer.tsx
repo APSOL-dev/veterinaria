@@ -341,7 +341,7 @@ export const PaymentDrawer: React.FC<PaymentDrawerProps> = ({
               rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="ej. Transferencia Banco Nación N° ref. 458921"
+              placeholder=""
               className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
             />
           </div>

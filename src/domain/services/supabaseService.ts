@@ -137,7 +137,9 @@ export function mapRowToProduct(row: any): Product {
     currentStock: Number(row.currentStock ?? row.current_stock ?? 0),
     minStock: Number(row.minStock ?? row.min_stock ?? 0),
     price: Number(row.price ?? 0),
-    barcode: row.barcode || undefined
+    barcode: row.barcode || undefined,
+    priceLastUpdated: row.priceLastUpdated || row.price_last_updated ? String(row.priceLastUpdated || row.price_last_updated) : undefined,
+    updateFrequencyDays: Number(row.updateFrequencyDays ?? row.update_frequency_days ?? 30)
   };
 }
 
@@ -628,7 +630,9 @@ export async function upsertProductToSupabase(prod: Product): Promise<SyncResult
       current_stock: prod.currentStock,
       min_stock: prod.minStock,
       price: prod.price,
-      barcode: prod.barcode || null
+      barcode: prod.barcode || null,
+      price_last_updated: prod.priceLastUpdated || new Date().toISOString().substring(0, 10),
+      update_frequency_days: prod.updateFrequencyDays || 30
     });
     if (error) console.error('Supabase error upserting product:', error);
     return { success: !error, error: extractErrorMessage(error) };
@@ -651,6 +655,8 @@ export async function updateProductInSupabase(id: string, prod: Partial<Product>
     if (prod.minStock !== undefined) payload.min_stock = prod.minStock;
     if (prod.price !== undefined) payload.price = prod.price;
     if (prod.barcode !== undefined) payload.barcode = prod.barcode || null;
+    if (prod.priceLastUpdated !== undefined) payload.price_last_updated = prod.priceLastUpdated;
+    if (prod.updateFrequencyDays !== undefined) payload.update_frequency_days = prod.updateFrequencyDays;
 
     // If full product properties are present, use upsert to guarantee insertion if table is empty
     if (prod.name && prod.sku && prod.category) {
@@ -728,6 +734,26 @@ export async function insertVaccineDosisToSupabase(dosis: VaccineDosis): Promise
     });
 
     if (error) console.error('Supabase error inserting vaccine dosis:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function deleteVaccineDosisFromSupabase(id: string): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_dosis_vacunas').delete().eq('id', id);
+    if (error) console.error('Supabase error deleting vaccine dosis:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function deleteVaccineDosesByPatientAndVaccineFromSupabase(patientId: string, vaccineName: string): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_dosis_vacunas').delete().eq('patient_id', patientId).ilike('vaccine_name', vaccineName.trim());
+    if (error) console.error('Supabase error deleting vaccine doses for patient and vaccine:', error);
     return { success: !error, error: extractErrorMessage(error) };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error de conexión' };

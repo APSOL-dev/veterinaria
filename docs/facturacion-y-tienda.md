@@ -20,9 +20,16 @@ El módulo **Cobros** administra la emisión de facturas electrónicas, remitos 
    - Incluyen la propiedad `onFocus={(e) => e.target.select()}`, lo que selecciona automáticamente todo el texto al hacer clic para facilitar la tipeación directa.
    - Al cambiar el precio unitario de un renglón, se recalculan automáticamente el subtotal, los descuentos y el total general de la factura mediante `parsePriceInput`.
 
-4. **Historial de Comprobantes Simplificado:**
-   - Se eliminó la columna CAE AFIP de la tabla de historial de cobros (`CobrosView.tsx`), manteniendo una tabla limpia con Comprobante Nº, Fecha, Paciente/Dueño, Tipo Doc, Medio de Pago, Total y Acciones de impresión PDF.
+4. **Caja de Adjunto de Comprobante / Factura:**
+   - En el panel derecho **Configuración de cobro**, se incluye un componente de carga de archivos (`.PDF`, `.PNG`, `.JPG`, `.JPEG`) para adjuntar la factura o comprobante impreso.
+   - El archivo adjunto genera una vista previa del nombre con opción de desadjuntarlo antes de emitir el cobro.
+   - La información del comprobante (`voucherName`, `voucherUrl`) se persiste en el `BillReceipt`.
+
+5. **Historial de Comprobantes Simplificado:**
+   - Mantiene una tabla limpia con Comprobante Nº, Fecha, Paciente/Dueño, Tipo Doc, Medio de Pago, Total y Acciones.
+   - Para comprobantes que cuentan con una factura adjunta, muestra un botón directo **Factura** que permite abrir o descargar el documento adjunto.
 
 **Casos borde conocidos:**
 - **Facturas A / B vs C:** Si el usuario decide cambiar manualmente a Factura A o B, se activa el cálculo de IVA (21% por defecto), manteniendo todos los precios editados por el usuario.
+- **Formato de Archivo Adjunto:** Se permite subir imágenes y PDFs manteniendo persistencia en base64 u objeto en memoria/storage.
 

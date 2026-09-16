@@ -212,7 +212,7 @@ export function getTutorAppointments(
   const petSet = new Set(tutorPetIds);
 
   const med = (medicalAppointments || [])
-    .filter(app => (petSet.has(app.patientId) || app.ownerName.toLowerCase() === ownerLower) && app.status !== 'cancelled')
+    .filter(app => (petSet.has(app.patientId) || app.ownerName.toLowerCase() === ownerLower) && app.status !== 'cancelled' && app.status !== 'completed')
     .map(app => ({
       id: app.id,
       type: 'Consulta Médica' as const,
@@ -225,7 +225,7 @@ export function getTutorAppointments(
     }));
 
   const groom = (groomingAppointments || [])
-    .filter(app => (petSet.has(app.patientId) || app.ownerName.toLowerCase() === ownerLower) && app.status !== 'cancelled')
+    .filter(app => (petSet.has(app.patientId) || app.ownerName.toLowerCase() === ownerLower) && app.status !== 'cancelled' && app.status !== 'completed')
     .map(app => ({
       id: app.id,
       type: 'Peluquería / Estética' as const,

@@ -99,7 +99,9 @@ const DEMO_CHATS = [
 export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatientProfile }) => {
   // Estado de configuración y conexión
   const [config, setConfig] = useState(() => evolutionService.getConfig());
-  const [connectionState, setConnectionState] = useState('close'); // 'open' | 'connecting' | 'close' | 'not_found'
+  const [connectionState, setConnectionState] = useState(() => {
+    return sessionStorage.getItem('whatsapp_conn_state') || 'connecting';
+  }); // 'open' | 'connecting' | 'close' | 'not_found'
   const [isLoadingState, setIsLoadingState] = useState(false);
   
   // Modal de QR
@@ -232,12 +234,14 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
   const checkConnection = useCallback(async () => {
     if (!config.apiUrl || !config.apiKey) {
       setConnectionState('close');
+      sessionStorage.setItem('whatsapp_conn_state', 'close');
       return;
     }
     setIsLoadingState(true);
     try {
       const state = await evolutionService.getConnectionState();
       setConnectionState(state);
+      sessionStorage.setItem('whatsapp_conn_state', state);
       if (state !== 'open') {
         setChats([]);
         setSelectedChat(null);
@@ -246,6 +250,7 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
     } catch (err) {
       console.warn('Error verificando estado de conexión:', err);
       setConnectionState('close');
+      sessionStorage.setItem('whatsapp_conn_state', 'close');
       setChats([]);
       setSelectedChat(null);
       setMessages([]);
@@ -367,6 +372,7 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
     try {
       await evolutionService.logoutInstance();
       setConnectionState('close');
+      sessionStorage.setItem('whatsapp_conn_state', 'close');
       setShowLogoutModal(false);
     } catch (err) {
       console.error('Error al cerrar sesión:', err);
@@ -631,7 +637,17 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
       {/* MAIN WORKSPACE: PANTALLA DE VINCULACIÓN O CHAT INTERFACE               */}
       {/* --------------------------------------------------------------------- */}
       <div className="flex-1 flex overflow-hidden">
-        {connectionState !== 'open' ? (
+        {connectionState === 'connecting' ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-slate-100/70">
+            <div className="flex flex-col items-center gap-4 bg-white p-8 rounded-3xl shadow-lg border border-slate-200">
+              <RefreshCw className="w-10 h-10 animate-spin text-emerald-600" />
+              <div className="text-center">
+                <h3 className="font-bold text-slate-800 text-lg">Verificando conexión...</h3>
+                <p className="text-sm text-slate-500 font-medium mt-1">Conectando con el servicio de WhatsApp</p>
+              </div>
+            </div>
+          </div>
+        ) : connectionState !== 'open' ? (
           /* PANTALLA DE VINCULACIÓN AMPLIADA (SIN INTERFAZ DE CHAT LATERAL) */
           <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 bg-slate-100/70 overflow-y-auto">
             <div className="bg-white rounded-[2.5rem] p-8 md:p-12 max-w-4xl md:max-w-5xl w-full shadow-2xl border border-slate-200/80 text-left my-auto">

@@ -192,7 +192,9 @@ export const initialProducts: Product[] = [
     currentStock: 45,
     minStock: 10,
     price: 32500,
-    barcode: '7791234567890'
+    barcode: '7791234567890',
+    priceLastUpdated: '2026-08-01',
+    updateFrequencyDays: 30
   },
   {
     id: 'prod-2',
@@ -202,7 +204,9 @@ export const initialProducts: Product[] = [
     currentStock: 4,
     minStock: 5,
     price: 24990,
-    barcode: '7790000111222'
+    barcode: '7790000111222',
+    priceLastUpdated: '2026-07-15',
+    updateFrequencyDays: 30
   },
   {
     id: 'prod-3',
@@ -212,7 +216,9 @@ export const initialProducts: Product[] = [
     currentStock: 0,
     minStock: 2,
     price: 18200,
-    barcode: '7798888777666'
+    barcode: '7798888777666',
+    priceLastUpdated: '2026-08-10',
+    updateFrequencyDays: 30
   },
   {
     id: 'prod-4',
@@ -222,7 +228,9 @@ export const initialProducts: Product[] = [
     currentStock: 12,
     minStock: 3,
     price: 15000,
-    barcode: '7795555444333'
+    barcode: '7795555444333',
+    priceLastUpdated: '2026-08-10',
+    updateFrequencyDays: 60
   },
   {
     id: 'prod-5',
@@ -232,7 +240,9 @@ export const initialProducts: Product[] = [
     currentStock: 30,
     minStock: 5,
     price: 8500,
-    barcode: '7793333222111'
+    barcode: '7793333222111',
+    priceLastUpdated: '2026-09-01',
+    updateFrequencyDays: 30
   }
 ];
 

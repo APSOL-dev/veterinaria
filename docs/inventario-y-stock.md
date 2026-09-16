@@ -12,6 +12,8 @@ Permite administrar tanto el inventario de productos físicos (medicamentos, ali
   - Registro de entrada manual de mercadería y entrada con factura de proveedores.
   - Sincronización inmediata de cambios de stock y alta de productos con la base de datos Supabase (`vetsoft_productos`).
   - Ajuste manual de stock por roturas o consumos internos.
+  - **Frecuencia de Actualización de Precios:** Configuración de periodo recomendado de actualización (15, 30, 60, 90, 180, 365 días) tanto al crear como al editar productos.
+  - **Indicador de Vencimiento de Precio en Productos:** Cálculo en tiempo real en las columnas `Última actualización` y `Frecuencia / Vencimiento` de la tabla de Productos Físicos (Badge **Vencido (Xd)** / Badge **Vigente**).
 - **Catálogo de Servicios:**
   - Clasificación de servicios por categoría (`Clínica`, `Cirugía`, `Peluquería`, `Laboratorio`, `Ecografía / Rayos`).
   - Control de estado del servicio (`Activo` / `Inactivo`).
@@ -22,9 +24,9 @@ Permite administrar tanto el inventario de productos físicos (medicamentos, ali
 
 **Casos borde conocidos:**
 - Intento de facturación de servicios inactivos: El sistema alerta y requiere activación previa en el catálogo.
-- Precios con frecuencia vencida: Se resalta visualmente en la tabla con la cantidad de días transcurridos desde el vencimiento para recordar la actualización de tarifas.
+- Precios con frecuencia vencida: Se resalta visualmente en las tablas de Productos y Servicios con la cantidad de días transcurridos desde el vencimiento para recordar la actualización de tarifas.
 - Selección por omisión en Entrada Manual: Al abrir la entrada manual de mercadería, se precarga automáticamente el primer producto si no se ha cambiado el selector para asegurar la confirmación del ingreso.
-- Coincidencia de nombres en facturas: La recepción por factura realiza una comparación limpia (eliminando espacios al inicio y final) para actualizar el stock del producto correcto en el inventario.
+- Coincidencia de nombres en facturas: La recepción por factura realiza una comparación limpia (eliminando espacios al inicio y final) para actualizar el stock del producto correcto en el inventario y renovar su fecha de actualización de precio (`priceLastUpdated`).
 
 **Restricciones o supuestos:**
-- La actualización de precios de servicios actualiza automáticamente la fecha del registro al día actual y resetea el ciclo de vigencia.
+- La actualización de precios de productos y servicios actualiza automáticamente la fecha del registro al día actual y resetea el ciclo de vigencia del precio.

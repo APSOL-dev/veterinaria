@@ -135,7 +135,9 @@ export function calculateSupplierTotals(
   bills: SupplierBill[],
   quotes: SupplierQuote[] = [],
   payments: SupplierPayment[] = [],
-  referenceDateStr?: string
+  referenceDateStr?: string,
+  expenses: ExpenseRecord[] = [],
+  creditTerms: SupplierCreditTerm[] = []
 ): {
   purchasedThisMonthTotal: number;
   paidBillsTotal: number;
@@ -143,56 +145,45 @@ export function calculateSupplierTotals(
   committed30DaysTotal: number;
   approvedQuotesTotal: number;
 } {
-  const refDate = referenceDateStr ? new Date(referenceDateStr) : new Date();
-  const currentMonthKey = refDate.toISOString().substring(0, 7);
+  let currentMonthKey: string;
+  let refTime: number;
 
-  // 1. Comprado este mes (Total de facturas emitidas este mes)
-  const purchasedThisMonthTotal = bills
-    .filter(b => b.date && b.date.startsWith(currentMonthKey))
-    .reduce((sum, b) => sum + (b.amount || 0), 0);
-
-  // 2. Facturas pagadas & Pendiente de pago
-  let pendingBillsTotal = 0;
-  let paidBillsTotal = 0;
-
-  if (payments.length > 0) {
-    paidBillsTotal = payments.reduce((sum, p) => sum + p.amount, 0);
-    pendingBillsTotal = bills.reduce((sum, b) => {
-      const paidForBill = payments.filter(p => p.billId === b.id).reduce((s, p) => s + p.amount, 0);
-      return sum + Math.max(0, b.amount - paidForBill);
-    }, 0);
+  if (referenceDateStr) {
+    currentMonthKey = referenceDateStr.substring(0, 7);
+    const parts = referenceDateStr.split('-').map(Number);
+    const refDateObj = new Date(parts[0], parts[1] - 1, parts[2] || 1);
+    refTime = refDateObj.getTime();
   } else {
-    pendingBillsTotal = bills
-      .filter(b => b.status === 'pending')
-      .reduce((sum, b) => sum + b.amount, 0);
-
-    paidBillsTotal = bills
-      .filter(b => b.status === 'paid')
-      .reduce((sum, b) => sum + b.amount, 0);
+    const now = new Date();
+    const yearStr = now.getFullYear().toString();
+    const monthStr = String(now.getMonth() + 1).padStart(2, '0');
+    currentMonthKey = `${yearStr}-${monthStr}`;
+    refTime = now.getTime();
   }
 
-  // 3. Comprometido a 30 días (Suma de saldos pendientes con fecha de pago dentro de los próximos 30 días o vencidas)
-  const refTime = refDate.getTime();
-  const thirtyDaysLater = refTime + 30 * 24 * 60 * 60 * 1000;
+  // 1. Proyecciones mensuales (agrupadas por fecha de pago / cuotas y egresos del mes)
+  const projections = calculateMonthlyExpenditureProjections(bills, {}, payments, undefined, undefined, creditTerms, expenses);
+  const projThisMonth = projections.find(p => p.monthKey === currentMonthKey);
 
-  const committed30DaysTotal = bills.reduce((sum, b) => {
-    const paidForBill = payments.length > 0 
-      ? payments.filter(p => p.billId === b.id).reduce((s, p) => s + p.amount, 0)
-      : (b.status === 'paid' ? b.amount : 0);
+  // Comprado este mes (Erogaciones totales proyectadas del mes actual)
+  const purchasedThisMonthTotal = projThisMonth ? projThisMonth.total : 0;
 
-    const remaining = Math.max(0, b.amount - paidForBill);
-    if (remaining <= 0) return sum;
+  // Facturas pagadas este mes (solo total pagado de facturas en el mes, sin sumar gastos)
+  const paidBillsTotal = projThisMonth ? projThisMonth.totalPagado : 0;
+  const pendingBillsTotal = projThisMonth ? projThisMonth.totalAdeudado : 0;
 
-    const dueDateStr = b.paymentDate || b.date;
-    if (!dueDateStr) return sum + remaining;
+  // 2. Comprometido a 30 días (Total adeudado proyectado a vencer en el próximo mes / próximos 30 días)
+  const [yearStr, monthStr] = currentMonthKey.split('-');
+  let nextYear = parseInt(yearStr, 10);
+  let nextMonth = parseInt(monthStr, 10) + 1;
+  if (nextMonth > 12) {
+    nextMonth = 1;
+    nextYear++;
+  }
+  const nextMonthKey = `${nextYear}-${String(nextMonth).padStart(2, '0')}`;
+  const projNextMonth = projections.find(p => p.monthKey === nextMonthKey);
 
-    const dueTime = new Date(dueDateStr).getTime();
-    if (isNaN(dueTime) || dueTime <= thirtyDaysLater) {
-      return sum + remaining;
-    }
-
-    return sum;
-  }, 0);
+  const committed30DaysTotal = projNextMonth ? projNextMonth.totalAdeudado : 0;
 
   const approvedQuotesTotal = quotes
     .filter(q => q.status === 'approved')
@@ -857,6 +848,20 @@ export function prepareDuplicatedExpenseInput(expense: ExpenseRecord): Omit<Expe
     note: expense.note || '',
     voucherFile: undefined,
     voucherUrl: undefined
+  };
+}
+
+export function getDeleteBillConfirmationDetails(bill: Partial<SupplierBill>): {
+  title: string;
+  message: string;
+} {
+  const formattedNumber = bill.invoiceNumber
+    ? formatInvoiceFullNumber({ documentType: bill.documentType, invoiceNumber: bill.invoiceNumber })
+    : 'comprobante seleccionado';
+  const supplier = bill.supplierName ? ` (${bill.supplierName})` : '';
+  return {
+    title: 'Confirmar eliminación de factura',
+    message: `¿Está seguro de que desea eliminar la factura N° ${formattedNumber}${supplier}? Esta acción eliminará el comprobante y todos sus pagos asociados.`
   };
 }
 

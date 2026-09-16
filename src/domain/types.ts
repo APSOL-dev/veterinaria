@@ -155,6 +155,8 @@ export interface Product {
   minStock: number;
   price: number;
   barcode?: string;
+  priceLastUpdated?: string; // YYYY-MM-DD
+  updateFrequencyDays?: number; // Frecuencia de actualización recomendada en días
 }
 
 export interface ServiceCatalogItem {
@@ -319,6 +321,8 @@ export interface BillItem {
   unitPrice: number;
   discountPercent: number;
   subtotal?: number;
+  appointmentId?: string;
+  appointmentType?: 'medical' | 'grooming';
 }
 
 export type SupplierPaymentMethod = 'Efectivo' | 'Transferencia' | 'Cheque' | 'Tarjeta' | 'Otro';
@@ -355,4 +359,6 @@ export interface BillReceipt {
   taxAmount: number;
   total: number;
   totalAmount: number;
+  voucherName?: string;
+  voucherUrl?: string;
 }

@@ -21,16 +21,18 @@ interface NewConsultationViewProps {
     attachments?: string[];
     attachmentUrls?: string[];
   }) => void;
+  currentVetName?: string;
 }
 
 export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
   patients,
   selectedPatient,
   onCancel,
-  onSaveConsultation
+  onSaveConsultation,
+  currentVetName = 'Dr. J. Silva'
 }) => {
   const [targetPatientId, setTargetPatientId] = useState<string>(selectedPatient.id);
-  const [vetName, setVetName] = useState('Dr. J. Silva');
+  const [vetName, setVetName] = useState(currentVetName || 'Dr. J. Silva');
   const [vetLicenseNumber, setVetLicenseNumber] = useState('MP 8472-VET');
   const [notes, setNotes] = useState('');
   const [showPrescription, setShowPrescription] = useState(false);
@@ -227,7 +229,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
                 type="text"
                 value={vetLicenseNumber}
                 onChange={(e) => setVetLicenseNumber(e.target.value)}
-                placeholder="Ej. MP 8472-VET"
+                placeholder=""
                 className="bg-surface-container border border-outline-variant/80 rounded-lg py-1 px-2.5 text-on-surface font-semibold text-xs outline-none focus:ring-2 focus:ring-secondary shadow-xs w-32"
               />
             </div>

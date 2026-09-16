@@ -146,7 +146,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ej. Max, Luna..."
+                placeholder=""
                 required
                 className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs"
               />
@@ -175,7 +175,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                 type="text"
                 value={breed}
                 onChange={(e) => setBreed(e.target.value)}
-                placeholder="Ej. Labrador, Mestizo..."
+                placeholder=""
                 className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs"
               />
             </div>
@@ -278,7 +278,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                     type="text"
                     value={ownerName}
                     onChange={(e) => setOwnerName(e.target.value)}
-                    placeholder="Ej. Ana Gómez..."
+                    placeholder=""
                     required={tutorMode === 'new'}
                     className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs"
                   />
@@ -289,7 +289,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                     type="text"
                     value={ownerPhone}
                     onChange={(e) => setOwnerPhone(e.target.value)}
-                    placeholder="Ej. +54 9 11 1234-5678"
+                    placeholder=""
                     className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs"
                   />
                 </div>

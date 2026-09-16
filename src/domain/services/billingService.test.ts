@@ -4,8 +4,10 @@ import {
   calculateItemSubtotal, 
   calculateBillSummary, 
   processCheckout,
+  generateReceiptNumber,
   formatPriceInputDisplay,
-  parsePriceInput
+  parsePriceInput,
+  determineAppointmentsToComplete
 } from './billingService';
 
 describe('billingService', () => {
@@ -143,6 +145,39 @@ describe('billingService', () => {
       expect(result.stockMovements[0].type).toBe('sale');
     });
 
+    it('attaches voucher file metadata to receipt when provided', () => {
+      const result = processCheckout({
+        patientId: 'p1',
+        patientName: 'Rocky',
+        ownerName: 'Carlos Mendoza',
+        documentType: 'factura-b',
+        emitAfip: true,
+        paymentMethod: 'transferencia',
+        items,
+        productsCatalog,
+        voucherName: 'factura_proveedor_123.pdf',
+        voucherUrl: 'data:application/pdf;base64,sample'
+      });
+
+      expect(result.receipt.voucherName).toBe('factura_proveedor_123.pdf');
+      expect(result.receipt.voucherUrl).toBe('data:application/pdf;base64,sample');
+    });
+
+    it('defaults ownerName to Sin tutor if empty or whitespace', () => {
+      const result = processCheckout({
+        patientId: 'p1',
+        patientName: 'Rocky',
+        ownerName: '   ',
+        documentType: 'factura-c',
+        emitAfip: false,
+        paymentMethod: 'efectivo',
+        items,
+        productsCatalog
+      });
+
+      expect(result.receipt.ownerName).toBe('Sin tutor');
+    });
+
     it('emits Remito without AFIP CAE but STILL deducts product stock', () => {
       const result = processCheckout({
         patientId: 'p1',
@@ -224,6 +259,147 @@ describe('billingService', () => {
       expect(parsePriceInput('invalid')).toBe(0);
       expect(parsePriceInput('15000')).toBe(15000);
       expect(parsePriceInput('-500')).toBe(0);
+    });
+  });
+
+  describe('generateReceiptNumber', () => {
+    it('formats document type with custom POS number and padded invoice number', () => {
+      const num1 = generateReceiptNumber('factura-c', '1', '2049');
+      expect(num1).toBe('FC-C-0001-00002049');
+
+      const num2 = generateReceiptNumber('factura-b', '0002', '8261');
+      expect(num2).toBe('FC-B-0002-00008261');
+    });
+
+    it('defaults POS number to 0001 if empty', () => {
+      const num = generateReceiptNumber('factura-a', '', '500');
+      expect(num).toBe('FC-A-0001-00000500');
+    });
+  });
+
+  describe('determineAppointmentsToComplete', () => {
+    const patId = 'pat-100';
+
+    const medicalAppts = [
+      {
+        id: 'med-1',
+        patientId: patId,
+        patientName: 'Firulais',
+        species: 'Canino' as const,
+        breed: 'Labrador',
+        ownerName: 'Juan Pérez',
+        date: '2026-09-16',
+        time: '10:00',
+        durationMinutes: 30,
+        type: 'Consulta General' as const,
+        reason: 'Control rutinario',
+        vetName: 'Dr. López',
+        status: 'confirmed' as const
+      }
+    ];
+
+    const groomingAppts = [
+      {
+        id: 'groom-1',
+        patientId: patId,
+        patientName: 'Firulais',
+        species: 'Canino' as const,
+        breed: 'Labrador',
+        ownerName: 'Juan Pérez',
+        serviceId: 'srv-groom',
+        serviceName: 'Corte y Baño',
+        date: '2026-09-16',
+        time: '14:00',
+        durationMinutes: 60,
+        price: 12000,
+        status: 'confirmed' as const
+      }
+    ];
+
+    it('should complete ONLY the grooming appointment when only grooming is billed', () => {
+      const groomingItems: BillItem[] = [
+        {
+          id: 'item-g1',
+          type: 'service',
+          description: 'Corte y Baño',
+          category: 'Servicio agendado',
+          quantity: 1,
+          unitPrice: 12000,
+          discountPercent: 0,
+          appointmentId: 'groom-1',
+          appointmentType: 'grooming'
+        }
+      ];
+
+      const res = determineAppointmentsToComplete(groomingItems, patId, medicalAppts, groomingAppts);
+      expect(res.medicalIdsToComplete).toEqual([]);
+      expect(res.groomingIdsToComplete).toEqual(['groom-1']);
+    });
+
+    it('should complete ONLY the medical appointment when only medical is billed', () => {
+      const medicalItems: BillItem[] = [
+        {
+          id: 'item-m1',
+          type: 'service',
+          description: 'Consulta Médica',
+          category: 'Servicio agendado',
+          quantity: 1,
+          unitPrice: 15000,
+          discountPercent: 0,
+          appointmentId: 'med-1',
+          appointmentType: 'medical'
+        }
+      ];
+
+      const res = determineAppointmentsToComplete(medicalItems, patId, medicalAppts, groomingAppts);
+      expect(res.medicalIdsToComplete).toEqual(['med-1']);
+      expect(res.groomingIdsToComplete).toEqual([]);
+    });
+
+    it('should complete BOTH appointments when both are billed in the same receipt', () => {
+      const mixedItems: BillItem[] = [
+        {
+          id: 'item-m1',
+          description: 'Consulta Médica',
+          category: 'Servicio agendado',
+          quantity: 1,
+          unitPrice: 15000,
+          discountPercent: 0,
+          appointmentId: 'med-1',
+          appointmentType: 'medical'
+        },
+        {
+          id: 'item-g1',
+          description: 'Corte y Baño',
+          category: 'Servicio agendado',
+          quantity: 1,
+          unitPrice: 12000,
+          discountPercent: 0,
+          appointmentId: 'groom-1',
+          appointmentType: 'grooming'
+        }
+      ];
+
+      const res = determineAppointmentsToComplete(mixedItems, patId, medicalAppts, groomingAppts);
+      expect(res.medicalIdsToComplete).toEqual(['med-1']);
+      expect(res.groomingIdsToComplete).toEqual(['groom-1']);
+    });
+
+    it('should complete NEITHER appointment when only products are billed', () => {
+      const productItems: BillItem[] = [
+        {
+          id: 'item-p1',
+          type: 'product',
+          description: 'Shampoo Peluquería 500ml',
+          quantity: 1,
+          unitPrice: 4500,
+          discountPercent: 0
+        }
+      ];
+
+      const res = determineAppointmentsToComplete(productItems, patId, medicalAppts, groomingAppts);
+      expect(res.medicalIdsToComplete).toEqual([]);
+      expect(res.groomingIdsToComplete).toEqual([]);
     });
   });
 });

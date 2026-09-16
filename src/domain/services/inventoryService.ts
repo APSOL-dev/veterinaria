@@ -126,11 +126,14 @@ export function processStockReceiptFromBill(bill: SupplierBill, products: Produc
     if (existingIndex >= 0) {
       const p = updatedProducts[existingIndex];
       const pStock = Number(p.currentStock) || 0;
-      const nextPrice = item.updateCatalogPrice && itemCost > 0 ? itemCost : p.price;
+      const isPriceUpdated = item.updateCatalogPrice && itemCost > 0;
+      const nextPrice = isPriceUpdated ? itemCost : p.price;
+      const priceLastUpdated = isPriceUpdated ? (bill.date || new Date().toISOString().substring(0, 10)) : p.priceLastUpdated;
       updatedProducts[existingIndex] = {
         ...p,
         currentStock: pStock + itemQty,
-        price: nextPrice
+        price: nextPrice,
+        priceLastUpdated
       };
     } else {
       // Check if we already created a new product in this loop for the same productName
@@ -138,11 +141,14 @@ export function processStockReceiptFromBill(bill: SupplierBill, products: Produc
       if (newlyCreatedIndex >= 0) {
         const p = newProductsCreated[newlyCreatedIndex];
         const pStock = Number(p.currentStock) || 0;
-        const nextPrice = item.updateCatalogPrice && itemCost > 0 ? itemCost : p.price;
+        const isPriceUpdated = item.updateCatalogPrice && itemCost > 0;
+        const nextPrice = isPriceUpdated ? itemCost : p.price;
+        const priceLastUpdated = isPriceUpdated ? (bill.date || new Date().toISOString().substring(0, 10)) : p.priceLastUpdated;
         newProductsCreated[newlyCreatedIndex] = {
           ...p,
           currentStock: pStock + itemQty,
-          price: nextPrice
+          price: nextPrice,
+          priceLastUpdated
         };
       } else {
         const newProduct: Product = {
@@ -152,7 +158,9 @@ export function processStockReceiptFromBill(bill: SupplierBill, products: Produc
           category: 'Insumos Clínicos',
           currentStock: itemQty,
           minStock: 5,
-          price: itemCost
+          price: itemCost,
+          priceLastUpdated: bill.date || new Date().toISOString().substring(0, 10),
+          updateFrequencyDays: 30
         };
         newProductsCreated.push(newProduct);
       }
@@ -160,4 +168,28 @@ export function processStockReceiptFromBill(bill: SupplierBill, products: Produc
   }
 
   return [...updatedProducts, ...newProductsCreated];
+}
+
+export function createNewProductRecord(productData: Omit<Product, 'id' | 'sku'> & { sku?: string }): Product {
+  if (!productData.name || !productData.name.trim()) {
+    throw new Error('El nombre del producto es obligatorio');
+  }
+
+  const currentStockNum = Number(productData.currentStock);
+  const minStockNum = Number(productData.minStock);
+  const priceNum = Number(productData.price);
+
+  return {
+    ...productData,
+    id: 'prod-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+    sku: productData.sku?.trim() || `VET-PRD-${Math.floor(100 + Math.random() * 900)}`,
+    name: productData.name.trim(),
+    category: productData.category || 'Medicamentos',
+    currentStock: isNaN(currentStockNum) || currentStockNum < 0 ? 0 : currentStockNum,
+    minStock: isNaN(minStockNum) || minStockNum < 0 ? 0 : minStockNum,
+    price: isNaN(priceNum) || priceNum < 0 ? 0 : priceNum,
+    barcode: productData.barcode?.trim() || undefined,
+    priceLastUpdated: productData.priceLastUpdated || new Date().toISOString().substring(0, 10),
+    updateFrequencyDays: productData.updateFrequencyDays || 30
+  };
 }

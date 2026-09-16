@@ -67,13 +67,8 @@ async function getInstanceName() {
   const { instance } = getEnv();
   if (resolvedInstanceName) return resolvedInstanceName;
   if (instance && instance !== 'DEFAULT') {
-    try {
-      const data = await apiRequest('GET', `/instance/connectionState/${encodeURIComponent(instance)}`);
-      if (data && !JSON.stringify(data).toLowerCase().includes('does not exist')) {
-        resolvedInstanceName = instance;
-        return resolvedInstanceName;
-      }
-    } catch (_) {}
+    resolvedInstanceName = instance;
+    return resolvedInstanceName;
   }
 
   try {

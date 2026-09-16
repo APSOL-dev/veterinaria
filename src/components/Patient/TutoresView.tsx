@@ -558,7 +558,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                   step="0.01"
                   value={payAmount}
                   onChange={(e) => setPayAmount(Number(e.target.value))}
-                  placeholder="Ej. 10000"
+                  placeholder=""
                   required
                   className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-sm focus:border-[#9A7DB8]"
                 />
@@ -570,7 +570,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                   type="text"
                   value={payConcept}
                   onChange={(e) => setPayConcept(e.target.value)}
-                  placeholder="Ej. Pago parcial de servicios de clínica"
+                  placeholder=""
                   className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8]"
                 />
               </div>
@@ -634,7 +634,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                       type="text"
                       value={editOwnerPhone}
                       onChange={(e) => setEditOwnerPhone(e.target.value)}
-                      placeholder="Ej. +5493425681359"
+                      placeholder=""
                       className="w-full bg-surface-container border border-outline-variant/80 rounded-lg p-2 text-on-surface font-semibold outline-none focus:ring-2 focus:ring-secondary"
                     />
                   </div>
@@ -644,7 +644,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                       type="text"
                       value={editAddress}
                       onChange={(e) => setEditAddress(e.target.value)}
-                      placeholder="Ej. San Juan 450"
+                      placeholder=""
                       className="w-full bg-surface-container border border-outline-variant/80 rounded-lg p-2 text-on-surface font-semibold outline-none focus:ring-2 focus:ring-secondary"
                     />
                   </div>
@@ -792,7 +792,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                         type="text"
                         value={newPetName}
                         onChange={(e) => setNewPetName(e.target.value)}
-                        placeholder="Ej. Fido"
+                        placeholder=""
                         className="w-full bg-white border border-purple-300 rounded-md p-1.5 font-medium outline-none text-xs focus:border-[#5C3C7B]"
                       />
                     </div>
@@ -817,7 +817,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                         type="text"
                         value={newPetBreed}
                         onChange={(e) => setNewPetBreed(e.target.value)}
-                        placeholder="Ej. Poodle"
+                        placeholder=""
                         className="w-full bg-white border border-purple-300 rounded-md p-1.5 font-medium outline-none text-xs focus:border-[#5C3C7B]"
                       />
                     </div>
@@ -849,7 +849,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                         step="0.1"
                         value={newPetWeightKg}
                         onChange={(e) => setNewPetWeightKg(e.target.value === '' ? '' : Number(e.target.value))}
-                        placeholder="Ej. 8.5"
+                        placeholder=""
                         className="w-full bg-white border border-purple-300 rounded-md p-1.5 font-medium outline-none text-xs focus:border-[#5C3C7B]"
                       />
                     </div>

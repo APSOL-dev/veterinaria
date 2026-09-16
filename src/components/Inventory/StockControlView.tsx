@@ -68,6 +68,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   const [editCategory, setEditCategory] = useState<ProductCategory>('Medicamentos');
   const [editPrice, setEditPrice] = useState(0);
   const [editMinStock, setEditMinStock] = useState(5);
+  const [editUpdateFrequency, setEditUpdateFrequency] = useState<number>(30);
 
   // Stock Entry form state
   const [entryProductId, setEntryProductId] = useState(products[0]?.id || '');
@@ -85,6 +86,19 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   const [newInitialStock, setNewInitialStock] = useState(10);
   const [newMinStock, setNewMinStock] = useState(5);
   const [newPrice, setNewPrice] = useState(15000);
+  const [newUpdateFrequency, setNewUpdateFrequency] = useState<number>(30);
+
+  const handleOpenNewProduct = () => {
+    setNewSku('');
+    setNewName('');
+    setNewBarcode('');
+    setNewCategory('Medicamentos');
+    setNewInitialStock(10);
+    setNewMinStock(5);
+    setNewPrice(15000);
+    setNewUpdateFrequency(30);
+    setShowNewProductModal(true);
+  };
 
   const handleOpenEditProduct = (prod: Product) => {
     setSelectedProduct(prod);
@@ -93,19 +107,27 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
     setEditCategory(prod.category);
     setEditPrice(prod.price);
     setEditMinStock(prod.minStock);
+    setEditUpdateFrequency(prod.updateFrequencyDays || 30);
     setShowEditProductModal(true);
   };
 
   const handleEditProductSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProduct || !editName.trim()) return;
+    const priceChanged = Number(editPrice) !== selectedProduct.price;
+    const priceLastUpdated = priceChanged
+      ? new Date().toISOString().substring(0, 10)
+      : (selectedProduct.priceLastUpdated || new Date().toISOString().substring(0, 10));
+
     if (onUpdateProduct) {
       onUpdateProduct(selectedProduct.id, {
         sku: editSku,
         name: editName,
         category: editCategory,
         price: editPrice,
-        minStock: editMinStock
+        minStock: editMinStock,
+        priceLastUpdated,
+        updateFrequencyDays: editUpdateFrequency
       });
     }
     setShowEditProductModal(false);
@@ -198,7 +220,9 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
       currentStock: Number(newInitialStock),
       minStock: Number(newMinStock),
       price: Number(newPrice),
-      barcode: newBarcode || undefined
+      barcode: newBarcode || undefined,
+      priceLastUpdated: new Date().toISOString().substring(0, 10),
+      updateFrequencyDays: Number(newUpdateFrequency) || 30
     });
     setNewName('');
     setNewSku('');
@@ -257,7 +281,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <span>Entrada con factura</span>
             </button>
             <button
-              onClick={() => setShowNewProductModal(true)}
+              onClick={handleOpenNewProduct}
               className="bg-primary text-on-primary hover:bg-primary-container transition-all px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
@@ -287,7 +311,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar por nombre, SKU..."
+                  placeholder="Buscar por nombre..."
                   className="bg-transparent text-xs text-on-surface outline-none w-full font-medium"
                 />
               </div>
@@ -317,12 +341,13 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <table className="w-full text-left border-collapse font-body-md text-xs">
                 <thead>
                   <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
-                    <th className="p-sm px-md rounded-tl-lg">SKU / código</th>
-                    <th className="p-sm px-md">Producto</th>
+                    <th className="p-sm px-md rounded-tl-lg">Producto</th>
                     <th className="p-sm px-md">Categoría</th>
                     <th className="p-sm px-md text-right">Stock actual</th>
                     <th className="p-sm px-md text-right">Min.</th>
                     <th className="p-sm px-md text-right">Precio</th>
+                    <th className="p-sm px-md text-center">Última actualización</th>
+                    <th className="p-sm px-md text-center">Frecuencia / Vencimiento</th>
                     <th className="p-sm px-md text-center">Estado</th>
                     <th className="p-sm px-md rounded-tr-lg text-right">Acciones</th>
                   </tr>
@@ -331,13 +356,15 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   {filteredProducts.map((p) => {
                     const isOutOfStock = p.currentStock === 0;
                     const isLowStock = p.currentStock > 0 && p.currentStock <= p.minStock;
+                    const priceUpdateInfo = getPriceUpdateStatusInfo(
+                      p.priceLastUpdated || new Date().toISOString().substring(0, 10),
+                      p.updateFrequencyDays || 30
+                    );
 
                     return (
                       <tr key={p.id} className="bg-surface-container-lowest hover:bg-surface-container transition-colors group border-b border-surface-container-low">
-                        <td className="p-sm px-md font-mono text-[11px] text-on-surface-variant">{p.sku}</td>
                         <td className="p-sm px-md font-semibold text-primary">
                           {p.name}
-                          {p.barcode && <div className="text-[10px] text-on-surface-variant font-mono">BC: {p.barcode}</div>}
                         </td>
                         <td className="p-sm px-md">
                           <span className="inline-flex items-center gap-1 bg-surface-container-high text-on-surface px-2 py-0.5 rounded text-[11px] font-medium">
@@ -351,6 +378,23 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                         </td>
                         <td className="p-sm px-md text-right text-on-surface-variant">{p.minStock}</td>
                         <td className="p-sm px-md text-right font-medium">${p.price.toLocaleString('es-AR')}</td>
+                        <td className="p-sm px-md text-center text-on-surface-variant">{p.priceLastUpdated || 'Sin registro'}</td>
+                        <td className="p-sm px-md text-center">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              Cada {p.updateFrequencyDays || 30} días
+                            </span>
+                            {priceUpdateInfo.isExpired ? (
+                              <span className="inline-flex px-2 py-0.5 bg-[#FDEDEC] text-[#C0392B] border border-red-200 rounded-full text-[10px] font-semibold" title={`Vencido (hoy > última actualización + ${p.updateFrequencyDays || 30} días)`}>
+                                Vencido ({priceUpdateInfo.daysDifference}d)
+                              </span>
+                            ) : (
+                              <span className="inline-flex px-2 py-0.5 bg-[#E8F5E9] text-[#27AE60] border border-green-200 rounded-full text-[10px] font-semibold" title="Precio actualizado dentro de la frecuencia recomendada">
+                                Vigente
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="p-sm px-md text-center">
                           {!isLowStock && !isOutOfStock && (
                             <span className="inline-flex px-2.5 py-0.5 bg-[#E8F5E9] text-[#1B5E20] rounded-full text-[10px] font-semibold">
@@ -595,6 +639,97 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         </div>
       )}
 
+      {/* New Product Modal */}
+      {showNewProductModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
+            <div className="flex justify-between items-center border-b pb-sm">
+              <h3 className="font-headline-sm text-primary text-base font-semibold">Nuevo producto del inventario</h3>
+              <button onClick={() => setShowNewProductModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleNewProductSubmit} className="flex flex-col gap-xs text-xs">
+              <label className="font-semibold text-xs text-slate-700 block">Nombre del producto *</label>
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder=""
+                required
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
+              />
+
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Categoría *</label>
+              <select
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value as ProductCategory)}
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
+              >
+                <option value="Medicamentos">Medicamentos</option>
+                <option value="Alimentación">Alimentación</option>
+                <option value="Accesorios">Accesorios</option>
+                <option value="Insumos Clínicos">Insumos Clínicos</option>
+              </select>
+
+              <div className="grid grid-cols-2 gap-xs mt-xs">
+                <div>
+                  <label className="font-semibold text-xs text-slate-700 block">Stock inicial *</label>
+                  <input
+                    type="number"
+                    value={newInitialStock}
+                    onChange={(e) => setNewInitialStock(Number(e.target.value))}
+                    min={0}
+                    required
+                    className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium w-full"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-xs text-slate-700 block">Stock mínimo (Alerta) *</label>
+                  <input
+                    type="number"
+                    value={newMinStock}
+                    onChange={(e) => setNewMinStock(Number(e.target.value))}
+                    min={0}
+                    required
+                    className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium w-full"
+                  />
+                </div>
+              </div>
+
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Precio de venta ($) *</label>
+              <input
+                type="number"
+                value={newPrice}
+                onChange={(e) => setNewPrice(Number(e.target.value))}
+                min={0}
+                required
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-semibold text-base"
+              />
+
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización del precio *</label>
+              <select
+                value={newUpdateFrequency}
+                onChange={(e) => setNewUpdateFrequency(Number(e.target.value))}
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
+              >
+                <option value={15}>Cada 15 días</option>
+                <option value={30}>Cada 30 días (1 mes)</option>
+                <option value={60}>Cada 60 días (2 meses)</option>
+                <option value={90}>Cada 90 días (3 meses)</option>
+                <option value={180}>Cada 180 días (6 meses)</option>
+                <option value={365}>Cada 365 días (1 año)</option>
+              </select>
+
+              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary-container shadow-sm cursor-pointer">
+                Crear producto
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Edit Product Modal */}
       {showEditProductModal && selectedProduct && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
@@ -607,15 +742,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
             </div>
 
             <form onSubmit={handleEditProductSubmit} className="flex flex-col gap-xs text-xs">
-              <label className="font-semibold text-xs text-slate-700 block">Código SKU</label>
-              <input
-                type="text"
-                value={editSku}
-                onChange={(e) => setEditSku(e.target.value)}
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
-              />
-
-              <label className="font-semibold text-xs text-slate-700 block mt-xs">Nombre del producto *</label>
+              <label className="font-semibold text-xs text-slate-700 block">Nombre del producto *</label>
               <input
                 type="text"
                 value={editName}
@@ -656,6 +783,20 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización del precio *</label>
+              <select
+                value={editUpdateFrequency}
+                onChange={(e) => setEditUpdateFrequency(Number(e.target.value))}
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
+              >
+                <option value={15}>Cada 15 días</option>
+                <option value={30}>Cada 30 días (1 mes)</option>
+                <option value={60}>Cada 60 días (2 meses)</option>
+                <option value={90}>Cada 90 días (3 meses)</option>
+                <option value={180}>Cada 180 días (6 meses)</option>
+                <option value={365}>Cada 365 días (1 año)</option>
+              </select>
+
               <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary-container shadow-sm cursor-pointer">
                 Guardar cambios del producto
               </button>
@@ -683,7 +824,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 type="text"
                 value={serviceFormName}
                 onChange={(e) => setServiceFormName(e.target.value)}
-                placeholder="Ej. Consulta Especialista, Baño Perros Grandes..."
+                placeholder=""
                 required
                 className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
