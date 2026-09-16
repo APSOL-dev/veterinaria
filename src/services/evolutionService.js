@@ -148,13 +148,46 @@ export const evolutionService = {
     const instance = await getInstanceName();
     return await apiRequest('POST', `/chat/findChats/${encodeURIComponent(instance)}`, {});
   },
-  async fetchMessages(remoteJid, page = 1, limit = 50) {
+  /**
+   * @param {string} remoteJid
+   * @param {number} [page=1]
+   * @param {number} [limit=50]
+   * @param {string|null} [altJid=null]
+   */
+  async fetchMessages(remoteJid, page = 1, limit = 50, altJid = null) {
     const instance = await getInstanceName();
-    return await apiRequest('POST', `/chat/findMessages/${encodeURIComponent(instance)}`, {
-      where: { key: { remoteJid } },
-      limit,
-      page,
-    });
+    const fetchForJid = async (jid) => {
+      if (!jid) return [];
+      try {
+        const res = await apiRequest('POST', `/chat/findMessages/${encodeURIComponent(instance)}`, {
+          where: { key: { remoteJid: jid } },
+          limit,
+          page,
+        });
+        return Array.isArray(res) ? res : (res?.messages?.records || res?.records || res?.data || []);
+      } catch (err) {
+        console.warn(`Error fetching messages for JID ${jid}:`, err);
+        return [];
+      }
+    };
+
+    if (altJid && altJid !== remoteJid) {
+      const [list1, list2] = await Promise.all([
+        fetchForJid(remoteJid),
+        fetchForJid(altJid)
+      ]);
+      const map = new Map();
+      [...list1, ...list2].forEach(m => {
+        const id = m.key?.id || m.id;
+        if (id && !map.has(id)) {
+          map.set(id, m);
+        }
+      });
+      return Array.from(map.values()).sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0));
+    }
+
+    const list = await fetchForJid(remoteJid);
+    return list.sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0));
   },
   async sendTextMessage(number, text) {
     const instance = await getInstanceName();

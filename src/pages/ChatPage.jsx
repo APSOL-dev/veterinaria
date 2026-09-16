@@ -288,37 +288,70 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
 
   useEffect(() => {
     loadChats();
+    if (connectionState !== 'open') return;
+    const interval = setInterval(() => {
+      loadChats();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [loadChats, connectionState]);
 
   // 3. Cargar Mensajes del Chat Seleccionado
-  const loadMessagesForChat = useCallback(async (remoteJid) => {
+  const loadMessagesForChat = useCallback(async (remoteJid, altJid = null) => {
     if (!remoteJid || connectionState !== 'open' || !config.apiUrl || !config.apiKey || !config.instance) {
       setMessages([]);
       return;
     }
     try {
-      const res = await evolutionService.fetchMessages(remoteJid);
-      const msgList = Array.isArray(res) ? res : (res?.messages?.records || res?.records || res?.data || []);
-      // Ordenar cronológicamente (más antiguo primero)
-      const sorted = [...msgList].sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0));
+      const msgList = await evolutionService.fetchMessages(remoteJid, 1, 50, altJid);
+      const sorted = Array.isArray(msgList) ? msgList : [];
       setMessages(sorted);
       evolutionService.markAsRead(remoteJid).catch(() => {});
+      if (altJid) {
+        evolutionService.markAsRead(altJid).catch(() => {});
+      }
     } catch (err) {
       console.warn('Error fetching messages:', err);
     }
   }, [config.apiUrl, config.apiKey, config.instance, connectionState]);
 
+  const getJidsForChat = useCallback((chat) => {
+    if (!chat) return { primaryJid: null, altJid: null };
+    const primaryJid = chat.remoteJid || chat.id;
+    let altJid = chat.lastMessage?.key?.remoteJidAlt || chat.remoteJidAlt || null;
+
+    if (!altJid && primaryJid?.endsWith('@lid')) {
+      const cleanNum = extractPhoneFromChat(chat);
+      if (cleanNum) {
+        altJid = `${cleanNum}@s.whatsapp.net`;
+      }
+    } else if (!altJid && primaryJid?.endsWith('@s.whatsapp.net')) {
+      const cleanNum = extractPhoneFromChat(chat);
+      if (cleanNum) {
+        const matchingLidChat = chats.find(c => 
+          c.remoteJid?.endsWith('@lid') && 
+          (extractPhoneFromChat(c) === cleanNum || c.lastMessage?.key?.remoteJidAlt?.includes(cleanNum))
+        );
+        if (matchingLidChat?.remoteJid) {
+          altJid = matchingLidChat.remoteJid;
+        }
+      }
+    }
+    return { primaryJid, altJid };
+  }, [chats]);
+
   useEffect(() => {
     if (!selectedChat) return;
+    const { primaryJid, altJid } = getJidsForChat(selectedChat);
+
     setIsLoadingMessages(true);
-    loadMessagesForChat(selectedChat.remoteJid || selectedChat.id).finally(() => setIsLoadingMessages(false));
+    loadMessagesForChat(primaryJid, altJid).finally(() => setIsLoadingMessages(false));
 
     const pollInterval = setInterval(() => {
-      loadMessagesForChat(selectedChat.remoteJid || selectedChat.id);
+      loadMessagesForChat(primaryJid, altJid);
     }, 4000);
 
     return () => clearInterval(pollInterval);
-  }, [selectedChat, loadMessagesForChat]);
+  }, [selectedChat, loadMessagesForChat, getJidsForChat]);
 
   // Auto-scroll al final del chat
   useEffect(() => {
@@ -388,12 +421,13 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
     setMessageText('');
     setIsSending(true);
 
-    const remoteJid = selectedChat.remoteJid || selectedChat.id;
-    const cleanNumber = remoteJid.replace(/\D/g, '');
+    const { primaryJid, altJid } = getJidsForChat(selectedChat);
+    const cleanNumber = extractPhoneFromChat(selectedChat) || selectedChat.rawNum || (primaryJid.endsWith('@g.us') ? primaryJid : primaryJid.replace(/\D/g, ''));
+    const targetToSend = primaryJid.endsWith('@g.us') ? primaryJid : (cleanNumber || primaryJid);
 
     // Optimistic UI insert
     const tempMsg = {
-      key: { id: 'temp-' + Date.now(), fromMe: true, remoteJid },
+      key: { id: 'temp-' + Date.now(), fromMe: true, remoteJid: primaryJid },
       message: { conversation: textToSend },
       messageTimestamp: Math.floor(Date.now() / 1000),
       status: 'PENDING'
@@ -402,8 +436,8 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
 
     try {
       if (config.apiUrl && config.apiKey) {
-        await evolutionService.sendTextMessage(remoteJid, textToSend);
-        loadMessagesForChat(remoteJid);
+        await evolutionService.sendTextMessage(targetToSend, textToSend);
+        loadMessagesForChat(primaryJid, altJid);
       }
     } catch (err) {
       console.error('Error enviando mensaje:', err);
@@ -440,12 +474,14 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
         reader.onloadend = async () => {
           const base64Audio = reader.result.split(',')[1];
           if (selectedChat && base64Audio) {
-            const remoteJid = selectedChat.remoteJid || selectedChat.id;
+            const { primaryJid, altJid } = getJidsForChat(selectedChat);
+            const cleanNumber = extractPhoneFromChat(selectedChat) || selectedChat.rawNum || (primaryJid.endsWith('@g.us') ? primaryJid : primaryJid.replace(/\D/g, ''));
+            const targetToSend = primaryJid.endsWith('@g.us') ? primaryJid : (cleanNumber || primaryJid);
             try {
               setIsSending(true);
               if (config.apiUrl && config.apiKey) {
-                await evolutionService.sendAudioMessage(remoteJid, base64Audio);
-                loadMessagesForChat(remoteJid);
+                await evolutionService.sendAudioMessage(targetToSend, base64Audio);
+                loadMessagesForChat(primaryJid, altJid);
               }
             } catch (err) {
               console.error('Error enviando nota de voz:', err);
@@ -500,16 +536,17 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
     reader.readAsDataURL(file);
     reader.onloadend = async () => {
       const base64Media = reader.result.split(',')[1];
-      const remoteJid = selectedChat.remoteJid || selectedChat.id;
-      const cleanNumber = remoteJid.replace(/\D/g, '');
+      const { primaryJid, altJid } = getJidsForChat(selectedChat);
+      const cleanNumber = extractPhoneFromChat(selectedChat) || selectedChat.rawNum || (primaryJid.endsWith('@g.us') ? primaryJid : primaryJid.replace(/\D/g, ''));
+      const targetToSend = primaryJid.endsWith('@g.us') ? primaryJid : (cleanNumber || primaryJid);
       const isImage = file.type.startsWith('image/');
       const mediatype = isImage ? 'image' : 'document';
 
       try {
         setIsSending(true);
         if (config.apiUrl && config.apiKey) {
-          await evolutionService.sendMediaMessage(remoteJid, base64Media, mediatype, file.name, file.name);
-          loadMessagesForChat(remoteJid);
+          await evolutionService.sendMediaMessage(targetToSend, base64Media, mediatype, file.name, file.name);
+          loadMessagesForChat(primaryJid, altJid);
         }
       } catch (err) {
         console.error('Error enviando archivo:', err);
