@@ -1,11 +1,11 @@
 ## Registro de Pagos a Facturas de Proveedores
 
-**Qué hace:** Permite registrar pagos parciales o totales a facturas de proveedores ya ingresadas en el sistema mediante una ventana lateral deslizante (*PaymentDrawer*). Los pagos se listan en el submódulo "Pagos" dentro del módulo Proveedores.
+**Qué hace:** Permite registrar pagos parciales o totales a facturas de proveedores ya ingresadas en el sistema mediante un modal centrado en pantalla en modo claro (*PaymentDrawer* / Modal de Pago). Los pagos se listan en el submódulo "Pagos" dentro del módulo Proveedores.
 
 **Escenarios cubiertos:**
 
-- **Registrar pago desde el listado de facturas:** Cada fila del listado de facturas tiene un botón (ícono `price_check`) que abre el panel lateral de pago (*drawer*) precompletado con la factura elegida y su saldo restante.
-- **Registrar pago desde el submódulo Pagos:** El botón "Registrar pago" en el header abre el panel lateral con el dropdown para elegir cualquier factura.
+- **Registrar pago desde el listado de facturas:** Cada fila del listado de facturas tiene un botón (ícono `price_check`) que abre el modal centrado de pago precompletado con la factura elegida y su saldo restante.
+- **Registrar pago desde el submódulo Pagos:** El botón "Registrar pago" en el header abre el modal centrado de pago con el dropdown para elegir cualquier factura.
 - **Carga de comprobante de pago:** Permite adjuntar un comprobante digital (PDF o imagen) en el formulario de pago (*drag & drop* o selección manual), almacenando su nombre en `voucherName`.
 - **Visualización de comprobante:** En la tabla del submódulo "Pagos", los pagos con comprobante presentan un indicador/badge con icono de adjunto `attach_file` y el nombre del archivo.
 - **Pago parcial:** Si se registra un monto menor al total de la factura, el badge en la lista de facturas cambia a **PAGO PARCIAL** (naranja).

@@ -70,28 +70,28 @@ export const SearchableSupplierSelect: React.FC<SearchableSupplierSelectProps> =
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
           required={required}
-          className="w-full bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
+          className="w-full bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 font-medium"
         />
         {searchTerm ? (
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-2.5 text-slate-400 hover:text-white p-0.5"
+            className="absolute right-2.5 text-slate-400 hover:text-slate-700 p-0.5"
             title="Limpiar proveedor"
           >
             <span className="material-symbols-outlined text-[16px]">close</span>
           </button>
         ) : (
-          <span className="material-symbols-outlined absolute right-2.5 text-[#CBB5E2] pointer-events-none text-[18px]">
+          <span className="material-symbols-outlined absolute right-2.5 text-slate-500 pointer-events-none text-[18px]">
             search
           </span>
         )}
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-[#1D1426] border border-purple-900/80 rounded-xl shadow-2xl max-h-52 overflow-y-auto font-body-md text-xs">
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-outline-variant/40 rounded-xl shadow-xl max-h-52 overflow-y-auto font-body-md text-xs">
           {filteredSuppliers.length === 0 ? (
-            <div className="p-3 text-slate-400 text-[11px] text-center italic">
+            <div className="p-3 text-slate-500 text-[11px] text-center italic">
               No hay coincidencia. Se registrará nuevo proveedor: "{searchTerm}"
             </div>
           ) : (
@@ -101,13 +101,13 @@ export const SearchableSupplierSelect: React.FC<SearchableSupplierSelectProps> =
                   key={s}
                   type="button"
                   onClick={() => handleSelect(s)}
-                  className={`w-full text-left px-3 py-2 hover:bg-[#2B1D3A] transition-colors cursor-pointer flex items-center justify-between ${
-                    value.toLowerCase().trim() === s.toLowerCase().trim() ? 'bg-[#2B1D3A] text-[#CBB5E2] font-bold' : 'text-slate-200'
+                  className={`w-full text-left px-3 py-2 hover:bg-purple-50 transition-colors cursor-pointer flex items-center justify-between ${
+                    value.toLowerCase().trim() === s.toLowerCase().trim() ? 'bg-purple-50 text-[#5C3C7B] font-bold' : 'text-slate-800'
                   }`}
                 >
-                  <span className="truncate">{s}</span>
+                  <span className="truncate font-medium">{s}</span>
                   {value.toLowerCase().trim() === s.toLowerCase().trim() && (
-                    <span className="material-symbols-outlined text-[16px] text-emerald-400">check</span>
+                    <span className="material-symbols-outlined text-[16px] text-[#5C3C7B]">check</span>
                   )}
                 </button>
               ))}

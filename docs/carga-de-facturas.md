@@ -1,7 +1,7 @@
 ## Carga, Edición y Eliminación de Facturas de Proveedores
 
 **Qué hace:** 
-Este panel lateral deslizante derecho ("Cargar Nueva Factura" / "Editar Factura de Proveedor") en el submódulo **Facturas de compras** permite cargar nuevos comprobantes manualmente o vía procesamiento automático n8n, así como editar o eliminar facturas ya adjuntadas con sincronización directa en Supabase.
+Este modal centrado en pantalla ("Cargar Nueva Factura" / "Editar Factura de Proveedor") en el submódulo **Facturas de compras** permite cargar nuevos comprobantes manualmente o vía procesamiento automático n8n, así como editar o eliminar facturas ya adjuntadas con sincronización directa en Supabase, utilizando un diseño en modo claro.
 
 **Escenarios cubiertos:**
 - **Carga de Factura:** Formulario limpio con selección de archivo PDF/imagen. El archivo adjunto se sube al bucket público `veterinaria-archivos` de Supabase Storage en la carpeta `facturas/`, almacenando su URL pública (`voucher_url`) en la tabla `vetsoft_facturas_proveedores`.

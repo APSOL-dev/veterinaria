@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Product, ProductCategory, ServiceCatalogItem, SupplierBill } from '../../domain/types';
 import { updateServicePrice, toggleServiceStatus, getPriceUpdateStatusInfo } from '../../domain/services/serviceCatalogService';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
+import { AutoResizeTextarea } from '../Common/AutoResizeTextarea';
 import { NewInvoiceDrawer } from '../Suppliers/NewInvoiceDrawer';
 
 interface StockControlViewProps {
@@ -255,7 +256,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
       {/* Top Header */}
       <div className="flex items-center justify-between mb-md">
         <div className="flex flex-col">
-          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">
             {activeSubmodule === 'productos-fisicos' ? 'Inventario — Productos Físicos' : 'Inventario — Catálogo de Servicios'}
           </h1>
           <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
@@ -708,19 +709,16 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-semibold text-base"
               />
 
-              <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización del precio *</label>
-              <select
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización / vencimiento del precio (días) *</label>
+              <input
+                type="number"
+                min={1}
                 value={newUpdateFrequency}
                 onChange={(e) => setNewUpdateFrequency(Number(e.target.value))}
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
-              >
-                <option value={15}>Cada 15 días</option>
-                <option value={30}>Cada 30 días (1 mes)</option>
-                <option value={60}>Cada 60 días (2 meses)</option>
-                <option value={90}>Cada 90 días (3 meses)</option>
-                <option value={180}>Cada 180 días (6 meses)</option>
-                <option value={365}>Cada 365 días (1 año)</option>
-              </select>
+                placeholder="Ej: 30"
+                required
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
+              />
 
               <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary-container shadow-sm cursor-pointer">
                 Crear producto
@@ -783,19 +781,16 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización del precio *</label>
-              <select
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización / vencimiento del precio (días) *</label>
+              <input
+                type="number"
+                min={1}
                 value={editUpdateFrequency}
                 onChange={(e) => setEditUpdateFrequency(Number(e.target.value))}
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
-              >
-                <option value={15}>Cada 15 días</option>
-                <option value={30}>Cada 30 días (1 mes)</option>
-                <option value={60}>Cada 60 días (2 meses)</option>
-                <option value={90}>Cada 90 días (3 meses)</option>
-                <option value={180}>Cada 180 días (6 meses)</option>
-                <option value={365}>Cada 365 días (1 año)</option>
-              </select>
+                placeholder="Ej: 30"
+                required
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
+              />
 
               <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary-container shadow-sm cursor-pointer">
                 Guardar cambios del producto
@@ -843,10 +838,10 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               </select>
 
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Descripción</label>
-              <textarea
+              <AutoResizeTextarea
                 value={serviceFormDesc}
                 onChange={(e) => setServiceFormDesc(e.target.value)}
-                rows={2}
+                minRows={2}
                 placeholder="Detalle o requisitos de la prestación..."
                 className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
@@ -861,21 +856,18 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-semibold text-base"
               />
 
-              <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización del precio *</label>
-              <select
+              <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización / vencimiento del precio (días) *</label>
+              <input
+                type="number"
+                min={1}
                 value={serviceFormFrequency}
                 onChange={(e) => setServiceFormFrequency(Number(e.target.value))}
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
-              >
-                <option value={15}>Cada 15 días</option>
-                <option value={30}>Cada 30 días (1 mes)</option>
-                <option value={60}>Cada 60 días (2 meses)</option>
-                <option value={90}>Cada 90 días (3 meses)</option>
-                <option value={180}>Cada 180 días (6 meses)</option>
-                <option value={365}>Cada 365 días (1 año)</option>
-              </select>
+                placeholder="Ej: 30"
+                required
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
+              />
 
-              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-bold shadow-sm cursor-pointer">
+              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-label-md text-xs mt-md hover:bg-primary-container font-medium shadow-sm cursor-pointer">
                 {selectedService ? 'Guardar Cambios del Servicio' : 'Crear Servicio'}
               </button>
             </form>

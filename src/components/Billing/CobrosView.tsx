@@ -209,11 +209,13 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
       <div className="flex flex-col w-full gap-md font-body-md text-slate-800">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-display-lg text-[22px] text-slate-900 font-bold leading-tight">
-              Cobros — Historial de Comprobantes
+            <h1 className="font-display-lg text-[22px] text-slate-900 font-semibold leading-tight">
+              {activeSubmodule === 'historial-cobros' ? 'Cobros — Historial de Facturación y Recibos' : 'Cobros — Punto de Venta y Facturación'}
             </h1>
-            <p className="font-body-md text-xs text-slate-600 font-medium">
-              Registro de cobros emitidos y comprobantes digitales
+            <p className="font-body-md text-xs text-slate-600 font-normal mt-0.5">
+              {activeSubmodule === 'historial-cobros'
+                ? 'Consulta de comprobantes emitidos, facturas A/B y tickets X de cobranza'
+                : 'Emisión de recibos oficiales, liquidación de turnos médicos y venta en mostrador'}
             </p>
           </div>
         </div>
@@ -557,7 +559,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                     />
                     <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 border-2 border-slate-200 peer-checked:border-[#9A7DB8] peer-checked:bg-purple-50 peer-checked:text-[#5C3C7B] transition-all">
                       <span className="material-symbols-outlined text-[20px] mb-0.5">payments</span>
-                      <span className="font-label-md text-[10px] font-bold">Efectivo</span>
+                      <span className="font-label-md text-[10px] font-medium">Efectivo</span>
                     </div>
                   </label>
 
@@ -572,7 +574,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                     />
                     <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 border-2 border-slate-200 peer-checked:border-[#9A7DB8] peer-checked:bg-purple-50 peer-checked:text-[#5C3C7B] transition-all">
                       <span className="material-symbols-outlined text-[20px] mb-0.5">credit_card</span>
-                      <span className="font-label-md text-[10px] font-bold">Tarjeta</span>
+                      <span className="font-label-md text-[10px] font-medium">Tarjeta</span>
                     </div>
                   </label>
 
@@ -587,7 +589,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                     />
                     <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 border-2 border-slate-200 peer-checked:border-[#9A7DB8] peer-checked:bg-purple-50 peer-checked:text-[#5C3C7B] transition-all">
                       <span className="material-symbols-outlined text-[20px] mb-0.5">account_balance</span>
-                      <span className="font-label-md text-[10px] font-bold">Transferencia</span>
+                      <span className="font-label-md text-[10px] font-medium">Transferencia</span>
                     </div>
                   </label>
 
@@ -602,7 +604,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                     />
                     <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-[#FAF5FF] border-2 border-purple-200 peer-checked:border-[#5C3C7B] peer-checked:bg-[#5C3C7B] peer-checked:text-white transition-all text-[#5C3C7B]">
                       <span className="material-symbols-outlined text-[20px] mb-0.5">account_balance_wallet</span>
-                      <span className="font-label-md text-[10px] font-bold text-center leading-tight">Cuenta Corriente</span>
+                      <span className="font-label-md text-[10px] font-medium text-center leading-tight">Cuenta Corriente</span>
                     </div>
                   </label>
                 </div>

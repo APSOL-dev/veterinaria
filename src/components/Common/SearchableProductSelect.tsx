@@ -85,28 +85,28 @@ export const SearchableProductSelect: React.FC<SearchableProductSelectProps> = (
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full bg-[#160E1E] border border-purple-900/60 rounded-lg pr-8 pl-2.5 py-2 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] truncate"
+          className="w-full bg-surface-container/60 border border-outline-variant/40 rounded-xl pr-8 pl-3 py-2 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 font-medium truncate"
         />
         {searchTerm ? (
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-2 text-slate-400 hover:text-white p-0.5"
+            className="absolute right-2 text-slate-400 hover:text-slate-700 p-0.5"
             title="Limpiar producto"
           >
             <span className="material-symbols-outlined text-[16px]">close</span>
           </button>
         ) : (
-          <span className="material-symbols-outlined absolute right-2 text-[#CBB5E2] pointer-events-none text-[18px]">
+          <span className="material-symbols-outlined absolute right-2.5 text-slate-500 pointer-events-none text-[18px]">
             search
           </span>
         )}
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-[#1D1426] border border-purple-900/80 rounded-xl shadow-2xl max-h-56 overflow-y-auto font-body-md text-xs">
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-outline-variant/40 rounded-xl shadow-xl max-h-56 overflow-y-auto font-body-md text-xs">
           {filteredProducts.length === 0 ? (
-            <div className="p-3 text-slate-400 text-[11px] text-center italic">
+            <div className="p-3 text-slate-500 text-[11px] text-center italic">
               No hay coincidencia. Se registrará como producto libre: "{searchTerm}"
             </div>
           ) : (
@@ -117,7 +117,7 @@ export const SearchableProductSelect: React.FC<SearchableProductSelectProps> = (
                   setIsOpen(false);
                   onSelectProduct({ productId: undefined, productName: searchTerm });
                 }}
-                className="w-full text-left px-3 py-1.5 hover:bg-[#2B1D3A] text-slate-400 text-[11px] border-b border-purple-900/30 font-medium cursor-pointer"
+                className="w-full text-left px-3 py-1.5 hover:bg-purple-50 text-slate-600 text-[11px] border-b border-outline-variant/20 font-medium cursor-pointer"
               >
                 -- Ingreso libre / Usar texto "{searchTerm || 'libre'}" --
               </button>
@@ -126,23 +126,23 @@ export const SearchableProductSelect: React.FC<SearchableProductSelectProps> = (
                   key={p.id}
                   type="button"
                   onClick={() => handleSelect(p)}
-                  className={`w-full text-left px-3 py-2 hover:bg-[#2B1D3A] flex justify-between items-center transition-colors cursor-pointer ${
-                    selectedProductId === p.id ? 'bg-[#2B1D3A] text-[#CBB5E2] font-bold' : 'text-slate-200'
+                  className={`w-full text-left px-3 py-2 hover:bg-purple-50 flex justify-between items-center transition-colors cursor-pointer ${
+                    selectedProductId === p.id ? 'bg-purple-50 text-[#5C3C7B] font-bold' : 'text-slate-800'
                   }`}
                 >
                   <div className="flex flex-col min-w-0 pr-2">
                     <span className="truncate font-semibold text-xs">{p.name}</span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-slate-500">
                       {p.category || 'General'} {p.sku ? `• SKU: ${p.sku}` : ''}
                     </span>
                   </div>
                   <div className="text-right shrink-0 flex flex-col items-end">
-                    <span className="font-semibold text-xs text-[#CBB5E2]">
-                      ${(p.price || 0).toLocaleString('es-AR')}
+                    <span className="font-semibold text-xs text-[#5C3C7B]">
+                      $ {(p.price || 0).toLocaleString('es-AR')}
                     </span>
-                    <span className="text-[10px] text-emerald-400">
-                      Stock: {p.currentStock}
-                    </span>
+                    {selectedProductId === p.id && (
+                      <span className="text-[10px] text-emerald-600 font-bold">Seleccionado</span>
+                    )}
                   </div>
                 </button>
               ))}

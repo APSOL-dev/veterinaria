@@ -16,6 +16,7 @@ import {
   filterAppointmentsWithNotes
 } from '../../domain/services/agendaService';
 import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
+import { AutoResizeTextarea } from '../Common/AutoResizeTextarea';
 
 interface AgendaViewProps {
   patients: Patient[];
@@ -245,10 +246,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
       {/* Module Title Header */}
       <div className="flex items-center justify-between mb-md">
         <div>
-          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">
             {activeMode === 'medica' ? 'Clínica — Agenda Médica' : 'Peluquería — Agenda de Estética'}
           </h1>
-          <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
+          <p className="font-body-md text-xs text-slate-600 font-normal mt-0.5">
             {activeMode === 'medica'
               ? 'Gestión de turnos médicos en consultorio, cobranza directa e historia clínica'
               : 'Gestión de turnos de peluquería, baño y estética canina/felina'}
@@ -270,7 +271,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
             <button 
               onClick={() => setRefDate(new Date())}
               title="Ir a la semana actual"
-              className="px-sm py-0.5 text-slate-800 hover:bg-purple-100 rounded-lg transition-colors font-label-md text-xs font-bold cursor-pointer"
+              className="px-sm py-0.5 text-slate-800 hover:bg-purple-100 rounded-lg transition-colors font-label-md text-xs font-medium cursor-pointer"
             >
               Hoy
             </button>
@@ -283,7 +284,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
             </button>
           </div>
 
-          <span className="font-headline-sm text-sm text-slate-900 font-bold ml-xs">{weekHeaderLabel}</span>
+          <span className="font-headline-sm text-sm text-slate-900 font-semibold ml-xs">{weekHeaderLabel}</span>
         </div>
 
         <div className="flex items-center gap-md">
@@ -294,7 +295,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                 onClick={() => setAgendaMode('medica')}
                 className={`px-md py-1.5 rounded-full font-label-md text-xs transition-all flex items-center gap-1 cursor-pointer ${
                   agendaMode === 'medica'
-                    ? 'bg-[#9A7DB8] text-white shadow-sm font-bold'
+                    ? 'bg-[#9A7DB8] text-white shadow-sm font-medium'
                     : 'text-slate-600 hover:text-slate-900 font-medium'
                 }`}
               >
@@ -305,7 +306,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                 onClick={() => setAgendaMode('peluqueria')}
                 className={`px-md py-1.5 rounded-full font-label-md text-xs transition-all flex items-center gap-1 cursor-pointer ${
                   agendaMode === 'peluqueria'
-                    ? 'bg-[#8362A5] text-white shadow-sm font-bold'
+                    ? 'bg-[#8362A5] text-white shadow-sm font-medium'
                     : 'text-slate-600 hover:text-slate-900 font-medium'
                 }`}
               >
@@ -314,7 +315,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 border border-purple-200 rounded-full text-xs font-bold text-[#5C3C7B]">
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 border border-purple-200 rounded-full text-xs font-medium text-[#5C3C7B]">
               <span className="material-symbols-outlined text-[16px]">
                 {fixedMode === 'medica' ? 'stethoscope' : 'content_cut'}
               </span>
@@ -324,7 +325,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
           <button
             onClick={() => setShowHistoryModal(true)}
-            className="flex items-center gap-xs bg-purple-100 hover:bg-purple-200 text-[#5C3C7B] px-md py-1.5 rounded-full font-label-md text-xs transition-all shadow-xs font-bold cursor-pointer border border-purple-200"
+            className="flex items-center gap-xs bg-purple-100 hover:bg-purple-200 text-[#5C3C7B] px-md py-1.5 rounded-full font-label-md text-xs transition-all shadow-xs font-medium cursor-pointer border border-purple-200"
             title="Ver historial de anotaciones del paciente"
           >
             <span className="material-symbols-outlined text-[16px]">history_edu</span>
@@ -333,7 +334,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
           <button
             onClick={() => setShowNewModal(true)}
-            className="flex items-center gap-xs bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-md py-1.5 rounded-full font-label-md text-xs transition-all shadow-sm font-bold cursor-pointer"
+            className="flex items-center gap-xs bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-md py-1.5 rounded-full font-label-md text-xs transition-all shadow-sm font-medium cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
             Nuevo turno
@@ -352,7 +353,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
               <div 
                 key={dayObj.dateStr} 
                 className={`font-semibold border-r border-purple-200 flex items-center justify-center gap-1.5 ${
-                  isToday ? 'text-[#5C3C7B] font-bold bg-purple-100/60 py-0.5 rounded-md' : 'text-slate-800'
+                  isToday ? 'text-[#5C3C7B] font-semibold bg-purple-100/60 py-0.5 rounded-md' : 'text-slate-800'
                 }`}
               >
                 <span>{dayObj.fullLabel}</span>
@@ -680,10 +681,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
             <div className="flex justify-between items-start border-b border-slate-200 pb-md">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-display-lg text-lg text-slate-900 font-bold">
+                  <h3 className="font-display-lg text-lg text-slate-900 font-semibold">
                     Turno: {detailModal.appointment.patientName}
                   </h3>
-                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
                     detailModal.appointment.status === 'cancelled'
                       ? 'bg-rose-100 text-rose-700'
                       : detailModal.appointment.status === 'completed'
@@ -698,8 +699,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   </span>
                 </div>
                 <p className="font-body-md text-xs text-slate-600">
-                  <span className="font-semibold text-slate-800">Tutor:</span> {detailModal.appointment.ownerName} &bull;{' '}
-                  <span className="font-semibold text-slate-800">Especie/Raza:</span> {detailModal.appointment.species} ({detailModal.appointment.breed})
+                  <span className="font-medium text-slate-800">Tutor:</span> {detailModal.appointment.ownerName} &bull;{' '}
+                  <span className="font-medium text-slate-800">Especie/Raza:</span> {detailModal.appointment.species} ({detailModal.appointment.breed})
                 </p>
                 <p className="font-body-md text-xs text-purple-900 font-medium mt-0.5 flex items-center gap-1">
                   <span className="material-symbols-outlined text-[14px]">event</span>
@@ -797,12 +798,13 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   <label className="font-semibold text-xs text-slate-700 block mb-1">
                     Anotaciones u observaciones del turno
                   </label>
-                  <textarea
-                    rows={4}
+                  <AutoResizeTextarea
+                    minRows={3}
+                    maxRows={12}
                     value={editNotes}
                     onChange={(e) => setEditNotes(e.target.value)}
                     placeholder="Escriba aquí las notas, indicaciones o registro médico del turno..."
-                    className="w-full bg-white border border-slate-300 rounded-xl p-3 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs resize-none"
+                    className="w-full bg-white border border-slate-300 rounded-xl p-3 outline-none text-slate-900 font-normal text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 shadow-xs leading-relaxed"
                   />
                 </div>
                 <div className="flex items-center justify-end gap-sm border-t border-slate-200 pt-sm">
@@ -910,7 +912,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
             {/* Header */}
             <div className="flex justify-between items-start border-b border-slate-200 pb-md">
               <div>
-                <h3 className="font-display-lg text-lg text-slate-900 font-bold flex items-center gap-2">
+                <h3 className="font-display-lg text-lg text-slate-900 font-semibold flex items-center gap-2">
                   <span className="material-symbols-outlined text-[#5C3C7B] text-[22px]">auto_stories</span>
                   Historial de Anotaciones — {activeMode === 'medica' ? 'Clínica Médica' : 'Peluquería'}
                 </h3>
@@ -958,15 +960,15 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                     >
                       <div className="flex items-center justify-between border-b border-purple-100/60 pb-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 text-xs">{item.patientName}</span>
+                          <span className="font-semibold text-slate-900 text-xs">{item.patientName}</span>
                           <span className="text-[10px] text-slate-500 font-medium">
                             ({item.species} {item.breed ? `- ${item.breed}` : ''})
                           </span>
-                          <span className="text-[10px] text-purple-800 bg-purple-100 px-2 py-0.5 rounded-full font-semibold">
+                          <span className="text-[10px] text-purple-800 bg-purple-100 px-2 py-0.5 rounded-full font-medium">
                             Tutor: {item.ownerName}
                           </span>
                         </div>
-                        <span className="text-[11px] font-mono text-slate-600 font-semibold flex items-center gap-1">
+                        <span className="text-[11px] font-mono text-slate-600 font-medium flex items-center gap-1">
                           <span className="material-symbols-outlined text-[13px] text-purple-700">calendar_today</span>
                           {item.date} {item.time ? `(${item.time} hs)` : ''}
                         </span>

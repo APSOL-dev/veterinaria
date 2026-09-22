@@ -19,6 +19,18 @@ Gestión centralizada del padrón de tutores (propietarios) y sus mascotas asoci
 - **Cuenta Corriente (CC) del Tutor:**
   - Los cobros/comprobantes generados a un tutor solo se registran en los movimientos de su Cuenta Corriente (`Debe` y cálculo de `Saldo`) cuando el medio de pago seleccionado es **Cuenta Corriente** (`paymentMethod: 'cuenta-corriente'`).
   - Los cobros realizados en Efectivo, Tarjeta o Transferencia no impactan como deuda en la Cuenta Corriente del tutor.
+  - **Distinción visual de Saldos Positivos, Negativos y Neutros:**
+    - **Saldo Deudor / Deuda (`saldo > 0`):** Se muestra claramente en **Rojo** (`text-red-700`) indicando el monto adeudado.
+    - **Saldo a Favor / Crédito (`saldo < 0`):** Se muestra claramente en **Verde** (`text-[#27AE60]`), indicando el crédito disponible del tutor (`- $ monto`).
+    - **Al día (`saldo === 0`):** Se visualiza en tono neutro indicando "Al día (sin saldo pendiente)".
+  - **Cálculo de Antigüedad de Deuda / Último Abono ("Hace cuánto no achica la deuda"):**
+    - Para tutores con deuda pendiente (`saldo > 0`), el sistema calcula dinámicamente el tiempo transcurrido desde el último abono registrado (`haber > 0`).
+    - Informa en tiempo real: *"Último pago hoy"*, *"Último pago ayer"* o *"Último pago hace X días (DD/MM/AAAA)"*.
+    - Si el tutor nunca registró un abono, informa *"Sin pagos registrados (deuda desde hace X días)"*.
+  - **Consulta y Detalle de Comprobantes al hacer Clic en la CC:**
+    - Al hacer clic en cualquier fila de la tabla de movimientos de la Cuenta Corriente, se despliega el modal interactivo de **Detalle de Comprobante / Abono** ([`ComprobanteDetailModal.tsx`](file:///c:/Users/Mateo/Documents/Proyecto%20VETSOFT/src/components/Billing/ComprobanteDetailModal.tsx)).
+    - **Si es un comprobante/factura:** Muestra el encabezado oficial (Tipo y Nº de comprobante, CAE AFIP si aplica, fecha, tutor y mascota), desglose detallado de todos los ítems facturados (servicios, productos, cantidad, precio unitario, descuentos), totales discriminados, botón para descargar archivo adjunto/PDF y opción de imprimir.
+    - **Si es un abono/pago:** Muestra la fecha de acreditación, concepto, importe recibido y estado computado a favor en la cuenta corriente.
 
 **Casos borde conocidos:**
 - **Tutores sin teléfono o sin dirección:** Se guarda el valor por defecto legible ("Sin teléfono" / "Sin dirección registrada") sin romper el formato ni causar errores nulos en base de datos.

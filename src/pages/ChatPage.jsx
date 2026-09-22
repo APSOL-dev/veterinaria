@@ -609,15 +609,15 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
             <MessageSquare className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-bold text-slate-900 text-base leading-tight">Mensajería WhatsApp</h1>
-            <p className="text-xs text-slate-500 font-medium">Integración WhatsApp Web</p>
+            <h1 className="font-semibold text-slate-900 text-base leading-tight">Mensajería WhatsApp</h1>
+            <p className="text-xs text-slate-500 font-normal">Integración WhatsApp Web</p>
           </div>
         </div>
 
         {/* Indicador de Estado e Interacciones */}
         <div className="flex items-center gap-3">
           {/* Badge de Estado */}
-          <div className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 border transition-all ${
+          <div className={`px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 border transition-all ${
             connectionState === 'open'
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
               : connectionState === 'connecting'
@@ -628,59 +628,36 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
               <>
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 <Wifi className="w-3.5 h-3.5" />
-                <span>Estado de conexión: Conectado</span>
+                <span>Conectado</span>
               </>
             ) : connectionState === 'connecting' ? (
               <>
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Estado de conexión: Conectando...</span>
+                <span>Conectando</span>
               </>
             ) : (
               <>
                 <span className="w-2 h-2 rounded-full bg-rose-500" />
                 <WifiOff className="w-3.5 h-3.5" />
-                <span>Estado de conexión: Desconectado</span>
+                <span>Desconectado</span>
               </>
             )}
           </div>
-
-          {/* Botón Logout */}
-          {connectionState === 'open' && (
-            <button
-              onClick={() => setShowLogoutModal(true)}
-              className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
-              title="Cerrar sesión de WhatsApp"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          )}
         </div>
       </header>
 
-      {/* Alerta de credenciales ausentes si no están en .env */}
-      {(!config.apiUrl || !config.apiKey) && (
-        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between text-xs text-amber-800">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>
-              <strong>Modo Demostración Activo:</strong> Faltan configurar las credenciales del servidor de mensajería para enviar mensajes reales.
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* --------------------------------------------------------------------- */}
-      {/* MAIN WORKSPACE: PANTALLA DE VINCULACIÓN O CHAT INTERFACE               */}
+      {/* CUERPO PRINCIPAL */}
       {/* --------------------------------------------------------------------- */}
       <div className="flex-1 flex overflow-hidden">
-        {connectionState === 'connecting' ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-slate-100/70">
-            <div className="flex flex-col items-center gap-4 bg-white p-8 rounded-3xl shadow-lg border border-slate-200">
+        {isLoadingState ? (
+          <div className="flex-1 flex items-center justify-center bg-slate-50">
+            <div className="flex flex-col items-center gap-4">
               <RefreshCw className="w-10 h-10 animate-spin text-emerald-600" />
               <div className="text-center">
-                <h3 className="font-bold text-slate-800 text-lg">Verificando conexión...</h3>
-                <p className="text-sm text-slate-500 font-medium mt-1">Conectando con el servicio de WhatsApp</p>
+                <h3 className="font-semibold text-slate-800 text-lg">Verificando conexión...</h3>
+                <p className="text-sm text-slate-500 font-normal mt-1">Conectando con el servicio de WhatsApp</p>
               </div>
             </div>
           </div>
@@ -693,8 +670,8 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
                   <QrCode className="w-8 h-8" />
                 </div>
                 <div>
-                  <h2 className="text-xl md:text-2xl font-bold text-slate-900">Vincular WhatsApp con VetSoft</h2>
-                  <p className="text-sm text-slate-500 font-medium">Sincroniza tu cuenta de WhatsApp para gestionar las conversaciones con tutores</p>
+                  <h2 className="text-xl md:text-2xl font-semibold text-slate-900">Vincular WhatsApp con VetSoft</h2>
+                  <p className="text-sm text-slate-500 font-normal">Sincroniza tu cuenta de WhatsApp para gestionar las conversaciones con tutores</p>
                 </div>
               </div>
 
@@ -708,17 +685,17 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
 
                     <ol className="space-y-5 text-sm md:text-base text-slate-700 font-normal leading-relaxed">
                       <li className="flex items-start gap-3">
-                        <span className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">1</span>
+                        <span className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-semibold text-sm shrink-0 mt-0.5">1</span>
                         <span className="pt-0.5">Abre <strong className="font-semibold text-slate-900">WhatsApp</strong> en tu teléfono</span>
                       </li>
                       <li className="flex items-start gap-3">
-                        <span className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">2</span>
+                        <span className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-semibold text-sm shrink-0 mt-0.5">2</span>
                         <span className="pt-0.5">
                           Toca <strong className="font-semibold text-slate-900">Menú</strong> <MoreVertical className="w-4 h-4 inline text-slate-500 mx-0.5" /> o <strong className="font-semibold text-slate-900">Ajustes</strong> <Settings className="w-4 h-4 inline text-slate-500 mx-0.5" /> y selecciona <strong className="font-semibold text-slate-900">Dispositivos vinculados</strong>
                         </span>
                       </li>
                       <li className="flex items-start gap-3">
-                        <span className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">3</span>
+                        <span className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-semibold text-sm shrink-0 mt-0.5">3</span>
                         <span className="pt-0.5">Apunta tu teléfono a esta pantalla para capturar el código</span>
                       </li>
                     </ol>
@@ -729,7 +706,7 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
                     <button
                       onClick={() => handleGenerateQr(false)}
                       disabled={isLoadingQr}
-                      className="w-full sm:w-72 md:w-80 py-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-2xl text-sm md:text-base font-bold transition-all cursor-pointer flex items-center justify-center gap-3 shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-100 disabled:opacity-50"
+                      className="w-full sm:w-72 md:w-80 py-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-2xl text-sm md:text-base font-semibold transition-all cursor-pointer flex items-center justify-center gap-3 shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-100 disabled:opacity-50"
                     >
                       <RefreshCw className={`w-5 h-5 ${isLoadingQr ? 'animate-spin' : ''}`} />
                       <span>{qrBase64 ? 'Regenerar Código QR' : 'Generar QR'}</span>

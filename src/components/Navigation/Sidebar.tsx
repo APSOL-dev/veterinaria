@@ -113,7 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         {!isCollapsed ? (
           <>
             <div className="bg-surface-container text-on-surface-variant p-sm px-md rounded-xl text-[11px]">
-              <p className="font-medium text-on-surface">Clínica Veterinaria San José</p>
+              <p className="font-medium text-on-surface">Veterinaria Arlekyn</p>
               <p className="font-medium text-primary">Turno mañana</p>
             </div>
 

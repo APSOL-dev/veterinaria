@@ -31,16 +31,16 @@ El submódulo **Registrar gastos** (dentro del módulo de Proveedores) permite l
   - `Asignación`: Desplegable dinámico que incluye la sede predeterminada oficial ("Santo Tomé") más las asignaciones adicionales creadas en el modal.
   - `Responsable`: Desplegable dinámico alimentado por los responsables predeterminados y creados.
   - `Rubro / Categoría`: 19 categorías oficiales más todas las categorías personalizadas creadas en el modal.
-  - `Comprobante (Obligatorio)`: Área interactiva de arrastre o selección de archivos (PDF, PNG, JPG, JPEG). Al subir un archivo, se almacena en el bucket `veterinaria-archivos` de Supabase Storage (`uploadVoucherToSupabase`) y se genera su enlace público (`voucherUrl`), permitiendo previsualizarlo o abrirlo en una nueva pestaña mediante el botón `Ver`.
+  - `Comprobante (Opcional)`: Área interactiva de arrastre o selección de archivos (PDF, PNG, JPG, JPEG). Es de carácter optativo; si se adjunta un archivo, se almacena en el bucket `veterinaria-archivos` de Supabase Storage (`uploadVoucherToSupabase`) y se genera su enlace público (`voucherUrl`), permitiendo previsualizarlo o abrirlo en una nueva pestaña mediante el botón `Ver`.
 - **Visualización de Comprobantes en la Tabla:**
-  - Cada fila con comprobante incluye un botón interactivo verde con icono de ojo e indicador del archivo adjunto.
+  - Las filas que cuenten con comprobante adjunto incluyen un botón interactivo verde con icono de ojo e indicador del archivo adjunto.
   - Al hacer clic en la celda del comprobante, este se abre directamente en una nueva pestaña del navegador (`target="_blank"`) mediante su `voucherUrl`.
   - `Nota u Observación`: Campo de texto opcional para notas adicionales (ej. Número de ticket).
 
 **Casos borde conocidos:**
-- **Sin comprobante adjunto:** El botón de envío se mantiene deshabilitado y la validación impide registrar el gasto sin adjuntar la imagen o documento del comprobante.
+- **Sin comprobante adjunto:** El gasto puede registrarse normalmente sin requerir comprobante adjunto.
 - **Sin resultados tras filtrar:** Muestra un mensaje informativo en la tabla indicando que no hay coincidencias con los criterios seleccionados.
 - **Filtros combinados:** Los 5 filtros funcionan de manera acumulativa (AND lógico).
 
 **Restricciones o supuestos:**
-- Los montos ingresados deben ser mayores a 0 y es obligatorio adjuntar el comprobante físico/digital.
+- Los montos ingresados deben ser mayores a 0; el comprobante adjunto es opcional.

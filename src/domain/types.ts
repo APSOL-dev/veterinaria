@@ -58,6 +58,9 @@ export interface ClinicalNote {
 
 export interface TutorAccountMovement {
   id: string;
+  type?: 'receipt' | 'payment';
+  receipt?: BillReceipt;
+  payment?: any;
   tutorName: string;
   date: string; // YYYY-MM-DD
   concept: string;

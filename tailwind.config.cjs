@@ -73,23 +73,24 @@ module.exports = {
         "base": "4px"
       },
       fontFamily: {
-        "headline-sm": ["Work Sans", "sans-serif"],
-        "label-sm": ["Work Sans", "sans-serif"],
-        "body-md": ["Work Sans", "sans-serif"],
-        "headline-lg-mobile": ["Work Sans", "sans-serif"],
-        "headline-md": ["Work Sans", "sans-serif"],
-        "display-lg": ["Work Sans", "sans-serif"],
-        "label-md": ["Work Sans", "sans-serif"],
-        "body-lg": ["Work Sans", "sans-serif"]
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+        "headline-sm": ["Inter", "sans-serif"],
+        "label-sm": ["Inter", "sans-serif"],
+        "body-md": ["Inter", "sans-serif"],
+        "headline-lg-mobile": ["Inter", "sans-serif"],
+        "headline-md": ["Inter", "sans-serif"],
+        "display-lg": ["Inter", "sans-serif"],
+        "label-md": ["Inter", "sans-serif"],
+        "body-lg": ["Inter", "sans-serif"]
       },
       fontSize: {
         "headline-sm": ["20px", { lineHeight: "28px", fontWeight: "600" }],
         "label-sm": ["11px", { lineHeight: "14px", fontWeight: "500" }],
         "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
-        "headline-lg-mobile": ["24px", { lineHeight: "30px", fontWeight: "700" }],
+        "headline-lg-mobile": ["24px", { lineHeight: "30px", fontWeight: "600" }],
         "headline-md": ["24px", { lineHeight: "32px", fontWeight: "600" }],
-        "display-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }],
-        "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }],
+        "display-lg": ["28px", { lineHeight: "36px", letterSpacing: "-0.01em", fontWeight: "600" }],
+        "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.02em", fontWeight: "500" }],
         "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }]
       }
     }

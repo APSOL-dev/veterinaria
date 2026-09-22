@@ -169,7 +169,7 @@ export function calculateSupplierTotals(
   const purchasedThisMonthTotal = projThisMonth ? projThisMonth.total : 0;
 
   // Facturas pagadas este mes (solo total pagado de facturas en el mes, sin sumar gastos)
-  const paidBillsTotal = projThisMonth ? projThisMonth.totalPagado : 0;
+  const paidBillsTotal = projThisMonth ? Math.max(0, projThisMonth.totalPagado - (projThisMonth.totalGastos || 0)) : 0;
   const pendingBillsTotal = projThisMonth ? projThisMonth.totalAdeudado : 0;
 
   // 2. Comprometido a 30 días (Total adeudado proyectado a vencer en el próximo mes / próximos 30 días)
@@ -272,13 +272,14 @@ export function calculateMonthlyExpenditureProjections(
     });
   }
 
-  // Process expenses (egresos operativos)
+  // Process expenses (egresos operativos incluidos en Pagado)
   if (expenses.length > 0) {
     expenses.forEach(exp => {
       if (!exp.date) return;
       const monthKey = exp.date.slice(0, 7);
       ensureMonthKey(monthKey);
       aggregated[monthKey].totalGastos += exp.amount;
+      aggregated[monthKey].totalPagado += exp.amount;
 
       const cat = (exp.category && exp.category.trim()) || 'Gastos Varios';
       if (!expenseCategoryAggregated[monthKey]) expenseCategoryAggregated[monthKey] = {};
@@ -388,7 +389,7 @@ export function calculateMonthlyExpenditureProjections(
     const totalAdeudado = data.totalAdeudado;
     const totalPagado = data.totalPagado;
     const totalGastos = data.totalGastos;
-    const total = totalAdeudado + totalPagado + totalGastos;
+    const total = totalAdeudado + totalPagado;
     const presupuestoTotal = monthlyBudgets[monthKey] ?? 0;
 
     const cumplimientoPercentage = presupuestoTotal > 0
@@ -547,7 +548,7 @@ export function groupProjectionsByYear(projections: MonthlyExpenditureProjection
     const totalAdeudado = yearProjections.reduce((sum, p) => sum + p.totalAdeudado, 0);
     const totalPagado = yearProjections.reduce((sum, p) => sum + p.totalPagado, 0);
     const totalGastos = yearProjections.reduce((sum, p) => sum + (p.totalGastos || 0), 0);
-    const total = totalAdeudado + totalPagado + totalGastos;
+    const total = totalAdeudado + totalPagado;
     const presupuestoTotal = yearProjections.reduce((sum, p) => sum + p.presupuestoTotal, 0);
 
     const cumplimientoPercentage = presupuestoTotal > 0

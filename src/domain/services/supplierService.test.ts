@@ -437,7 +437,28 @@ describe('supplierService', () => {
       expect(sept?.totalAdeudado).toBe(50000);
     });
 
-    it('groupProjectionsByYear should group monthly projections into years with total aggregates', () => {
+    it('calculateMonthlyExpenditureProjections should include expenses in totalPagado and calculate total properly', () => {
+      const bills: SupplierBill[] = [
+        { id: 'b1', supplierName: 'Sup A', invoiceNumber: '001', date: '2026-09-01', amount: 50000, itemsCount: 1, status: 'pending' }
+      ];
+      const payments: SupplierPayment[] = [
+        { id: 'p1', billId: 'b1', billInvoiceNumber: '001', supplierName: 'Sup A', date: '2026-09-05', amount: 20000, paymentMethod: 'Efectivo' }
+      ];
+      const expenses: ExpenseRecord[] = [
+        { id: 'e1', date: '2026-09-10', responsible: 'Admin', category: 'Caja Chica', allocation: 'Sede', paymentMethod: 'Efectivo', description: 'Artículos de limpieza', amount: 5000 }
+      ];
+
+      const projections = calculateMonthlyExpenditureProjections(bills, {}, payments, '2026-09-01', '2026-09-30', [], expenses);
+      const sept = projections.find(p => p.monthKey === '2026-09');
+
+      expect(sept).toBeDefined();
+      expect(sept?.totalAdeudado).toBe(30000); // 50000 - 20000
+      expect(sept?.totalGastos).toBe(5000);
+      expect(sept?.totalPagado).toBe(25000); // 20000 (pago factura) + 5000 (gasto)
+      expect(sept?.total).toBe(55000); // 30000 + 25000
+    });
+
+    it('groupProjectionsByYear should group monthly projections into years with total aggregates including expenses in totalPagado', () => {
       const bills: SupplierBill[] = [
         { id: 'b1', supplierName: 'Sup A', invoiceNumber: '001', date: '2025-11-15', amount: 500, itemsCount: 1, status: 'pending' },
         { id: 'b2', supplierName: 'Sup B', invoiceNumber: '002', date: '2026-03-10', amount: 1200, itemsCount: 1, status: 'pending' }

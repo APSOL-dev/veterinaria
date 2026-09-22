@@ -142,6 +142,8 @@ export function calculateTutorAccountMovements(
   interface RawMovement {
     id: string;
     type: 'receipt' | 'payment';
+    receipt?: BillReceipt;
+    payment?: TutorPaymentRecord;
     tutorName: string;
     date: string;
     concept: string;
@@ -155,6 +157,7 @@ export function calculateTutorAccountMovements(
     raw.push({
       id: r.id,
       type: 'receipt',
+      receipt: r,
       tutorName: r.ownerName || r.clientName || tutorName,
       date: r.date ? r.date.split('T')[0] : new Date().toISOString().split('T')[0],
       concept: `Comprobante ${r.receiptNumber || r.id}`,
@@ -167,6 +170,7 @@ export function calculateTutorAccountMovements(
     raw.push({
       id: p.id,
       type: 'payment',
+      payment: p,
       tutorName: p.tutorName || tutorName,
       date: p.date ? p.date.split('T')[0] : new Date().toISOString().split('T')[0],
       concept: p.concept || 'Pago / Abono a cuenta corriente',
@@ -186,6 +190,9 @@ export function calculateTutorAccountMovements(
     currentSaldo += m.debe - m.haber;
     return {
       id: m.id,
+      type: m.type,
+      receipt: m.receipt,
+      payment: m.payment,
       tutorName: m.tutorName,
       date: m.date,
       concept: m.concept,
@@ -244,4 +251,113 @@ export function getTutorAppointments(
 
   return [...med, ...groom].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 }
+
+export interface TutorDebtAgingInfo {
+  currentSaldo: number;
+  status: 'debt' | 'credit' | 'settled';
+  lastPaymentDate?: string;
+  daysSinceLastPayment?: number;
+  oldestUnsettledDate?: string;
+  daysSinceDebtStart?: number;
+  message: string;
+}
+
+function parseISODateOnly(dateStr: string): Date {
+  const parts = dateStr.split('T')[0].split('-');
+  return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+}
+
+function formatDMY(dateStr: string): string {
+  const parts = dateStr.split('T')[0].split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+}
+
+export function calculateTutorDebtAging(
+  movements: TutorAccountMovement[] = [],
+  referenceDateStr: string = new Date().toISOString().split('T')[0]
+): TutorDebtAgingInfo {
+  if (!movements || movements.length === 0) {
+    return {
+      currentSaldo: 0,
+      status: 'settled',
+      message: 'Al día (sin deuda)'
+    };
+  }
+
+  const currentSaldo = movements[movements.length - 1].saldo;
+
+  if (currentSaldo === 0) {
+    return {
+      currentSaldo: 0,
+      status: 'settled',
+      message: 'Al día (sin deuda)'
+    };
+  }
+
+  if (currentSaldo < 0) {
+    return {
+      currentSaldo,
+      status: 'credit',
+      message: 'Saldo a favor del tutor'
+    };
+  }
+
+  // If currentSaldo > 0 (Tutor has debt)
+  const refDate = parseISODateOnly(referenceDateStr);
+
+  // Find all payments (movements where haber > 0)
+  const payments = movements.filter(m => m.haber > 0);
+
+  if (payments.length > 0) {
+    const lastPayment = payments[payments.length - 1];
+    const lastPayDate = parseISODateOnly(lastPayment.date);
+    const diffMs = refDate.getTime() - lastPayDate.getTime();
+    const daysSinceLastPayment = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+
+    let msg = '';
+    if (daysSinceLastPayment === 0) {
+      msg = 'Último pago hoy';
+    } else if (daysSinceLastPayment === 1) {
+      msg = 'Último pago ayer';
+    } else {
+      msg = `Último pago hace ${daysSinceLastPayment} días (${formatDMY(lastPayment.date)})`;
+    }
+
+    return {
+      currentSaldo,
+      status: 'debt',
+      lastPaymentDate: lastPayment.date,
+      daysSinceLastPayment,
+      message: msg
+    };
+  }
+
+  // If no payments ever recorded, compute days since initial debt
+  const debts = movements.filter(m => m.debe > 0);
+  const firstDebt = debts[0] || movements[0];
+  const debtStartDate = parseISODateOnly(firstDebt.date);
+  const diffMs = refDate.getTime() - debtStartDate.getTime();
+  const daysSinceDebtStart = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+
+  let msg = '';
+  if (daysSinceDebtStart === 0) {
+    msg = 'Sin pagos registrados (deuda originada hoy)';
+  } else if (daysSinceDebtStart === 1) {
+    msg = 'Sin pagos registrados (deuda originada ayer)';
+  } else {
+    msg = `Sin pagos registrados (deuda desde hace ${daysSinceDebtStart} días)`;
+  }
+
+  return {
+    currentSaldo,
+    status: 'debt',
+    oldestUnsettledDate: firstDebt.date,
+    daysSinceDebtStart,
+    message: msg
+  };
+}
+
 

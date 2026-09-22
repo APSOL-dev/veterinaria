@@ -908,221 +908,223 @@ export const App: React.FC = () => {
       }`}>
         {/* Dynamic Main Workspace Container */}
         <main className="flex-1 h-full overflow-hidden flex flex-col p-md bg-surface-container-low">
-          {/* Module: Proveedores */}
-          {activeModule === 'proveedores' && (
-            <SuppliersView
-              bills={supplierBills}
-              quotes={supplierQuotes}
-              expenses={expenses}
-              payments={payments}
-              monthlyBudgets={monthlyBudgets}
-              products={products}
-              activeSubModule={
-                activeSubmodule === 'presupuestos'
-                  ? 'presupuestos'
-                  : activeSubmodule === 'pagos'
-                  ? 'pagos'
-                  : activeSubmodule === 'cuentas'
-                  ? 'cuentas'
-                  : activeSubmodule === 'plazos'
-                  ? 'plazos'
-                  : 'facturas'
-              }
-              creditTerms={creditTerms}
-              onSaveCreditTerm={handleSaveCreditTerm}
-              onNavigateSubModule={(sub) => setActiveSubmodule(sub)}
-              onAddBill={handleAddSupplierBill}
-              onUpdateBill={handleUpdateSupplierBill}
-              onDeleteBill={handleDeleteSupplierBill}
-              onAddQuote={handleAddSupplierQuote}
-              onUpdateMonthlyBudget={handleUpdateMonthlyBudget}
-              onAddExpense={handleAddExpense}
-              onUpdateExpense={handleUpdateExpense}
-              onDeleteExpense={handleDeleteExpense}
-              onDuplicateExpense={handleDuplicateExpense}
-              onAddPayment={handleAddPayment}
-            />
-          )}
-
-          {/* Module: Clínica */}
-          {activeModule === 'clinica' && (
-            <>
-              {activeSubmodule === 'fichas-medicas' && (
-                <NewConsultationView
-                  patients={patients}
-                  selectedPatient={selectedPatient}
-                  onSaveConsultation={handleSaveFullConsultation}
-                  onCancel={() => handleSetActiveModule('clinica')}
-                  currentVetName={userSession?.name}
-                />
-              )}
-
-              {activeSubmodule === 'vacunas' && (
-                <VaccinesView
-                  isGeneralCatalog={true}
-                  selectedPatient={selectedPatient}
-                  vaccineCatalog={vaccineCatalog}
-                  onAddVaccineToCatalog={handleAddVaccineToCatalog}
-                  onUpdateVaccineInCatalog={handleUpdateVaccineInCatalog}
-                  onDeleteVaccineFromCatalog={handleDeleteVaccineFromCatalog}
-                  vaccineDoses={vaccineDoses}
-                  onRegisterDosis={handleRegisterDosis}
-                  onDeleteDosis={handleDeleteDosis}
-                  onRemoveDosisByVaccine={handleRemoveDosisByVaccine}
-                  currentVetName={userSession?.name}
-                  onScheduleAppointment={handleScheduleAppointmentFromVaccines}
-                />
-              )}
-
-              {activeSubmodule === 'calendario-clinica' && (
-                <AgendaView
-                  patients={patients}
-                  medicalAppointments={medicalAppointments}
-                  onAddMedicalAppointment={handleAddMedicalAppointment}
-                  onUpdateMedicalAppointment={handleUpdateMedicalAppointment}
-                  onDeleteMedicalAppointment={handleDeleteMedicalAppointment}
-                  groomingAppointments={groomingAppointments}
-                  groomingServices={groomingServices}
-                  onAddGroomingAppointment={handleAddGroomingAppointment}
-                  onUpdateGroomingAppointment={handleUpdateGroomingAppointment}
-                  onDeleteGroomingAppointment={handleDeleteGroomingAppointment}
-                  onNavigateToBilling={handleNavigateToBillingFromAppointment}
-                  fixedMode="medica"
-                  initialPatientId={schedulePrefill.patientId}
-                  initialReason={schedulePrefill.reason}
-                  autoOpenNewModal={schedulePrefill.autoOpen}
-                  currentVetName={userSession?.name}
-                />
-              )}
-            </>
-          )}
-
-          {/* Module: Peluquería */}
-          {activeModule === 'peluqueria' && (
-            <AgendaView
-              patients={patients}
-              medicalAppointments={medicalAppointments}
-              onAddMedicalAppointment={handleAddMedicalAppointment}
-              onUpdateMedicalAppointment={handleUpdateMedicalAppointment}
-              onDeleteMedicalAppointment={handleDeleteMedicalAppointment}
-              groomingAppointments={groomingAppointments}
-              groomingServices={groomingServices}
-              onAddGroomingAppointment={handleAddGroomingAppointment}
-              onUpdateGroomingAppointment={handleUpdateGroomingAppointment}
-              onDeleteGroomingAppointment={handleDeleteGroomingAppointment}
-              onNavigateToBilling={handleNavigateToBillingFromAppointment}
-              fixedMode="peluqueria"
-              currentVetName={userSession?.name}
-            />
-          )}
-
-          {/* Module: Pacientes */}
-          {activeModule === 'pacientes' && (
-            <>
-              {activeSubmodule === 'control-vacunas' && (
-                <VaccinesView
-                  isGeneralCatalog={false}
-                  patients={patients}
-                  selectedPatient={selectedPatient}
-                  onSelectPatient={setSelectedPatient}
-                  vaccineCatalog={vaccineCatalog}
-                  onAddVaccineToCatalog={handleAddVaccineToCatalog}
-                  onUpdateVaccineInCatalog={handleUpdateVaccineInCatalog}
-                  onDeleteVaccineFromCatalog={handleDeleteVaccineFromCatalog}
-                  vaccineDoses={vaccineDoses}
-                  onRegisterDosis={handleRegisterDosis}
-                  onDeleteDosis={handleDeleteDosis}
-                  onRemoveDosisByVaccine={handleRemoveDosisByVaccine}
-                  currentVetName={userSession?.name}
-                  onScheduleAppointment={handleScheduleAppointmentFromVaccines}
-                  onUpdatePatients={handleUpdatePatients}
-                />
-              )}
-
-              {activeSubmodule === 'tutores' && (
-                <TutoresView
-                  patients={patients}
-                  onUpdatePatients={handleUpdatePatients}
-                  receipts={receipts}
-                  medicalAppointments={medicalAppointments}
-                  groomingAppointments={groomingAppointments}
-                />
-              )}
-
-              {activeSubmodule === 'ficha-pacientes' && (
-                <PatientProfileView
-                  patients={patients}
-                  selectedPatient={selectedPatient}
-                  onSelectPatient={setSelectedPatient}
-                  clinicalNotes={clinicalNotes}
-                  onAddClinicalNote={handleAddClinicalNote}
-                  onUpdateClinicalNote={handleUpdateClinicalNote}
-                  onDeleteClinicalNote={handleDeleteClinicalNote}
-                  vaccineDoses={vaccineDoses}
-                  onNavigateToTab={handleNavigateFromShortcut}
-                  onAddPatient={handleAddPatient}
-                  onUpdatePatients={handleUpdatePatients}
-                  vaccineCatalog={vaccineCatalog}
-                  onRegisterDosis={handleRegisterDosis}
-                  onRemoveDosisByVaccine={handleRemoveDosisByVaccine}
-                  currentVetName={userSession?.name}
-                  onAddVaccineToCatalog={handleAddVaccineToCatalog}
-                  medicalAppointments={medicalAppointments}
-                  groomingAppointments={groomingAppointments}
-                  onScheduleAppointment={handleScheduleAppointmentFromVaccines}
-                />
-              )}
-            </>
-          )}
-
-          {/* Module: Inventario */}
-          {activeModule === 'inventario' && (
-            <StockControlView
-              products={products}
-              servicesCatalog={servicesCatalog}
-              activeSubmodule={activeSubmodule === 'servicios-catalogo' ? 'servicios-catalogo' : 'productos-fisicos'}
-              onAddStockEntry={handleAddStockEntry}
-              onAddProduct={handleAddProduct}
-              onUpdateProduct={handleUpdateProduct}
-              onDeleteProduct={handleDeleteProduct}
-              onAddServiceCatalogItem={handleAddServiceToCatalog}
-              onUpdateServiceCatalogItem={handleUpdateServiceInCatalog}
-              onDeleteServiceCatalogItem={handleDeleteServiceFromCatalog}
-              onAdjustStock={handleAdjustStock}
-              onUpdateServicesCatalog={handleUpdateServicesCatalog}
-              onAddBill={handleAddSupplierBill}
-            />
-          )}
-
-          {/* Module: Cobros */}
-          {activeModule === 'cobros' && (
-            <CobrosView
-              patients={patients}
-              selectedPatient={selectedPatient}
-              receipts={receipts}
-              activeSubmodule={activeSubmodule}
-              initialItems={pendingBillingItems}
-              products={products}
-              servicesCatalog={servicesCatalog}
-              onCheckout={handleCheckout}
-              onNavigateToHistorial={() => setActiveSubmodule('historial-cobros')}
-            />
-          )}
-
-          {/* Module: WhatsApp */}
-          {activeModule === 'whatsapp' && (
-            <ChatPage
-              patientsList={patients}
-              onOpenPatientProfile={(clientData: any) => {
-                const targetPatient = patients.find(p => p.id === clientData.id || p.ownerPhone === clientData.ownerPhone);
-                if (targetPatient) {
-                  setSelectedPatient(targetPatient);
+          <div key={`${activeModule}-${activeSubmodule}`} className="flex-1 h-full overflow-hidden flex flex-col animate-page-transition">
+            {/* Module: Proveedores */}
+            {activeModule === 'proveedores' && (
+              <SuppliersView
+                bills={supplierBills}
+                quotes={supplierQuotes}
+                expenses={expenses}
+                payments={payments}
+                monthlyBudgets={monthlyBudgets}
+                products={products}
+                activeSubModule={
+                  activeSubmodule === 'presupuestos'
+                    ? 'presupuestos'
+                    : activeSubmodule === 'pagos'
+                    ? 'pagos'
+                    : activeSubmodule === 'cuentas'
+                    ? 'cuentas'
+                    : activeSubmodule === 'plazos'
+                    ? 'plazos'
+                    : 'facturas'
                 }
-                setActiveModuleState('pacientes');
-                setActiveSubmodule('ficha-pacientes');
-              }}
-            />
-          )}
+                creditTerms={creditTerms}
+                onSaveCreditTerm={handleSaveCreditTerm}
+                onNavigateSubModule={(sub) => setActiveSubmodule(sub)}
+                onAddBill={handleAddSupplierBill}
+                onUpdateBill={handleUpdateSupplierBill}
+                onDeleteBill={handleDeleteSupplierBill}
+                onAddQuote={handleAddSupplierQuote}
+                onUpdateMonthlyBudget={handleUpdateMonthlyBudget}
+                onAddExpense={handleAddExpense}
+                onUpdateExpense={handleUpdateExpense}
+                onDeleteExpense={handleDeleteExpense}
+                onDuplicateExpense={handleDuplicateExpense}
+                onAddPayment={handleAddPayment}
+              />
+            )}
+
+            {/* Module: Clínica */}
+            {activeModule === 'clinica' && (
+              <>
+                {activeSubmodule === 'fichas-medicas' && (
+                  <NewConsultationView
+                    patients={patients}
+                    selectedPatient={selectedPatient}
+                    onSaveConsultation={handleSaveFullConsultation}
+                    onCancel={() => handleSetActiveModule('clinica')}
+                    currentVetName={userSession?.name}
+                  />
+                )}
+
+                {activeSubmodule === 'vacunas' && (
+                  <VaccinesView
+                    isGeneralCatalog={true}
+                    selectedPatient={selectedPatient}
+                    vaccineCatalog={vaccineCatalog}
+                    onAddVaccineToCatalog={handleAddVaccineToCatalog}
+                    onUpdateVaccineInCatalog={handleUpdateVaccineInCatalog}
+                    onDeleteVaccineFromCatalog={handleDeleteVaccineFromCatalog}
+                    vaccineDoses={vaccineDoses}
+                    onRegisterDosis={handleRegisterDosis}
+                    onDeleteDosis={handleDeleteDosis}
+                    onRemoveDosisByVaccine={handleRemoveDosisByVaccine}
+                    currentVetName={userSession?.name}
+                    onScheduleAppointment={handleScheduleAppointmentFromVaccines}
+                  />
+                )}
+
+                {activeSubmodule === 'calendario-clinica' && (
+                  <AgendaView
+                    patients={patients}
+                    medicalAppointments={medicalAppointments}
+                    onAddMedicalAppointment={handleAddMedicalAppointment}
+                    onUpdateMedicalAppointment={handleUpdateMedicalAppointment}
+                    onDeleteMedicalAppointment={handleDeleteMedicalAppointment}
+                    groomingAppointments={groomingAppointments}
+                    groomingServices={groomingServices}
+                    onAddGroomingAppointment={handleAddGroomingAppointment}
+                    onUpdateGroomingAppointment={handleUpdateGroomingAppointment}
+                    onDeleteGroomingAppointment={handleDeleteGroomingAppointment}
+                    onNavigateToBilling={handleNavigateToBillingFromAppointment}
+                    fixedMode="medica"
+                    initialPatientId={schedulePrefill.patientId}
+                    initialReason={schedulePrefill.reason}
+                    autoOpenNewModal={schedulePrefill.autoOpen}
+                    currentVetName={userSession?.name}
+                  />
+                )}
+              </>
+            )}
+
+            {/* Module: Peluquería */}
+            {activeModule === 'peluqueria' && (
+              <AgendaView
+                patients={patients}
+                medicalAppointments={medicalAppointments}
+                onAddMedicalAppointment={handleAddMedicalAppointment}
+                onUpdateMedicalAppointment={handleUpdateMedicalAppointment}
+                onDeleteMedicalAppointment={handleDeleteMedicalAppointment}
+                groomingAppointments={groomingAppointments}
+                groomingServices={groomingServices}
+                onAddGroomingAppointment={handleAddGroomingAppointment}
+                onUpdateGroomingAppointment={handleUpdateGroomingAppointment}
+                onDeleteGroomingAppointment={handleDeleteGroomingAppointment}
+                onNavigateToBilling={handleNavigateToBillingFromAppointment}
+                fixedMode="peluqueria"
+                currentVetName={userSession?.name}
+              />
+            )}
+
+            {/* Module: Pacientes */}
+            {activeModule === 'pacientes' && (
+              <>
+                {activeSubmodule === 'control-vacunas' && (
+                  <VaccinesView
+                    isGeneralCatalog={false}
+                    patients={patients}
+                    selectedPatient={selectedPatient}
+                    onSelectPatient={setSelectedPatient}
+                    vaccineCatalog={vaccineCatalog}
+                    onAddVaccineToCatalog={handleAddVaccineToCatalog}
+                    onUpdateVaccineInCatalog={handleUpdateVaccineInCatalog}
+                    onDeleteVaccineFromCatalog={handleDeleteVaccineFromCatalog}
+                    vaccineDoses={vaccineDoses}
+                    onRegisterDosis={handleRegisterDosis}
+                    onDeleteDosis={handleDeleteDosis}
+                    onRemoveDosisByVaccine={handleRemoveDosisByVaccine}
+                    currentVetName={userSession?.name}
+                    onScheduleAppointment={handleScheduleAppointmentFromVaccines}
+                    onUpdatePatients={handleUpdatePatients}
+                  />
+                )}
+
+                {activeSubmodule === 'tutores' && (
+                  <TutoresView
+                    patients={patients}
+                    onUpdatePatients={handleUpdatePatients}
+                    receipts={receipts}
+                    medicalAppointments={medicalAppointments}
+                    groomingAppointments={groomingAppointments}
+                  />
+                )}
+
+                {activeSubmodule === 'ficha-pacientes' && (
+                  <PatientProfileView
+                    patients={patients}
+                    selectedPatient={selectedPatient}
+                    onSelectPatient={setSelectedPatient}
+                    clinicalNotes={clinicalNotes}
+                    onAddClinicalNote={handleAddClinicalNote}
+                    onUpdateClinicalNote={handleUpdateClinicalNote}
+                    onDeleteClinicalNote={handleDeleteClinicalNote}
+                    vaccineDoses={vaccineDoses}
+                    onNavigateToTab={handleNavigateFromShortcut}
+                    onAddPatient={handleAddPatient}
+                    onUpdatePatients={handleUpdatePatients}
+                    vaccineCatalog={vaccineCatalog}
+                    onRegisterDosis={handleRegisterDosis}
+                    onRemoveDosisByVaccine={handleRemoveDosisByVaccine}
+                    currentVetName={userSession?.name}
+                    onAddVaccineToCatalog={handleAddVaccineToCatalog}
+                    medicalAppointments={medicalAppointments}
+                    groomingAppointments={groomingAppointments}
+                    onScheduleAppointment={handleScheduleAppointmentFromVaccines}
+                  />
+                )}
+              </>
+            )}
+
+            {/* Module: Inventario */}
+            {activeModule === 'inventario' && (
+              <StockControlView
+                products={products}
+                servicesCatalog={servicesCatalog}
+                activeSubmodule={activeSubmodule === 'servicios-catalogo' ? 'servicios-catalogo' : 'productos-fisicos'}
+                onAddStockEntry={handleAddStockEntry}
+                onAddProduct={handleAddProduct}
+                onUpdateProduct={handleUpdateProduct}
+                onDeleteProduct={handleDeleteProduct}
+                onAddServiceCatalogItem={handleAddServiceToCatalog}
+                onUpdateServiceCatalogItem={handleUpdateServiceInCatalog}
+                onDeleteServiceCatalogItem={handleDeleteServiceFromCatalog}
+                onAdjustStock={handleAdjustStock}
+                onUpdateServicesCatalog={handleUpdateServicesCatalog}
+                onAddBill={handleAddSupplierBill}
+              />
+            )}
+
+            {/* Module: Cobros */}
+            {activeModule === 'cobros' && (
+              <CobrosView
+                patients={patients}
+                selectedPatient={selectedPatient}
+                receipts={receipts}
+                activeSubmodule={activeSubmodule}
+                initialItems={pendingBillingItems}
+                products={products}
+                servicesCatalog={servicesCatalog}
+                onCheckout={handleCheckout}
+                onNavigateToHistorial={() => setActiveSubmodule('historial-cobros')}
+              />
+            )}
+
+            {/* Module: WhatsApp */}
+            {activeModule === 'whatsapp' && (
+              <ChatPage
+                patientsList={patients}
+                onOpenPatientProfile={(clientData: any) => {
+                  const targetPatient = patients.find(p => p.id === clientData.id || p.ownerPhone === clientData.ownerPhone);
+                  if (targetPatient) {
+                    setSelectedPatient(targetPatient);
+                  }
+                  setActiveModuleState('pacientes');
+                  setActiveSubmodule('ficha-pacientes');
+                }}
+              />
+            )}
+          </div>
         </main>
       </div>
 

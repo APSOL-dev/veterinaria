@@ -1,8 +1,19 @@
 import React, { useState, useMemo } from 'react';
-import { Patient, Species, Sex, BillReceipt, MedicalAppointment, GroomingAppointment } from '../../domain/types';
-import { getUniqueTutores, updateTutorAndPetInfo, createPetForTutor, calculateTutorAccountMovements, getTutorAppointments, TutorAppointmentSummary, TutorPaymentRecord } from '../../domain/services/tutorService';
+import { Patient, Species, Sex, BillReceipt, MedicalAppointment, GroomingAppointment, TutorAccountMovement } from '../../domain/types';
+import { 
+  getUniqueTutores, 
+  updateTutorAndPetInfo, 
+  createPetForTutor, 
+  calculateTutorAccountMovements, 
+  calculateTutorDebtAging,
+  TutorDebtAgingInfo,
+  getTutorAppointments, 
+  TutorAppointmentSummary, 
+  TutorPaymentRecord 
+} from '../../domain/services/tutorService';
 import { updateTutorInSupabase, insertPatientToSupabase, updatePatientInSupabase } from '../../domain/services/supabaseService';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
+import { ComprobanteDetailModal } from '../Billing/ComprobanteDetailModal';
 
 interface TutoresViewProps {
   patients: Patient[];
@@ -32,6 +43,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
   const [payAmount, setPayAmount] = useState<number>(0);
   const [payConcept, setPayConcept] = useState('');
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedMovementForDetail, setSelectedMovementForDetail] = useState<TutorAccountMovement | null>(null);
 
   const activeTutor = useMemo(() => {
     return tutores.find(t => t.ownerName.toLowerCase() === selectedTutorName.toLowerCase()) || tutores[0];
@@ -45,6 +57,17 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
     );
   }, [tutores, searchQuery]);
 
+  // Precomputed debt & balance aging for all tutores
+  const tutorsDebtMap = useMemo(() => {
+    const map = new Map<string, TutorDebtAgingInfo>();
+    tutores.forEach(t => {
+      const petIds = t.pets.map(p => p.id);
+      const movs = calculateTutorAccountMovements(t.ownerName, receipts, tutorPayments, petIds);
+      map.set(t.ownerName.toLowerCase(), calculateTutorDebtAging(movs));
+    });
+    return map;
+  }, [tutores, receipts, tutorPayments]);
+
   // Account movements for active tutor
   const accountMovements = useMemo(() => {
     if (!activeTutor) return [];
@@ -55,6 +78,10 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
   const currentTutorSaldo = useMemo(() => {
     if (accountMovements.length === 0) return 0;
     return accountMovements[accountMovements.length - 1].saldo;
+  }, [accountMovements]);
+
+  const activeTutorDebtInfo = useMemo(() => {
+    return calculateTutorDebtAging(accountMovements);
   }, [accountMovements]);
 
   // Turnos del tutor (médicos y peluquería)
@@ -278,6 +305,41 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                     </span>
                   ))}
                 </div>
+
+                {/* Saldo y Estado de Deuda Chip */}
+                {(() => {
+                  const debt = tutorsDebtMap.get(tutor.ownerName.toLowerCase());
+                  if (!debt) return null;
+                  if (debt.currentSaldo > 0) {
+                    return (
+                      <div className={`mt-xs pt-1 border-t flex flex-col gap-0.5 ${isSelected ? 'border-white/20' : 'border-outline-variant/30'}`}>
+                        <div className="flex items-center justify-between gap-1 text-[11px] font-semibold">
+                          <span className={isSelected ? 'text-red-200' : 'text-red-700'}>
+                            Deuda: ${debt.currentSaldo.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className={`text-[10px] flex items-center gap-1 font-medium ${isSelected ? 'text-purple-200' : 'text-slate-500'}`}>
+                          <span className="material-symbols-outlined text-[12px] opacity-80">history_toggle_off</span>
+                          <span className="truncate">{debt.message}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  if (debt.currentSaldo < 0) {
+                    return (
+                      <div className={`mt-xs pt-1 border-t flex items-center justify-between gap-1 text-[10px] font-semibold ${isSelected ? 'border-white/20 text-emerald-200' : 'border-outline-variant/30 text-emerald-700'}`}>
+                        <span>A favor: ${Math.abs(debt.currentSaldo).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                        <span className="text-[9px] font-normal">Crédito</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className={`mt-xs pt-1 border-t flex items-center justify-between text-[10px] font-medium ${isSelected ? 'border-white/20 text-purple-200' : 'border-outline-variant/30 text-slate-400'}`}>
+                      <span>Saldo: $0,00</span>
+                      <span className="text-[9px]">Al día</span>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
@@ -310,12 +372,43 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
           </div>
 
           <div className="flex items-center gap-sm flex-wrap">
-            {/* Saldo Badge */}
-            <div className="bg-surface-container-low border border-outline-variant/40 rounded-xl px-4 py-2 flex items-center gap-xs">
-              <span className="text-[10px] font-medium text-slate-500">Saldo cta. cte.:</span>
-              <span className={`text-sm font-semibold font-mono ${currentTutorSaldo > 0 ? 'text-red-700' : 'text-[#27AE60]'}`}>
-                $ {currentTutorSaldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
+            {/* Saldo y Estado de Deuda Badge */}
+            <div className={`border rounded-xl px-4 py-2 flex flex-col gap-0.5 justify-center ${
+              currentTutorSaldo > 0 
+                ? 'bg-red-50/90 border-red-200 text-red-900 shadow-xs' 
+                : currentTutorSaldo < 0 
+                  ? 'bg-emerald-50/90 border-emerald-200 text-emerald-900 shadow-xs' 
+                  : 'bg-surface-container-low border-outline-variant/40 text-slate-700'
+            }`}>
+              <div className="flex items-center gap-xs">
+                <span className="text-[10px] font-medium text-slate-500">
+                  {currentTutorSaldo > 0 ? 'Deuda cta. cte.:' : currentTutorSaldo < 0 ? 'Saldo a favor:' : 'Saldo cta. cte.:'}
+                </span>
+                <span className={`text-sm font-bold font-mono ${
+                  currentTutorSaldo > 0 
+                    ? 'text-red-700' 
+                    : currentTutorSaldo < 0 
+                      ? 'text-[#27AE60]' 
+                      : 'text-slate-700'
+                }`}>
+                  {currentTutorSaldo < 0 
+                    ? `- $ ${Math.abs(currentTutorSaldo).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                    : `$ ${currentTutorSaldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  }
+                </span>
+              </div>
+              {currentTutorSaldo > 0 && (
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-red-800">
+                  <span className="material-symbols-outlined text-[14px] text-red-600">history_toggle_off</span>
+                  <span>{activeTutorDebtInfo.message}</span>
+                </div>
+              )}
+              {currentTutorSaldo < 0 && (
+                <span className="text-[10px] font-medium text-emerald-700">Crédito a favor</span>
+              )}
+              {currentTutorSaldo === 0 && (
+                <span className="text-[10px] font-medium text-slate-500">Al día (sin saldo pendiente)</span>
+              )}
             </div>
 
             <button
@@ -380,12 +473,23 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                   </tr>
                 ) : (
                   accountMovements.map(m => (
-                    <tr key={m.id} className="hover:bg-surface-container/20 transition-colors">
+                    <tr 
+                      key={m.id} 
+                      onClick={() => setSelectedMovementForDetail(m)}
+                      className="hover:bg-purple-50/70 transition-colors cursor-pointer group"
+                      title="Haga clic para ver el detalle del comprobante / abono"
+                    >
                       <td className="py-2.5 px-md text-center font-mono text-slate-600">
                         {m.date}
                       </td>
                       <td className="py-2.5 px-md font-medium text-slate-900">
-                        {m.concept}
+                        <div className="flex items-center justify-between gap-2">
+                          <span>{m.concept}</span>
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[#5C3C7B] flex items-center gap-0.5 text-[10px] font-semibold bg-purple-100/80 px-2 py-0.5 rounded-md shrink-0">
+                            <span className="material-symbols-outlined text-[13px]">visibility</span>
+                            Ver detalle
+                          </span>
+                        </div>
                       </td>
                       <td className="py-2.5 px-md text-right font-medium text-slate-900">
                         {m.debe > 0 ? (
@@ -401,8 +505,13 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                           <span className="text-slate-400 font-normal">-</span>
                         )}
                       </td>
-                      <td className="py-2.5 px-md text-right font-semibold text-slate-900 font-mono">
-                        $ {m.saldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <td className={`py-2.5 px-md text-right font-semibold font-mono ${
+                        m.saldo > 0 ? 'text-red-700' : m.saldo < 0 ? 'text-[#27AE60]' : 'text-slate-600'
+                      }`}>
+                        {m.saldo < 0 
+                          ? `- $ ${Math.abs(m.saldo).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                          : `$ ${m.saldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        }
                       </td>
                     </tr>
                   ))
@@ -471,7 +580,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
 
         {/* Associated Pets Section */}
         <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex-1">
-          <h2 className="font-headline-sm text-sm font-bold text-on-surface mb-md flex items-center gap-xs">
+          <h2 className="font-headline-sm text-sm font-semibold text-on-surface mb-md flex items-center gap-xs">
             <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">pets</span>
             Mascotas Asociadas a {activeTutor.ownerName} ({activeTutor.pets.length})
           </h2>
@@ -488,11 +597,11 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-headline-sm text-base text-primary font-bold truncate">{pet.name}</h3>
+                    <h3 className="font-headline-sm text-base text-primary font-semibold truncate">{pet.name}</h3>
                     <p className="font-body-md text-xs text-on-surface-variant truncate">
                       {pet.species} • {pet.breed}
                     </p>
-                    <p className="font-label-sm text-[11px] text-secondary font-bold">
+                    <p className="font-label-sm text-[11px] text-secondary font-medium">
                       {pet.sex} • {pet.weightKg} kg
                     </p>
                   </div>
@@ -500,7 +609,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
 
                 <div className="border-t border-surface-container pt-xs flex justify-between items-center text-xs text-on-surface-variant">
                   <span>ID: {pet.id}</span>
-                  <span className="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-primary">
+                  <span className="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-medium text-primary">
                     Paciente Activo
                   </span>
                 </div>
@@ -883,6 +992,12 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
         message={notifModal.message}
         type="success"
         onClose={() => setNotifModal({ isOpen: false, message: '' })}
+      />
+
+      <ComprobanteDetailModal
+        isOpen={!!selectedMovementForDetail}
+        movement={selectedMovementForDetail}
+        onClose={() => setSelectedMovementForDetail(null)}
       />
     </div>
   );

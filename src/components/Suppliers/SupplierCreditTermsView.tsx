@@ -271,35 +271,35 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
         </div>
       </div>
 
-      {/* Modal Edit Supplier Credit Term (Estilo Morado Formulario) */}
+      {/* Modal Edit Supplier Credit Term (Estilo Claro) */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-[#1D1426] text-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-purple-900/60 flex flex-col gap-5">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+          <div className="bg-surface-container-lowest text-slate-800 rounded-2xl max-w-md w-full shadow-2xl border border-outline-variant/30 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Header del Modal */}
-            <div className="flex items-center justify-between border-b border-purple-900/40 pb-3">
+            <div className="bg-[#5C3C7B] text-white p-4 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-white leading-tight flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[#CBB5E2] text-[20px]">more_time</span>
+                  <span className="material-symbols-outlined text-purple-200 text-[20px]">more_time</span>
                   <span>Configurar Plazos (%)</span>
                 </h3>
-                <p className="text-xs text-[#CBB5E2] font-medium mt-0.5">
+                <p className="text-xs text-purple-100 font-medium mt-0.5">
                   {editingSupplierName}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowEditModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-purple-900/40 transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
 
-            {/* Formulario Estilo Morado */}
-            <form onSubmit={handleSaveTermSubmit} className="flex flex-col gap-4">
+            {/* Formulario Estilo Claro */}
+            <form onSubmit={handleSaveTermSubmit} className="p-5 flex flex-col gap-4">
               {/* 1. Cobro contado (%) */}
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-slate-300">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-700">
                   Cobro contado (%)
                 </label>
                 <input
@@ -308,13 +308,13 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
                   max="100"
                   value={contadoPercent}
                   onChange={e => setContadoPercent(e.target.value !== '' ? Number(e.target.value) : 0)}
-                  className="w-full bg-[#160E1E] border border-purple-900/60 rounded-xl p-3 text-white font-bold text-sm outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] transition-all"
+                  className="w-full bg-surface-container/60 border border-outline-variant/40 rounded-xl p-3 text-slate-900 font-bold text-sm outline-none focus:border-[#5C3C7B] focus:ring-1 focus:ring-[#5C3C7B] transition-all"
                 />
               </div>
 
               {/* 2. Plazo 30 días (%) */}
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-slate-300">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-700">
                   Plazo 30 días (%)
                 </label>
                 <input
@@ -323,13 +323,13 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
                   max="100"
                   value={dias30Percent}
                   onChange={e => setDias30Percent(e.target.value !== '' ? Number(e.target.value) : 0)}
-                  className="w-full bg-[#160E1E] border border-purple-900/60 rounded-xl p-3 text-white font-bold text-sm outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] transition-all"
+                  className="w-full bg-surface-container/60 border border-outline-variant/40 rounded-xl p-3 text-slate-900 font-bold text-sm outline-none focus:border-[#5C3C7B] focus:ring-1 focus:ring-[#5C3C7B] transition-all"
                 />
               </div>
 
               {/* 3. Plazo 60 días (%) */}
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-slate-300">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-700">
                   Plazo 60 días (%)
                 </label>
                 <input
@@ -338,13 +338,13 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
                   max="100"
                   value={dias60Percent}
                   onChange={e => setDias60Percent(e.target.value !== '' ? Number(e.target.value) : 0)}
-                  className="w-full bg-[#160E1E] border border-purple-900/60 rounded-xl p-3 text-white font-bold text-sm outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] transition-all"
+                  className="w-full bg-surface-container/60 border border-outline-variant/40 rounded-xl p-3 text-slate-900 font-bold text-sm outline-none focus:border-[#5C3C7B] focus:ring-1 focus:ring-[#5C3C7B] transition-all"
                 />
               </div>
 
               {/* 4. Plazo 90 días (%) */}
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-slate-300">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-700">
                   Plazo 90 días (%)
                 </label>
                 <input
@@ -353,22 +353,22 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
                   max="100"
                   value={dias90Percent}
                   onChange={e => setDias90Percent(e.target.value !== '' ? Number(e.target.value) : 0)}
-                  className="w-full bg-[#160E1E] border border-purple-900/60 rounded-xl p-3 text-white font-bold text-sm outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] transition-all"
+                  className="w-full bg-surface-container/60 border border-outline-variant/40 rounded-xl p-3 text-slate-900 font-bold text-sm outline-none focus:border-[#5C3C7B] focus:ring-1 focus:ring-[#5C3C7B] transition-all"
                 />
               </div>
 
               {/* Acciones */}
-              <div className="pt-3 border-t border-purple-900/40 flex items-center justify-end gap-3 mt-2">
+              <div className="pt-3 border-t border-outline-variant/20 flex items-center justify-end gap-3 mt-2">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-all cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#9A7DB8] hover:bg-[#8666A6] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                  className="bg-[#5C3C7B] hover:bg-[#4a3063] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[16px]">save</span>
                   <span>Guardar Plazos</span>

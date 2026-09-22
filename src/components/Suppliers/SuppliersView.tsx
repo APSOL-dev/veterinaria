@@ -483,14 +483,14 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between mb-md">
             <div>
-              <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+              <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">
                 {activeSubModule === 'facturas'
                   ? 'Proveedores — Facturas de Compras'
                   : activeSubModule === 'pagos'
                   ? 'Proveedores — Pagos'
                   : 'Proveedores — Registrar Gastos'}
               </h1>
-              <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
+              <p className="font-body-md text-xs text-slate-600 font-normal mt-0.5">
                 {activeSubModule === 'facturas'
                   ? 'Control de comprobantes de ingreso de mercadería, proyección de erogaciones y pagos'
                   : activeSubModule === 'pagos'
@@ -521,7 +521,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowConfigModal(true)}
-                  className="bg-[#F5EFF9] text-[#5C3C7B] hover:bg-[#EFE4F5] border border-[#9A7DB8]/30 px-md py-2 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                  className="bg-[#F5EFF9] text-[#5C3C7B] hover:bg-[#EFE4F5] border border-[#9A7DB8]/30 px-md py-2 rounded-xl font-label-md text-xs font-medium flex items-center gap-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
                   title="Crear nuevas asignaciones y categorías de gastos"
                 >
                   <span className="material-symbols-outlined text-[18px]">settings_suggest</span>
@@ -538,7 +538,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     ? handleOpenPaymentModal()
                     : handleOpenAddExpenseModal()
                 }
-                className="bg-primary text-on-primary hover:bg-primary-container px-md py-2 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                className="bg-primary text-on-primary hover:bg-primary-container px-md py-2 rounded-xl font-label-md text-xs font-medium flex items-center gap-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-[16px]">add</span>
                 {activeSubModule === 'facturas'
@@ -610,7 +610,6 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                         <th className="p-sm px-md">Año/Mes</th>
                         <th className="p-sm px-md text-right">Total Adeudado</th>
                         <th className="p-sm px-md text-right">Total Pagado</th>
-                        <th className="p-sm px-md text-right">Gastos</th>
                         <th className="p-sm px-md text-right">Total</th>
                         <th className="p-sm px-md text-right">Presupuesto total</th>
                         <th className="p-sm px-md text-center">Cumplimiento %</th>
@@ -646,25 +645,14 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                               <td className="p-sm px-md text-right font-semibold text-[#27AE60]">
                                 $ {yearGroup.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
-                              <td className="p-sm px-md text-right font-semibold text-purple-700">
-                                $ {(yearGroup.totalGastos || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
                               <td className="p-sm px-md text-right font-semibold text-slate-900">
                                 $ {yearGroup.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                               <td className="p-sm px-md text-right font-semibold text-slate-700">
                                 $ {yearGroup.presupuestoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
-                              <td className="p-sm px-md text-center">
-                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                                  yearGroup.statusLevel === 'exceeded'
-                                    ? 'bg-[#FDEDEC] text-[#C0392B]'
-                                    : yearGroup.statusLevel === 'warning'
-                                    ? 'bg-[#FEF9E7] text-[#D35400]'
-                                    : 'bg-[#E8F5E9] text-[#27AE60]'
-                                }`}>
-                                  <span>{yearGroup.cumplimientoPercentage}% Anual</span>
-                                </span>
+                              <td className="p-sm px-md text-center text-slate-400">
+                                -
                               </td>
                             </tr>
 
@@ -672,9 +660,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             {isExpanded && yearGroup.projections.map((proj) => {
                               const isMonthExpanded = !!expandedMonths[proj.monthKey];
                               const hasSupplierBreakdown = proj.supplierBreakdown && proj.supplierBreakdown.length > 0;
-                              const hasExpenseBreakdown = proj.expenseBreakdown && proj.expenseBreakdown.length > 0;
-                              const hasAnyBreakdown = hasSupplierBreakdown || hasExpenseBreakdown;
-                              const totalItemsCount = (hasSupplierBreakdown ? proj.supplierBreakdown!.length : 0) + (hasExpenseBreakdown ? proj.expenseBreakdown!.length : 0);
+                              const hasExpenses = (proj.totalGastos || 0) > 0;
+                              const hasAnyBreakdown = hasSupplierBreakdown || hasExpenses;
+                              const totalItemsCount = (hasSupplierBreakdown ? proj.supplierBreakdown!.length : 0) + (hasExpenses ? 1 : 0);
 
                               return (
                                 <React.Fragment key={proj.monthKey}>
@@ -709,15 +697,6 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                       {proj.totalPagado > 0 ? (
                                         <span className="inline-flex items-center gap-1 font-semibold text-[#27AE60]">
                                           $ {proj.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </span>
-                                      ) : (
-                                        <span className="text-on-surface-variant/60">0.00</span>
-                                      )}
-                                    </td>
-                                    <td className="p-sm px-md text-right">
-                                      {proj.totalGastos > 0 ? (
-                                        <span className="inline-flex items-center gap-1 font-semibold text-purple-700">
-                                          $ {proj.totalGastos.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                       ) : (
                                         <span className="text-on-surface-variant/60">0.00</span>
@@ -772,7 +751,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                     </td>
                                   </tr>
 
-                                  {/* Supplier & Expense Breakdown child rows */}
+                                  {/* Supplier & Expense Summary child rows */}
                                   {isMonthExpanded && (
                                     hasAnyBreakdown ? (
                                       <>
@@ -788,7 +767,6 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                             <td className="p-2 px-md text-right font-medium text-[#27AE60]">
                                               {sb.totalPagado > 0 ? `$ ${sb.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '0.00'}
                                             </td>
-                                            <td className="p-2 px-md text-right text-slate-400">-</td>
                                             <td className="p-2 px-md text-right font-semibold text-slate-900">
                                               $ {sb.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
@@ -797,28 +775,27 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                           </tr>
                                         ))}
 
-                                        {hasExpenseBreakdown && proj.expenseBreakdown!.map((eb) => (
-                                          <tr key={`${proj.monthKey}-exp-${eb.category}`} className="bg-[#FAF5FF] border-b border-purple-100/80 text-[11px]">
+                                        {hasExpenses && (
+                                          <tr key={`${proj.monthKey}-gastos-total`} className="bg-[#FAF5FF] border-b border-purple-100/80 text-[11px]">
                                             <td className="p-2 px-md pl-16 font-medium text-slate-700 flex items-center gap-2">
                                               <span className="material-symbols-outlined text-[15px] text-purple-600">receipt_long</span>
-                                              <span className="font-semibold text-purple-900">{eb.category}</span>
+                                              <span className="font-semibold text-purple-900">Gastos del mes (Total)</span>
                                             </td>
                                             <td className="p-2 px-md text-right text-slate-400">-</td>
-                                            <td className="p-2 px-md text-right text-slate-400">-</td>
-                                            <td className="p-2 px-md text-right font-medium text-purple-700">
-                                              $ {eb.amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            <td className="p-2 px-md text-right font-medium text-[#27AE60]">
+                                              $ {proj.totalGastos.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="p-2 px-md text-right font-semibold text-purple-900">
-                                              $ {eb.amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                              $ {proj.totalGastos.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="p-2 px-md text-right text-slate-400">-</td>
                                             <td className="p-2 px-md text-center text-slate-400">-</td>
                                           </tr>
-                                        ))}
+                                        )}
                                       </>
                                     ) : (
                                       <tr key={`${proj.monthKey}-empty`} className="bg-purple-50/30 border-b border-purple-100/50 text-[11px]">
-                                        <td colSpan={7} className="p-2 px-md pl-16 text-slate-400 italic font-normal">
+                                        <td colSpan={6} className="p-2 px-md pl-16 text-slate-400 italic font-normal">
                                           Sin facturas, pagos ni gastos registrados en este mes.
                                         </td>
                                       </tr>
@@ -1543,13 +1520,10 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                 />
               </div>
 
-              {/* Comprobante (Obligatorio) - Dropzone / File input */}
+              {/* Comprobante (Opcional) - Dropzone / File input */}
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-medium text-on-surface-variant flex items-center justify-between">
-                  <span>Comprobante (adjunto obligatorio) *</span>
-                  {!expVoucherFile && !expVoucherFileName && (
-                    <span className="text-[10px] text-error font-medium">Requerido</span>
-                  )}
+                  <span>Comprobante (opcional)</span>
                 </label>
 
                 <label
@@ -1626,7 +1600,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   ) : (
                     <div className="flex flex-col items-center gap-1">
                       <span className="material-symbols-outlined text-xl text-primary">cloud_upload</span>
-                      <span className="font-semibold text-xs text-primary">Adjuntar comprobante *</span>
+                      <span className="font-semibold text-xs text-primary">Adjuntar comprobante (opcional)</span>
                       <span className="text-[10px] text-on-surface-variant">Seleccionar o arrastrar PDF, PNG o JPG desde tu equipo</span>
                     </div>
                   )}
@@ -1648,14 +1622,14 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-md py-2 rounded-xl text-xs font-bold bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-all cursor-pointer"
+                  className="px-md py-2 rounded-xl text-xs font-medium bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-all cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  disabled={!expDescription.trim() || expAmount <= 0 || (!expVoucherFile && !expVoucherFileName)}
-                  className="px-md py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary-container text-on-primary shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!expDescription.trim() || expAmount <= 0}
+                  className="px-md py-2 rounded-xl text-xs font-medium bg-primary hover:bg-primary-container text-on-primary shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingExpenseId ? 'Guardar Cambios' : 'Registrar Gasto'}
                 </button>

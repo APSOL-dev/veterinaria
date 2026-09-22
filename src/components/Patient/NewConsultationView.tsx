@@ -4,6 +4,7 @@ import { formatAttachmentFileList, prepareConsultationPrescriptionText, shouldAu
 import { uploadConsultationAttachmentToSupabase, uploadPrescriptionToSupabase } from '../../domain/services/supabaseService';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
+import { AutoResizeTextarea } from '../Common/AutoResizeTextarea';
 
 import { PrescriptionModal } from './PrescriptionModal';
 
@@ -236,17 +237,18 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
           </div>
         </div>
 
-        {/* Clinical Notes Textarea (Compact / Fixed Height Shrink-0) */}
+        {/* Clinical Notes Textarea (Auto-expanding) */}
         <div className="shrink-0 flex flex-col gap-1">
           <label className="font-label-md text-xs text-primary font-semibold">
             Notas clínicas, anamnesis y diagnóstico
           </label>
-          <textarea
+          <AutoResizeTextarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            rows={4}
+            minRows={4}
+            maxRows={18}
             placeholder="Ingrese motivo de consulta, auscultación, constantes vitales, examen físico, diagnóstico presuntivo e indicaciones médicas..."
-            className="w-full bg-surface-container border border-outline-variant/80 text-on-surface font-body-md text-sm p-md rounded-xl outline-none transition-all focus:bg-surface focus:ring-2 focus:ring-secondary placeholder:text-on-surface-variant/70 h-32 resize-none shadow-xs"
+            className="w-full bg-surface-container border border-outline-variant/80 text-on-surface font-body-md text-sm p-md rounded-xl outline-none transition-all focus:bg-surface focus:ring-2 focus:ring-secondary placeholder:text-on-surface-variant/70 font-normal leading-relaxed shadow-xs"
           />
         </div>
 
@@ -257,12 +259,13 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
               <span className="material-symbols-outlined text-[16px]">prescriptions</span>
               Indicaciones de receta médica
             </label>
-            <textarea
+            <AutoResizeTextarea
               value={prescriptionText}
               onChange={(e) => setPrescriptionText(e.target.value)}
-              rows={2}
+              minRows={2}
+              maxRows={10}
               placeholder="Detalle de fármacos, concentración, posología y duración del tratamiento..."
-              className="w-full bg-surface text-on-surface font-body-md text-xs p-sm rounded-lg outline-none border border-outline-variant focus:ring-2 focus:ring-secondary resize-none"
+              className="w-full bg-surface text-on-surface font-body-md text-xs p-sm rounded-lg outline-none border border-outline-variant focus:ring-2 focus:ring-secondary font-normal leading-relaxed"
             />
           </div>
         )}

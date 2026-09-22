@@ -4,6 +4,7 @@ import {
   getUniqueTutores, 
   updateTutorAndPetInfo,
   calculateTutorAccountMovements,
+  calculateTutorDebtAging,
   getTutorAppointments,
   createPetForTutor
 } from './tutorService';
@@ -90,14 +91,22 @@ describe('tutorService', () => {
     // 1. FC-B-0001 (2026-08-01): Debe = 15000, Haber = 0, Saldo = 15000
     expect(movements[0].debe).toBe(15000);
     expect(movements[0].saldo).toBe(15000);
+    expect(movements[0].type).toBe('receipt');
+    expect(movements[0].receipt).toBeDefined();
+    expect(movements[0].receipt?.receiptNumber).toBe('FC-B-0001');
 
     // 2. Abono tp1 (2026-08-05): Debe = 0, Haber = 10000, Saldo = 5000
     expect(movements[1].haber).toBe(10000);
     expect(movements[1].saldo).toBe(5000);
+    expect(movements[1].type).toBe('payment');
+    expect(movements[1].payment).toBeDefined();
+    expect(movements[1].payment?.amount).toBe(10000);
 
     // 3. FC-B-0002 (2026-08-10): Debe = 5000, Haber = 0, Saldo = 10000
     expect(movements[2].debe).toBe(5000);
     expect(movements[2].saldo).toBe(10000);
+    expect(movements[2].type).toBe('receipt');
+    expect(movements[2].receipt?.receiptNumber).toBe('FC-B-0002');
   });
 
   it('calculateTutorAccountMovements should only include receipts paid via cuenta-corriente', () => {
@@ -260,6 +269,88 @@ describe('tutorService', () => {
     expect(newPet.ownerId).toBe('ow1');
     expect(newPet.address).toBe('Av. Corrientes 1234');
     expect(newPet.species).toBe('Canino');
+  });
+
+  describe('calculateTutorDebtAging', () => {
+    it('should return debt status and days since last payment when tutor has pending debt and prior payments', () => {
+      const movements = [
+        { id: '1', tutorName: 'Carlos', date: '2026-08-01', concept: 'Comprobante 1', debe: 20000, haber: 0, saldo: 20000 },
+        { id: '2', tutorName: 'Carlos', date: '2026-08-10', concept: 'Abono parcial', debe: 0, haber: 8000, saldo: 12000 },
+        { id: '3', tutorName: 'Carlos', date: '2026-08-15', concept: 'Comprobante 2', debe: 5000, haber: 0, saldo: 17000 }
+      ];
+
+      // Simulated reference date: 2026-08-25 (15 days after last payment on 2026-08-10)
+      const result = calculateTutorDebtAging(movements, '2026-08-25');
+
+      expect(result.status).toBe('debt');
+      expect(result.currentSaldo).toBe(17000);
+      expect(result.lastPaymentDate).toBe('2026-08-10');
+      expect(result.daysSinceLastPayment).toBe(15);
+      expect(result.message).toBe('Último pago hace 15 días (10/08/2026)');
+    });
+
+    it('should return debt status and debt age when tutor has never made a payment', () => {
+      const movements = [
+        { id: '1', tutorName: 'Ana', date: '2026-08-01', concept: 'Comprobante 1', debe: 15000, haber: 0, saldo: 15000 },
+        { id: '2', tutorName: 'Ana', date: '2026-08-05', concept: 'Comprobante 2', debe: 10000, haber: 0, saldo: 25000 }
+      ];
+
+      // Reference date: 2026-08-21 (20 days since initial debt on 2026-08-01)
+      const result = calculateTutorDebtAging(movements, '2026-08-21');
+
+      expect(result.status).toBe('debt');
+      expect(result.currentSaldo).toBe(25000);
+      expect(result.lastPaymentDate).toBeUndefined();
+      expect(result.daysSinceLastPayment).toBeUndefined();
+      expect(result.daysSinceDebtStart).toBe(20);
+      expect(result.message).toBe('Sin pagos registrados (deuda desde hace 20 días)');
+    });
+
+    it('should handle last payment today and yesterday appropriately', () => {
+      const movementsToday = [
+        { id: '1', tutorName: 'Pedro', date: '2026-08-01', concept: 'Factura', debe: 10000, haber: 0, saldo: 10000 },
+        { id: '2', tutorName: 'Pedro', date: '2026-08-20', concept: 'Pago', debe: 0, haber: 4000, saldo: 6000 }
+      ];
+
+      const resultToday = calculateTutorDebtAging(movementsToday, '2026-08-20');
+      expect(resultToday.daysSinceLastPayment).toBe(0);
+      expect(resultToday.message).toBe('Último pago hoy');
+
+      const resultYesterday = calculateTutorDebtAging(movementsToday, '2026-08-21');
+      expect(resultYesterday.daysSinceLastPayment).toBe(1);
+      expect(resultYesterday.message).toBe('Último pago ayer');
+    });
+
+    it('should report credit status when saldo is negative (saldo a favor)', () => {
+      const movements = [
+        { id: '1', tutorName: 'Laura', date: '2026-08-01', concept: 'Factura', debe: 5000, haber: 0, saldo: 5000 },
+        { id: '2', tutorName: 'Laura', date: '2026-08-05', concept: 'Abono mayor', debe: 0, haber: 12000, saldo: -7000 }
+      ];
+
+      const result = calculateTutorDebtAging(movements, '2026-08-20');
+      expect(result.status).toBe('credit');
+      expect(result.currentSaldo).toBe(-7000);
+      expect(result.message).toBe('Saldo a favor del tutor');
+    });
+
+    it('should report settled status when saldo is zero', () => {
+      const movements = [
+        { id: '1', tutorName: 'Laura', date: '2026-08-01', concept: 'Factura', debe: 5000, haber: 0, saldo: 5000 },
+        { id: '2', tutorName: 'Laura', date: '2026-08-05', concept: 'Pago total', debe: 0, haber: 5000, saldo: 0 }
+      ];
+
+      const result = calculateTutorDebtAging(movements, '2026-08-20');
+      expect(result.status).toBe('settled');
+      expect(result.currentSaldo).toBe(0);
+      expect(result.message).toBe('Al día (sin deuda)');
+    });
+
+    it('should return settled status for empty movements', () => {
+      const result = calculateTutorDebtAging([], '2026-08-20');
+      expect(result.status).toBe('settled');
+      expect(result.currentSaldo).toBe(0);
+      expect(result.message).toBe('Al día (sin deuda)');
+    });
   });
 });
 

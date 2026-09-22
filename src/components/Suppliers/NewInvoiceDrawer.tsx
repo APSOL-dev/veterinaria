@@ -363,33 +363,49 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex justify-end animate-fade-in">
-      <div className="w-full max-w-lg md:max-w-xl lg:max-w-2xl bg-[#1D1426] text-slate-100 h-full flex flex-col shadow-2xl border-l border-purple-900/50 font-body-md text-xs">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+      <div 
+        className="w-full max-w-2xl bg-surface-container-lowest text-slate-800 max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border border-outline-variant/30 overflow-hidden font-body-md text-xs"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex justify-between items-center px-lg py-md border-b border-purple-900/40 bg-[#2B1D3A]">
-          <div className="flex items-center gap-xs font-bold text-sm text-white">
-            <span className="material-symbols-outlined text-[#CBB5E2] text-[20px]">
-              {editingBill ? 'edit' : 'receipt_long'}
-            </span>
-            {editingBill ? 'Editar Factura de Proveedor' : 'Cargar Nueva Factura'}
+        <div className="bg-[#5C3C7B] text-white p-5 px-6 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 font-bold text-sm text-white">
+            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-white shrink-0">
+              <span className="material-symbols-outlined text-[20px]">
+                {editingBill ? 'edit' : 'receipt_long'}
+              </span>
+            </div>
+            <div>
+              <h2 className="text-sm font-bold leading-tight">
+                {editingBill ? 'Editar Factura de Proveedor' : 'Cargar Nueva Factura de Proveedor'}
+              </h2>
+              <p className="text-[11px] text-purple-200 font-medium">
+                {editingBill ? 'Modifique los datos y mercadería vinculada' : 'Carga de comprobantes de compras y stock'}
+              </p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1">
+          <button 
+            onClick={onClose} 
+            className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-full transition-colors cursor-pointer"
+            title="Cerrar modal"
+          >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         {/* Content Scroll */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-lg flex flex-col gap-md">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
           {/* Mode Switcher Tabs */}
           {!editingBill && (
-            <div className="bg-[#160E1E] p-1 rounded-xl flex items-center gap-1 border border-purple-900/40">
+            <div className="bg-surface-container/60 p-1 rounded-xl flex items-center gap-1 border border-outline-variant/30">
               <button
                 type="button"
                 onClick={() => setLoadMode('automatic')}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-xs transition-all ${
                   loadMode === 'automatic'
-                    ? 'bg-[#9A7DB8] text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200 font-medium'
+                    ? 'bg-[#5C3C7B] text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 font-medium'
                 }`}
               >
                 <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
@@ -400,8 +416,8 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                 onClick={() => setLoadMode('manual')}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-xs transition-all ${
                   loadMode === 'manual'
-                    ? 'bg-[#9A7DB8] text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200 font-medium'
+                    ? 'bg-[#5C3C7B] text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 font-medium'
                 }`}
               >
                 <span className="material-symbols-outlined text-[16px]">edit_note</span>
@@ -410,14 +426,14 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
             </div>
           )}
 
-          {/* Archivo de factura * Dropzone (Ubicado ARRIBA del proveedor) */}
+          {/* Archivo de factura * Dropzone */}
           {!editingBill && (
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-bold text-slate-300">Archivo de factura *</label>
+              <label className="text-[11px] font-semibold text-slate-700">Archivo de factura *</label>
               <label
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
-                className="border-2 border-dashed border-purple-900/60 hover:border-[#9A7DB8] bg-[#160E1E]/80 rounded-2xl p-lg flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
+                className="border-2 border-dashed border-outline-variant/60 hover:border-[#5C3C7B] bg-surface-container/30 hover:bg-purple-50/40 rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
               >
                 <input
                   type="file"
@@ -425,13 +441,13 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <div className="w-12 h-12 rounded-2xl bg-[#9A7DB8]/20 text-[#CBB5E2] group-hover:scale-110 flex items-center justify-center mb-xs transition-transform">
-                  <span className="material-symbols-outlined text-2xl">description</span>
+                <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5C3C7B] group-hover:scale-110 flex items-center justify-center mb-1.5 transition-transform">
+                  <span className="material-symbols-outlined text-xl">description</span>
                 </div>
-                <span className="font-bold text-xs text-white mb-0.5">
+                <span className="font-semibold text-xs text-slate-800 mb-0.5">
                   {selectedFile ? selectedFile.name : 'Seleccionar o arrastrar factura'}
                 </span>
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[10px] text-slate-500">
                   Haz clic o arrastra un PDF o imagen desde tu equipo
                 </span>
               </label>
@@ -442,32 +458,32 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
           {!editingBill && loadMode === 'automatic' && !isProcessed && (
             <div className="flex flex-col gap-sm">
               {isProcessing ? (
-                <div className="flex flex-col items-center justify-center p-xl gap-sm bg-[#160E1E] border border-purple-900/60 rounded-2xl text-center animate-pulse">
-                  <span className="material-symbols-outlined text-3xl text-[#CBB5E2] animate-spin">sync</span>
-                  <span className="font-bold text-xs text-white">Procesando datos de la factura...</span>
-                  <span className="text-[10px] text-slate-400">Extrayendo proveedor, CUIT, montos e IVA</span>
+                <div className="flex flex-col items-center justify-center p-6 gap-2 bg-purple-50 border border-purple-200 rounded-2xl text-center animate-pulse">
+                  <span className="material-symbols-outlined text-2xl text-[#5C3C7B] animate-spin">sync</span>
+                  <span className="font-bold text-xs text-slate-900">Procesando datos de la factura...</span>
+                  <span className="text-[10px] text-slate-500">Extrayendo proveedor, CUIT, montos e IVA</span>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => handleProcessInvoiceWithN8n()}
-                  className="bg-[#241731] border border-purple-900/60 hover:border-[#9A7DB8] text-slate-300 hover:text-white py-3 rounded-xl font-bold flex items-center justify-center gap-xs shadow-sm transition-all mt-xs cursor-pointer"
+                  className="bg-white border border-[#5C3C7B]/40 hover:bg-purple-50 text-[#5C3C7B] hover:text-[#4A2F66] py-2.5 rounded-xl font-bold flex items-center justify-center gap-xs shadow-xs transition-all cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-[16px] text-[#CBB5E2]">auto_awesome</span>
+                  <span className="material-symbols-outlined text-[16px] text-[#5C3C7B]">auto_awesome</span>
                   Procesar factura
                 </button>
               )}
 
               {extractionError && (
-                <div className="bg-[#2C1818] border border-amber-500/50 text-amber-200 p-md rounded-2xl text-xs flex flex-col gap-1.5 animate-fade-in mt-xs">
-                  <div className="flex items-center gap-xs font-bold text-amber-400">
-                    <span className="material-symbols-outlined text-[18px]">warning</span>
+                <div className="bg-amber-50 border border-amber-300 text-amber-900 p-3.5 rounded-2xl text-xs flex flex-col gap-1.5 animate-fade-in">
+                  <div className="flex items-center gap-xs font-bold text-amber-900">
+                    <span className="material-symbols-outlined text-[18px] text-amber-700">warning</span>
                     <span>No se pudieron extraer datos del archivo</span>
                   </div>
-                  <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
                     {extractionError}
                   </p>
-                  <div className="text-[10px] text-amber-300/80 pt-1 border-t border-amber-500/20">
+                  <div className="text-[10px] text-amber-700 pt-1 border-t border-amber-200">
                     Puedes continuar la carga en modo manual o completar los campos abajo.
                   </div>
                 </div>
@@ -475,20 +491,20 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
             </div>
           )}
 
-          {/* Form Fields: Only visible in Manual mode OR after data returns OR when editing OR when extraction error occurs */}
+          {/* Form Fields */}
           {(loadMode === 'manual' || isProcessed || editingBill || extractionError) && (
-            <div className="flex flex-col gap-md pt-sm border-t border-purple-900/40 animate-fade-in">
+            <div className="flex flex-col gap-4 pt-2 border-t border-outline-variant/30 animate-fade-in">
               {!editingBill && loadMode === 'automatic' && isProcessed && (
-                <div className="bg-[#1D2B20] border border-emerald-500/40 text-emerald-300 px-md py-2 rounded-xl text-[11px] font-bold flex items-center gap-xs">
-                  <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 px-3 py-2 rounded-xl text-[11px] font-bold flex items-center gap-xs">
+                  <span className="material-symbols-outlined text-[16px] text-emerald-700">check_circle</span>
                   Datos extraídos automáticamente (revisar antes de guardar)
                 </div>
               )}
 
               {/* Nombre proveedor * & CUIT proveedor * */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-md">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-300">Nombre proveedor *</label>
+                  <label className="text-[11px] font-semibold text-slate-700">Nombre proveedor *</label>
                   <SearchableSupplierSelect
                     suppliers={registeredSuppliers}
                     value={supplierName}
@@ -505,21 +521,21 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-300">CUIT proveedor *</label>
+                  <label className="text-[11px] font-semibold text-slate-700">CUIT proveedor *</label>
                   <input
                     type="text"
                     value={cuit}
                     onChange={(e) => setCuit(e.target.value)}
                     required
-                    className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
+                    className="bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 font-medium"
                   />
                 </div>
               </div>
 
               {/* Fecha factura * & Fecha de vencimiento */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-md">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-300">Fecha factura *</label>
+                  <label className="text-[11px] font-semibold text-slate-700">Fecha factura *</label>
                   <input
                     type="date"
                     value={invoiceDate}
@@ -532,70 +548,71 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                       }
                     }}
                     required
-                    className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
+                    className="bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 font-medium"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-300">Fecha de vencimiento *</label>
+                  <label className="text-[11px] font-semibold text-slate-700">Fecha de vencimiento *</label>
                   <input
                     type="date"
                     value={paymentDate}
                     onChange={(e) => setPaymentDate(e.target.value)}
                     required
-                    className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
+                    className="bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 font-medium"
                   />
                 </div>
               </div>
 
-              {/* Documento * */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-slate-300">Documento *</label>
-                <div className="relative">
-                  <select
-                    value={documentType}
-                    onChange={(e) => setDocumentType(e.target.value)}
-                    className="w-full appearance-none bg-[#160E1E] border border-purple-900/60 rounded-xl pr-8 pl-2.5 py-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] cursor-pointer"
-                  >
-                    <option value="Factura A">Factura A</option>
-                    <option value="Factura B">Factura B</option>
-                    <option value="Factura C">Factura C</option>
-                    <option value="Remito">Remito</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#CBB5E2] pointer-events-none text-[18px]">expand_more</span>
+              {/* Documento & Número */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-semibold text-slate-700">Documento *</label>
+                  <div className="relative">
+                    <select
+                      value={documentType}
+                      onChange={(e) => setDocumentType(e.target.value)}
+                      className="w-full appearance-none bg-surface-container/60 border border-outline-variant/40 rounded-xl pr-8 pl-3 py-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 cursor-pointer font-medium"
+                    >
+                      <option value="Factura A">Factura A</option>
+                      <option value="Factura B">Factura B</option>
+                      <option value="Factura C">Factura C</option>
+                      <option value="Remito">Remito</option>
+                    </select>
+                    <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-[18px]">expand_more</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-semibold text-slate-700">Número de remito / factura *</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={invoiceNumber}
+                    onChange={(e) => setInvoiceNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder=""
+                    required
+                    className="bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 font-mono font-medium"
+                  />
                 </div>
               </div>
 
-              {/* Número de remito / factura * */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-slate-300">Número de remito / factura *</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder=""
-                  required
-                  className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] font-mono"
-                />
-              </div>
-
               {/* Subtotal & Tax */}
-              <div className="grid grid-cols-2 gap-md">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-300">Subtotal sin impuestos ($)</label>
+                  <label className="text-[11px] font-semibold text-slate-700">Subtotal sin impuestos ($)</label>
                   <input
                     type="number"
                     step="0.01"
                     value={subtotal}
                     readOnly
-                    className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] opacity-90 cursor-not-allowed font-medium"
+                    className="bg-surface-container/30 border border-outline-variant/30 rounded-xl p-2.5 text-xs text-slate-700 outline-none cursor-not-allowed font-medium font-mono"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-300">IVA / Impuestos ($)</label>
+                    <label className="text-[11px] font-semibold text-slate-700">IVA / Impuestos ($)</label>
                     <div className="flex items-center gap-1.5 cursor-pointer" onClick={handleToggleIva}>
-                      <span className="text-[10px] text-purple-200 font-semibold select-none">
+                      <span className="text-[10px] text-purple-900 font-semibold select-none">
                         {applyIva ? 'IVA (21%)' : 'Sin IVA'}
                       </span>
                       <button
@@ -603,8 +620,8 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                         role="switch"
                         aria-checked={applyIva}
                         onClick={(e) => { e.stopPropagation(); handleToggleIva(); }}
-                        className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border border-purple-800 transition-colors duration-200 ease-in-out focus:outline-none ${
-                          applyIva ? 'bg-[#9A7DB8]' : 'bg-slate-700'
+                        className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border transition-colors duration-200 ease-in-out focus:outline-none ${
+                          applyIva ? 'bg-[#5C3C7B] border-[#5C3C7B]' : 'bg-slate-300 border-slate-400'
                         }`}
                       >
                         <span
@@ -627,22 +644,22 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                       const tot = Number(totalAmount) || 0;
                       setSubtotal(tot - newTax);
                     }}
-                    className={`bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] ${!applyIva ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] font-mono ${!applyIva ? 'opacity-50 cursor-not-allowed' : ''}`}
                   />
                 </div>
               </div>
 
               {/* Mercadería Recibida / Productos */}
-              <div className="flex flex-col gap-xs p-md bg-[#160E1E] rounded-xl border border-purple-900/60 mt-xs">
-                <div className="flex justify-between items-center border-b border-purple-900/40 pb-2 mb-xs">
-                  <label className="text-xs font-semibold text-[#CBB5E2] flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[16px]">inventory_2</span>
+              <div className="flex flex-col gap-xs p-4 bg-surface-container-low rounded-2xl border border-outline-variant/30">
+                <div className="flex justify-between items-center border-b border-outline-variant/30 pb-2 mb-2">
+                  <label className="text-xs font-semibold text-slate-900 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-[#5C3C7B]">inventory_2</span>
                     <span>Productos / Mercadería recibida</span>
                   </label>
                   <button
                     type="button"
                     onClick={handleAddBillItem}
-                    className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                    className="bg-[#5C3C7B] hover:bg-[#4A2F66] text-white px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
                   >
                     <span className="material-symbols-outlined text-[14px]">add</span>
                     <span>Agregar ítem</span>
@@ -650,13 +667,13 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                 </div>
 
                 {billItems.length === 0 ? (
-                  <p className="text-[11px] text-slate-400 italic text-center py-2">
+                  <p className="text-[11px] text-slate-500 italic text-center py-2">
                     No hay productos vinculados. Haz clic en "+ Agregar ítem" para asociar la entrada de stock a esta factura.
                   </p>
                 ) : (
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2.5">
                     {billItems.map((item) => (
-                      <div key={item.id} className="p-3 bg-[#251733] rounded-xl border border-purple-900/40 flex flex-col gap-2 shadow-xs">
+                      <div key={item.id} className="p-3 bg-white rounded-xl border border-outline-variant/30 flex flex-col gap-2 shadow-2xs">
                         <div className="flex items-center gap-2 w-full">
                           <div className="flex-1 min-w-0">
                             <SearchableProductSelect
@@ -685,7 +702,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                           <button
                             type="button"
                             onClick={() => handleRemoveBillItem(item.id)}
-                            className="shrink-0 bg-[#160E1E] hover:bg-red-950/60 text-slate-400 hover:text-red-400 border border-purple-900/60 hover:border-red-900/60 p-2 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                            className="shrink-0 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-700 border border-outline-variant/30 hover:border-rose-200 p-2 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
                             title="Eliminar ítem"
                           >
                             <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -694,40 +711,40 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
 
                         <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <label className="text-[10px] text-slate-300 block">Cant. recibida</label>
+                            <label className="text-[10px] text-slate-600 font-medium block">Cant. recibida</label>
                             <input
                               type="number"
                               min="1"
                               value={item.quantity}
                               onChange={(e) => handleBillItemChange(item.id, 'quantity', e.target.value)}
-                              className="w-full bg-[#160E1E] border border-purple-900/60 rounded-lg p-1.5 text-xs text-white text-center outline-none"
+                              className="w-full bg-surface-container/50 border border-outline-variant/30 rounded-lg p-1.5 text-xs text-slate-900 text-center outline-none font-mono"
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] text-slate-300 block">Costo unit. ($)</label>
+                            <label className="text-[10px] text-slate-600 font-medium block">Costo unit. ($)</label>
                             <input
                               type="number"
                               step="0.01"
                               min="0"
                               value={item.unitCost}
                               onChange={(e) => handleBillItemChange(item.id, 'unitCost', e.target.value)}
-                              className="w-full bg-[#160E1E] border border-purple-900/60 rounded-lg p-1.5 text-xs text-white text-right outline-none"
+                              className="w-full bg-surface-container/50 border border-outline-variant/30 rounded-lg p-1.5 text-xs text-slate-900 text-right outline-none font-mono"
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] text-slate-300 block">Subtotal ($)</label>
-                            <div className="p-1.5 text-right font-semibold text-[#CBB5E2]">
+                            <label className="text-[10px] text-slate-600 font-medium block">Subtotal ($)</label>
+                            <div className="p-1.5 text-right font-bold text-slate-900 font-mono">
                               ${(item.subtotal || 0).toLocaleString('es-AR')}
                             </div>
                           </div>
                         </div>
 
-                        <label className="flex items-center gap-1.5 text-[10px] text-purple-200 cursor-pointer">
+                        <label className="flex items-center gap-1.5 text-[10px] text-purple-900 font-medium cursor-pointer">
                           <input
                             type="checkbox"
                             checked={!!item.updateCatalogPrice}
                             onChange={(e) => handleBillItemChange(item.id, 'updateCatalogPrice', e.target.checked)}
-                            className="rounded accent-[#9A7DB8]"
+                            className="rounded accent-[#5C3C7B]"
                           />
                           <span>Actualizar precio en el catálogo</span>
                         </label>
@@ -738,9 +755,9 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
               </div>
 
               {/* Perceptions & Currency */}
-              <div className="grid grid-cols-2 gap-md">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-300">Percepciones ($)</label>
+                  <label className="text-[11px] font-semibold text-slate-700">Percepciones ($)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -750,91 +767,89 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                       setPerceptions(newPerc);
                       updateTotalsFromItems(billItems, newPerc, applyIva);
                     }}
-                    className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8]"
+                    className="bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 font-mono"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-slate-300">Moneda</label>
+                  <label className="text-[11px] font-semibold text-slate-700">Moneda</label>
                   <div className="relative">
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full appearance-none bg-[#160E1E] border border-purple-900/60 rounded-xl pr-8 pl-2.5 py-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] cursor-pointer"
+                      className="w-full appearance-none bg-surface-container/60 border border-outline-variant/40 rounded-xl pr-8 pl-3 py-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 cursor-pointer font-medium"
                     >
                       <option value="AR$ (Pesos)">AR$ (Pesos)</option>
                       <option value="USD (Dólares)">USD (Dólares)</option>
                     </select>
-                    <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#CBB5E2] pointer-events-none text-[18px]">expand_more</span>
+                    <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-[18px]">expand_more</span>
                   </div>
                 </div>
               </div>
 
               {/* Costo total ($) * */}
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-slate-300">Costo total ($) *</label>
+                <label className="text-[11px] font-semibold text-slate-700">Costo total ($) *</label>
                 <input
                   type="number"
                   step="0.01"
                   value={totalAmount}
                   readOnly
                   required
-                  className="bg-[#160E1E] border border-purple-900/60 rounded-xl p-2.5 text-xs text-[#CBB5E2] font-bold text-sm outline-none cursor-not-allowed opacity-90"
+                  className="bg-surface-container/30 border border-outline-variant/30 rounded-xl p-2.5 text-sm text-slate-900 font-bold font-mono outline-none cursor-not-allowed"
                 />
               </div>
 
               {/* Estado Pago */}
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-slate-300">Estado de pago *</label>
+                <label className="text-[11px] font-semibold text-slate-700">Estado de pago *</label>
                 <div className="relative">
                   <select
                     value={billStatus}
                     onChange={(e) => setBillStatus(e.target.value as any)}
-                    className="w-full appearance-none bg-[#160E1E] border border-purple-900/60 rounded-xl pr-8 pl-2.5 py-2.5 text-xs text-white outline-none focus:border-[#9A7DB8] focus:ring-1 focus:ring-[#9A7DB8] cursor-pointer"
+                    className="w-full appearance-none bg-surface-container/60 border border-outline-variant/40 rounded-xl pr-8 pl-3 py-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 cursor-pointer font-medium"
                   >
                     <option value="pending">PENDIENTE</option>
                     <option value="paid">PAGADO</option>
                   </select>
-                  <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#CBB5E2] pointer-events-none text-[18px]">expand_more</span>
+                  <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-[18px]">expand_more</span>
                 </div>
               </div>
             </div>
           )}
 
           {/* Footer Actions */}
-          <div className="flex flex-col gap-sm pt-md mt-auto">
+          <div className="bg-surface-container-low p-4 px-6 border-t border-outline-variant/30 flex items-center justify-end gap-3 mt-4 shrink-0 -mx-6 -mb-6">
+            {!editingBill && shouldShowResetButton(loadMode, isProcessed) && (
+              <button
+                type="button"
+                onClick={handleResetForm}
+                className="bg-white hover:bg-slate-100 border border-outline-variant/40 text-slate-700 px-4 py-2.5 rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+                Cargar otra factura
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-white hover:bg-slate-100 border border-outline-variant/40 text-slate-700 px-4 py-2.5 rounded-xl font-semibold text-xs transition-colors cursor-pointer"
+            >
+              Cancelar
+            </button>
+
             {(editingBill || shouldShowResetButton(loadMode, isProcessed)) && (
               <button
                 type="submit"
                 disabled={isSubmittingWebhook}
-                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white py-3 rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-xs disabled:opacity-50 cursor-pointer"
+                className="bg-[#5C3C7B] hover:bg-[#4A2F66] text-white px-5 py-2.5 rounded-xl font-semibold text-xs shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px]">
+                <span className="material-symbols-outlined text-[16px]">
                   {isSubmittingWebhook ? 'sync' : 'save'}
                 </span>
-                {isSubmittingWebhook ? 'Guardando...' : editingBill ? 'Actualizar Factura' : 'Guardar Factura'}
+                <span>{isSubmittingWebhook ? 'Guardando...' : editingBill ? 'Actualizar Factura' : 'Guardar Factura'}</span>
               </button>
             )}
-
-            <div className="flex items-center gap-md">
-              {!editingBill && shouldShowResetButton(loadMode, isProcessed) && (
-                <button
-                  type="button"
-                  onClick={handleResetForm}
-                  className="flex-1 bg-[#2B1D3A] hover:bg-[#3D2952] border border-purple-900/60 text-[#CBB5E2] py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-xs cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[16px]">restart_alt</span>
-                  Cargar otra factura
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={onClose}
-                className={`${!editingBill && shouldShowResetButton(loadMode, isProcessed) ? 'flex-1' : 'w-full'} bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl font-bold text-xs transition-all text-center cursor-pointer`}
-              >
-                Cancelar
-              </button>
-            </div>
           </div>
         </form>
       </div>

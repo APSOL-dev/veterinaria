@@ -6,10 +6,13 @@ Al presionar el botón **"Nueva Consulta"** (desde la barra lateral o cualquier 
 **Escenarios cubiertos:**
 - **Acceso global:** El botón "Nueva consulta" en la barra lateral despliega la pantalla de alta médica sin perder el contexto del trabajo actual.
 - **Selección de Paciente:** Muestra el paciente seleccionado por defecto con posibilidad de cambiar a cualquier otra mascota registrada.
-- **Campos de Registro:**
-  - Notas clínicas y diagnóstico (obligatorio).
-  - Indicaciones / Posología de Receta (opcional con botón "Generar Receta").
+- **Campos de Registro y Auto-expansión Dinámica:**
+  - Notas clínicas y diagnóstico (obligatorio). Las áreas de texto (`AutoResizeTextarea`) crecen verticalmente de forma dinámica y fluida a medida que el profesional escribe o pega texto extenso, evitando cajas de texto fijas o amontonamiento.
+  - Indicaciones / Posología de Receta (opcional con botón "Generar Receta") con auto-expansión adaptativa.
   - Zona de carga de archivos adjuntos (simulada para imágenes y PDFs).
+- **Atención Rápida y Observaciones en Ficha de Paciente:**
+  - El registro de atención rápida directa en la ficha del paciente incorpora campos de texto auto-expandibles con espaciado amplio y `leading-relaxed` para notas y recetas.
+  - El modal de edición de consultas, notas de vacunas y anotaciones de turnos en la agenda implementan el mismo comportamiento auto-expandible unificado.
 - **Acciones al guardar y generación automática de PDF:**
   - **"Guardar Consulta":** Almacena el registro en el historial clínico del paciente y navega inmediatamente a su ficha técnica en el módulo "Pacientes", mostrando la nueva entrada en la cronología.
   - **"Guardar y Generar Receta" / Generar PDF:** Guarda la consulta médica y activa automáticamente el visor/modal de PDF de receta médica, aislado del resto de la interfaz (sin botones de la aplicación ni menús en el documento).

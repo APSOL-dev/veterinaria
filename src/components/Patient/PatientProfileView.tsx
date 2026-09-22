@@ -6,6 +6,7 @@ import { NewPatientModal } from './NewPatientModal';
 import { PrescriptionModal } from './PrescriptionModal';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
+import { AutoResizeTextarea } from '../Common/AutoResizeTextarea';
 
 const PREDEFINED_ALERTS = [
   'Alérgico a Penicilina',
@@ -352,10 +353,10 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
       {/* Top Header Bar con Selector de Pacientes a Ancho Completo */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md shrink-0 bg-white p-md rounded-2xl border border-slate-200 shadow-xs">
         <div>
-          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">
             Ficha del Paciente — {selectedPatient.name}
           </h1>
-          <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
+          <p className="font-body-md text-xs text-slate-600 font-normal mt-0.5">
             {selectedPatient.species} • {selectedPatient.breed}
           </p>
         </div>
@@ -375,7 +376,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
           <button
             onClick={() => setShowNewPatientModal(true)}
-            className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+            className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 rounded-xl text-xs font-medium shadow-sm transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
             <span>Nuevo paciente</span>
@@ -407,11 +408,11 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             </div>
 
             <div className="flex flex-col gap-1">
-              <h2 className="font-headline-sm text-xl text-slate-900 leading-tight font-bold">
+              <h2 className="font-headline-sm text-xl text-slate-900 leading-tight font-semibold">
                 {selectedPatient.name}
               </h2>
-              <p className="font-body-md text-xs text-slate-600 font-medium flex flex-wrap items-center gap-2">
-                <span className="bg-purple-50 text-[#5C3C7B] px-2.5 py-0.5 rounded-md font-semibold text-[11px] border border-purple-100">
+              <p className="font-body-md text-xs text-slate-600 font-normal flex flex-wrap items-center gap-2">
+                <span className="bg-purple-50 text-[#5C3C7B] px-2.5 py-0.5 rounded-md font-medium text-[11px] border border-purple-100">
                   {selectedPatient.species}
                 </span>
                 <span>{selectedPatient.breed}</span>
@@ -429,7 +430,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               <span className="material-symbols-outlined text-[#5C3C7B] text-[20px]">person</span>
               <div className="flex flex-col">
                 <span className="text-[10px] text-slate-500 font-medium leading-none">Propietario / Tutor</span>
-                <span className="text-xs font-bold text-slate-900">{selectedPatient.ownerName}</span>
+                <span className="text-xs font-semibold text-slate-900">{selectedPatient.ownerName}</span>
               </div>
             </div>
 
@@ -565,24 +566,26 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               <h2 className="font-headline-sm text-xs font-semibold text-slate-900">Registrar atención rápida</h2>
             </div>
 
-            <div className="flex flex-col gap-1">
-              <textarea
+            <div className="flex flex-col gap-1.5">
+              <AutoResizeTextarea
                 value={newNoteText}
                 onChange={(e) => setNewNoteText(e.target.value)}
-                rows={2}
+                minRows={2}
+                maxRows={15}
                 placeholder="Escriba observaciones de la consulta, síntomas, diagnóstico preliminar..."
-                className="w-full bg-white text-slate-900 font-body-md text-xs p-sm rounded-xl outline-none resize-none border border-slate-300 focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 font-medium shadow-xs"
+                className="w-full bg-white text-slate-900 font-body-md text-xs p-3 rounded-xl outline-none border border-slate-300 focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 font-normal leading-relaxed shadow-xs"
               />
 
               {showPrescriptionInput && (
-                <div className="flex flex-col gap-1 bg-[#FAF5FF] p-2.5 rounded-xl border-l-4 border-l-[#9A7DB8] border-purple-200 shadow-xs">
+                <div className="flex flex-col gap-1 bg-[#FAF5FF] p-3 rounded-xl border-l-4 border-l-[#9A7DB8] border-purple-200 shadow-xs">
                   <label className="font-label-md text-[10px] text-[#5C3C7B] font-semibold">Indicaciones / receta médica</label>
-                  <textarea
+                  <AutoResizeTextarea
                     value={newPrescriptionText}
                     onChange={(e) => setNewPrescriptionText(e.target.value)}
-                    rows={2}
+                    minRows={2}
+                    maxRows={10}
                     placeholder="Medicamentos, posología y frecuencia..."
-                    className="w-full bg-white text-slate-900 font-body-md text-xs p-2 rounded-lg outline-none border border-purple-200 focus:ring-2 focus:ring-[#9A7DB8]/30 font-medium"
+                    className="w-full bg-white text-slate-900 font-body-md text-xs p-2.5 rounded-lg outline-none border border-purple-200 focus:ring-2 focus:ring-[#9A7DB8]/30 font-normal leading-relaxed"
                   />
                 </div>
               )}
@@ -850,7 +853,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
           <div className="bg-white rounded-2xl max-w-lg w-full p-md shadow-2xl flex flex-col gap-md border border-slate-200">
             <div className="flex justify-between items-center border-b border-slate-200 pb-xs">
-              <h3 className="font-headline-sm text-slate-900 text-sm font-bold flex items-center gap-xs">
+              <h3 className="font-headline-sm text-slate-900 text-sm font-semibold flex items-center gap-xs">
                 <span className="material-symbols-outlined text-[#9A7DB8] text-[20px]">edit_note</span>
                 Editar Datos del Paciente ({selectedPatient.name})
               </h3>
@@ -866,22 +869,22 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             <form onSubmit={handleSavePetEditSubmit} className="flex flex-col gap-sm text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-sm">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Nombre de la Mascota</label>
+                  <label className="font-medium text-slate-700 block mb-1">Nombre de la Mascota</label>
                   <input
                     type="text"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     required
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-bold outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-medium outline-none focus:ring-2 focus:ring-[#9A7DB8]"
                   />
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Especie</label>
+                  <label className="font-medium text-slate-700 block mb-1">Especie</label>
                   <select
                     value={editSpecies}
                     onChange={(e) => setEditSpecies(e.target.value as Species)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-bold outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-medium outline-none focus:ring-2 focus:ring-[#9A7DB8]"
                   >
                     <option value="Canino">Canino</option>
                     <option value="Felino">Felino</option>
@@ -893,7 +896,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Raza</label>
+                  <label className="font-medium text-slate-700 block mb-1">Raza</label>
                   <input
                     type="text"
                     value={editBreed}
@@ -904,11 +907,11 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Sexo</label>
+                  <label className="font-medium text-slate-700 block mb-1">Sexo</label>
                   <select
                     value={editSex}
                     onChange={(e) => setEditSex(e.target.value as Sex)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-bold outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-medium outline-none focus:ring-2 focus:ring-[#9A7DB8]"
                   >
                     <option value="Macho">Macho</option>
                     <option value="Hembra">Hembra</option>
@@ -917,7 +920,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Fecha de Nacimiento</label>
+                  <label className="font-medium text-slate-700 block mb-1">Fecha de Nacimiento</label>
                   <input
                     type="date"
                     value={editBirthDate}
@@ -928,20 +931,20 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Peso Actual (kg)</label>
+                  <label className="font-medium text-slate-700 block mb-1">Peso Actual (kg)</label>
                   <input
                     type="number"
                     step="0.1"
                     min="0"
                     value={editWeightKg}
                     onChange={(e) => setEditWeightKg(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-bold outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-medium outline-none focus:ring-2 focus:ring-[#9A7DB8]"
                   />
                 </div>
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="font-bold text-slate-700 block text-xs">
+                <label className="font-medium text-slate-700 block text-xs">
                   Alertas médicas y conductuales
                 </label>
 
@@ -1137,12 +1140,13 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
               <div>
                 <label className="font-semibold text-xs text-slate-700 block mb-1">Observaciones / notas (Opcional)</label>
-                <textarea
+                <AutoResizeTextarea
                   value={reqVaccineNotes}
                   onChange={(e) => setReqVaccineNotes(e.target.value)}
-                  rows={2}
+                  minRows={2}
+                  maxRows={6}
                   placeholder="Indicaciones adicionales, refuerzo anual, laboratorio..."
-                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] resize-none"
+                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-normal text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20"
                 />
               </div>
 
@@ -1172,7 +1176,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h3 className="font-headline-sm text-base font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="font-headline-sm text-base font-semibold text-slate-900 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#9A7DB8]">edit_note</span>
                 Editar Consulta Médica
               </h3>
@@ -1188,22 +1192,24 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             <div className="flex flex-col gap-3">
               <div>
                 <label className="font-semibold text-xs text-slate-700 block mb-1">Notas / Observaciones *</label>
-                <textarea
+                <AutoResizeTextarea
                   value={editNoteText}
                   onChange={(e) => setEditNoteText(e.target.value)}
-                  rows={4}
-                  className="w-full bg-white border border-slate-300 rounded-xl p-3 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 resize-none"
+                  minRows={3}
+                  maxRows={12}
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 outline-none text-slate-900 font-normal text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 leading-relaxed"
                   placeholder="Detalles de la consulta..."
                 />
               </div>
 
               <div>
                 <label className="font-semibold text-xs text-slate-700 block mb-1">Indicaciones / Receta médica (opcional)</label>
-                <textarea
+                <AutoResizeTextarea
                   value={editNotePrescription}
                   onChange={(e) => setEditNotePrescription(e.target.value)}
-                  rows={3}
-                  className="w-full bg-white border border-slate-300 rounded-xl p-3 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 resize-none"
+                  minRows={2}
+                  maxRows={10}
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 outline-none text-slate-900 font-normal text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 leading-relaxed"
                   placeholder="Medicamentos, posología..."
                 />
               </div>

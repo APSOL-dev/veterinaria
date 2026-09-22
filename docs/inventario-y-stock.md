@@ -12,13 +12,13 @@ Permite administrar tanto el inventario de productos físicos (medicamentos, ali
   - Registro de entrada manual de mercadería y entrada con factura de proveedores.
   - Sincronización inmediata de cambios de stock y alta de productos con la base de datos Supabase (`vetsoft_productos`).
   - Ajuste manual de stock por roturas o consumos internos.
-  - **Frecuencia de Actualización de Precios:** Configuración de periodo recomendado de actualización (15, 30, 60, 90, 180, 365 días) tanto al crear como al editar productos.
+  - **Frecuencia de Actualización de Precios:** Configuración del plazo de vencimiento o actualización en días (campo numérico directo, ej: 30 días) tanto al crear como al editar productos.
   - **Indicador de Vencimiento de Precio en Productos:** Cálculo en tiempo real en las columnas `Última actualización` y `Frecuencia / Vencimiento` de la tabla de Productos Físicos (Badge **Vencido (Xd)** / Badge **Vigente**).
 - **Catálogo de Servicios:**
   - Clasificación de servicios por categoría (`Clínica`, `Cirugía`, `Peluquería`, `Laboratorio`, `Ecografía / Rayos`).
   - Control de estado del servicio (`Activo` / `Inactivo`).
   - Actualización de precio con actualización automática de la fecha de cambio (`priceLastUpdated`).
-  - **Frecuencia de Actualización de Precios:** Configuración de periodo recomendado de actualización (15, 30, 60, 90, 180, 365 días).
+  - **Frecuencia de Actualización de Precios:** Configuración del plazo de vencimiento o actualización en días (campo numérico directo, ej: 30 días).
   - **Indicador de Vencimiento de Precio:** Cálculo en tiempo real (`si hoy > última actualización + frecuencia` = Badge **Vencido** en rojo; caso contrario = Badge **Vigente** en verde).
   - Seguimiento de fecha de última venta (`lastSoldAt`).
 

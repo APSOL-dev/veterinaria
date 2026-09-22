@@ -439,7 +439,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
             {activePatient.requiredVaccines && activePatient.requiredVaccines.length > 0 && (
               <div className="bg-emerald-50/50 rounded-2xl p-md shadow-sm border border-emerald-300 flex flex-col gap-xs w-full col-span-full">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-headline-sm text-xs font-bold text-emerald-950 flex items-center gap-xs">
+                  <h2 className="font-headline-sm text-xs font-semibold text-emerald-950 flex items-center gap-xs">
                     <span className="material-symbols-outlined text-emerald-700 text-[18px]">vaccines</span>
                     Vacunas necesarias / requeridas ({activePatient.name})
                   </h2>
@@ -453,7 +453,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       className="p-3 rounded-xl border border-emerald-200 bg-emerald-100/60 text-emerald-950 flex items-center justify-between gap-sm text-xs w-full shadow-2xs"
                     >
                       <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className="font-bold text-xs text-emerald-950 truncate">{vac.vaccineName}</span>
+                        <span className="font-semibold text-xs text-emerald-950 truncate">{vac.vaccineName}</span>
                         <span className="text-[11px] text-emerald-800 font-medium">
                           Sugerida: <strong>{vac.suggestedDate}</strong>
                           {vac.appliedDate && ` • Aplicada: ${vac.appliedDate}`}
@@ -464,7 +464,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleToggleVaccineAppliedInVaccinesView(vac.id)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-bold shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
+                        className={`px-3.5 py-2 rounded-xl text-xs font-medium shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
                           vac.status === 'aplicada'
                             ? 'bg-emerald-800 text-white hover:bg-emerald-900'
                             : 'bg-emerald-600 text-white hover:bg-emerald-700'
