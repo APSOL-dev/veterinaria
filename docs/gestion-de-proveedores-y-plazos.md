@@ -18,9 +18,13 @@ El módulo **Proveedores** integra el control de facturas comerciales de compra,
 4. **Copiar Gasto sin Comprobante Adjunto:**
    - Al duplicar/copiar un gasto existente en el submódulo de Gastos, los campos de categoría, asignación, monto y descripción se precargan, pero el comprobante adjunto se limpia automáticamente para evitar adjuntar recibos desactualizados al nuevo registro.
 
-5. **Registro Directo de Pagos en Cuentas Corrientes (`cuentas`):**
-   - **Botón Superior "Registrar Pago":** Ubicado arriba a la derecha en Cuentas Corrientes (`payments`), abre el panel `PaymentDrawer` para seleccionar proveedor, número de factura a abonar, método de pago, monto y adjuntar comprobante.
-   - **Acción Rápida de Pago por Fila:** Cada fila de factura con saldo pendiente posee un botón de pago directo (`payments`) en la columna de acciones para iniciar el pago preseleccionando dicho comprobante.
+5. **Vista Consolidada de Cuentas Corrientes (Tabla de 2 Columnas: Proveedor y Saldo):**
+   - **Estructura Simplificada:** Se reemplazó el formato clásico de Debe y Haber por una tabla directa de 2 columnas principales: **Proveedor** y **Saldo**.
+   - **Columna Proveedor:** Muestra el nombre comercial de cada proveedor registrado o con movimientos, su inicial de avatar y un indicador de cantidad de comprobantes registrados / facturas pendientes.
+   - **Columna Saldo:** Presenta el saldo neto consolidado ($ \text{Total Facturado} - \text{Total Pagado} $) con formato numérico y badge de estado (*Saldo a pagar*, *Saldo a favor* o *Al día*).
+   - **Filtros rápidos:** Permite filtrar por texto ("Buscar proveedor...") o por estado de saldo (*Todos*, *Con deuda*, *Al día*).
+   - **Inspección de Detalle e Historial:** Al hacer clic sobre cualquier fila de proveedor, se despliega un modal interactivo con el resumen de totales (Total Facturado, Total Pagado, Saldo) y el listado de comprobantes asociados con acceso directo al comprobante digital adjunto, botón de pago rápido y opción de eliminar factura.
+   - **Acción Superior "Registrar Pago":** Ubicado arriba a la derecha en Cuentas Corrientes para abrir el panel de pagos a proveedores.
 
 6. **Entrada de Stock Unificada con Carga de Factura:**
    - **Formulario Multilínea (`NewInvoiceDrawer`):** Permite registrar la factura del proveedor asociando $N$ productos del catálogo de inventario con sus cantidades recibidas y precios de costo unitarios.

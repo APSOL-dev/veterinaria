@@ -24,7 +24,7 @@ export const AppConfirmModal: React.FC<AppConfirmModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[99990] flex items-center justify-center p-md animate-fade-in">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-[99990] flex items-center justify-center p-md animate-fade-in">
       <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
         <div className="flex items-start gap-md">
           <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-xs ${

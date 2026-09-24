@@ -23,7 +23,8 @@ import {
   filterPaymentsByDeletedBill,
   filterAndSortSupplierBills,
   prepareDuplicatedExpenseInput,
-  getDeleteBillConfirmationDetails
+  getDeleteBillConfirmationDetails,
+  calculateSupplierSummaryBalances
 } from './supplierService';
 
 describe('supplierService', () => {
@@ -650,6 +651,65 @@ describe('supplierService', () => {
       expect(details.message).toContain('A-0002-00001503');
       expect(details.message).toContain('Distribuidora FarmaVet SA');
       expect(details.message).toContain('Esta acción eliminará el comprobante y todos sus pagos asociados.');
+    });
+  });
+
+  describe('calculateSupplierSummaryBalances', () => {
+    it('should calculate supplier summary balances with facturado, pagado and saldo correctly', () => {
+      const bills: SupplierBill[] = [
+        { id: 'b1', supplierName: 'FarmaVet SA', invoiceNumber: '0001-0001', date: '2026-08-01', amount: 50000, itemsCount: 2, status: 'pending' },
+        { id: 'b2', supplierName: 'FarmaVet SA', invoiceNumber: '0001-0002', date: '2026-08-10', amount: 30000, itemsCount: 1, status: 'pending' },
+        { id: 'b3', supplierName: 'Laboratorios Zoonosis', invoiceNumber: '0002-0001', date: '2026-08-05', amount: 40000, itemsCount: 3, status: 'paid' }
+      ];
+
+      const payments: SupplierPayment[] = [
+        { id: 'p1', billId: 'b1', billInvoiceNumber: '0001-0001', supplierName: 'FarmaVet SA', date: '2026-08-02', amount: 20000, paymentMethod: 'Transferencia' },
+        { id: 'p2', billId: 'b3', billInvoiceNumber: '0002-0001', supplierName: 'Laboratorios Zoonosis', date: '2026-08-06', amount: 40000, paymentMethod: 'Efectivo' }
+      ];
+
+      const summaries = calculateSupplierSummaryBalances(bills, payments);
+
+      expect(summaries.length).toBe(2);
+
+      // FarmaVet SA should be first because of higher pending debt (60000 > 0)
+      const farmaVet = summaries[0];
+      expect(farmaVet.supplierName).toBe('FarmaVet SA');
+      expect(farmaVet.totalFacturado).toBe(80000);
+      expect(farmaVet.totalPagado).toBe(20000);
+      expect(farmaVet.saldo).toBe(60000);
+      expect(farmaVet.billsCount).toBe(2);
+      expect(farmaVet.pendingBillsCount).toBe(2);
+      expect(farmaVet.lastMovementDate).toBe('2026-08-10');
+
+      // Laboratorios Zoonosis
+      const zoo = summaries[1];
+      expect(zoo.supplierName).toBe('Laboratorios Zoonosis');
+      expect(zoo.totalFacturado).toBe(40000);
+      expect(zoo.totalPagado).toBe(40000);
+      expect(zoo.saldo).toBe(0);
+      expect(zoo.billsCount).toBe(1);
+      expect(zoo.pendingBillsCount).toBe(0);
+      expect(zoo.lastMovementDate).toBe('2026-08-06');
+    });
+
+    it('should include registeredSuppliers even if they have no movements yet', () => {
+      const summaries = calculateSupplierSummaryBalances([], [], ['Insumos Médicos del Plata']);
+      expect(summaries.length).toBe(1);
+      expect(summaries[0].supplierName).toBe('Insumos Médicos del Plata');
+      expect(summaries[0].totalFacturado).toBe(0);
+      expect(summaries[0].totalPagado).toBe(0);
+      expect(summaries[0].saldo).toBe(0);
+      expect(summaries[0].billsCount).toBe(0);
+      expect(summaries[0].pendingBillsCount).toBe(0);
+    });
+
+    it('should calculate negative saldo when payments exceed bills (saldo a favor)', () => {
+      const payments: SupplierPayment[] = [
+        { id: 'p1', billId: 'b_extra', billInvoiceNumber: '0000-0000', supplierName: 'Distribuidora Sur', date: '2026-09-01', amount: 15000, paymentMethod: 'Transferencia' }
+      ];
+      const summaries = calculateSupplierSummaryBalances([], payments);
+      expect(summaries.length).toBe(1);
+      expect(summaries[0].saldo).toBe(-15000);
     });
   });
 });

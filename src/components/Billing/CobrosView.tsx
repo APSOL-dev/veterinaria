@@ -4,6 +4,7 @@ import { Patient, BillReceipt, DocumentType, PaymentMethod, BillItem, Product, S
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
 import { formatPriceInputDisplay, parsePriceInput } from '../../domain/services/billingService';
+import { formatDate } from '../../utils/dateUtils';
 
 interface CobrosViewProps {
   patients: Patient[];
@@ -244,7 +245,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                   receipts.map((rec) => (
                     <tr key={rec.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
                       <td className="p-sm px-md font-medium text-slate-900">{rec.receiptNumber}</td>
-                      <td className="p-sm px-md text-slate-700">{new Date(rec.date).toLocaleDateString('es-AR')}</td>
+                      <td className="p-sm px-md text-slate-700">{formatDate(rec.date)}</td>
                       <td className="p-sm px-md font-medium text-slate-900">
                         <div className="flex flex-col">
                           <span className="font-semibold text-slate-900">{rec.ownerName || 'Sin tutor'}</span>
@@ -726,7 +727,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
 
       {/* Modal Add Item */}
       {showAddItemModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
             <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
               <h3 className="font-headline-sm text-slate-900 font-semibold text-base">Agregar concepto a factura</h3>

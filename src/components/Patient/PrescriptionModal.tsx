@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import html2pdf from 'html2pdf.js';
 import { Patient } from '../../domain/types';
+import { formatDate } from '../../utils/dateUtils';
 
 interface PrescriptionModalProps {
   isOpen: boolean;
@@ -27,11 +28,7 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const dateFormatted = dateStr || new Date().toLocaleDateString('es-AR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+  const dateFormatted = dateStr ? formatDate(dateStr) : formatDate(new Date());
 
   // Prepare WhatsApp message link
   const rawPhone = (patient.ownerPhone || '').replace(/\D/g, '');
@@ -84,7 +81,7 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in overflow-y-auto print:bg-white print:p-8 print:static print:block print:inset-auto print:backdrop-blur-none">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in overflow-y-auto print:bg-white print:p-8 print:static print:block print:inset-auto print:backdrop-blur-none">
       <div className="relative bg-white rounded-2xl max-w-2xl w-full p-8 shadow-2xl flex flex-col gap-6 border border-slate-200 my-auto text-slate-900 font-body-md print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:m-0">
         
         {/* Botón Cerrar (X) Arriba a la Derecha */}

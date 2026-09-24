@@ -274,5 +274,127 @@ export function getAppointmentCardTheme(): {
   };
 }
 
+/**
+ * Returns a human-readable duration badge label (e.g. "45 min", "60 min").
+ */
+export function formatAppointmentDurationBadge(
+  startTime: string,
+  endTime?: string,
+  defaultDurationMinutes?: number
+): string {
+  let mins = 0;
+  if (startTime && endTime) {
+    mins = calculateDurationMinutes(startTime, endTime);
+  } else if (defaultDurationMinutes && defaultDurationMinutes > 0) {
+    mins = defaultDurationMinutes;
+  }
+  if (mins <= 0) return '';
+  return `${mins} min`;
+}
+
+/**
+ * Filters appointments by a search query matching patient name or owner/tutor name.
+ */
+export function filterAppointmentsByQuery<
+  T extends { patientName?: string; ownerName?: string; species?: string; breed?: string }
+>(
+  appointments: T[],
+  query?: string
+): T[] {
+  if (!Array.isArray(appointments)) return [];
+  const q = query ? query.trim().toLowerCase() : '';
+  if (!q) return appointments;
+
+  return appointments.filter(app => {
+    const patientMatch = app.patientName ? app.patientName.toLowerCase().includes(q) : false;
+    const ownerMatch = app.ownerName ? app.ownerName.toLowerCase().includes(q) : false;
+    const speciesMatch = app.species ? app.species.toLowerCase().includes(q) : false;
+    const breedMatch = app.breed ? app.breed.toLowerCase().includes(q) : false;
+    return patientMatch || ownerMatch || speciesMatch || breedMatch;
+  });
+}
+
+/**
+ * Filters appointments by distinct patient and tutor criteria.
+ */
+export function filterAppointmentsByCriteria<
+  T extends { patientName?: string; ownerName?: string; species?: string; breed?: string }
+>(
+  appointments: T[],
+  criteria: { patientQuery?: string; tutorQuery?: string }
+): T[] {
+  if (!Array.isArray(appointments)) return [];
+  const pQ = criteria.patientQuery ? criteria.patientQuery.trim().toLowerCase() : '';
+  const tQ = criteria.tutorQuery ? criteria.tutorQuery.trim().toLowerCase() : '';
+
+  if (!pQ && !tQ) return appointments;
+
+  return appointments.filter(app => {
+    let matchesPatient = true;
+    if (pQ) {
+      const pName = app.patientName ? app.patientName.toLowerCase().includes(pQ) : false;
+      const pSpecies = app.species ? app.species.toLowerCase().includes(pQ) : false;
+      const pBreed = app.breed ? app.breed.toLowerCase().includes(pQ) : false;
+      matchesPatient = pName || pSpecies || pBreed;
+    }
+
+    let matchesTutor = true;
+    if (tQ) {
+      matchesTutor = app.ownerName ? app.ownerName.toLowerCase().includes(tQ) : false;
+    }
+
+    return matchesPatient && matchesTutor;
+  });
+}
+
+
+
+/**
+ * Generates an array of formatted time slots ("HH:MM") with a given minute interval.
+ */
+export function generateTimeSlots(
+  startHour: number = 7,
+  endHour: number = 21,
+  intervalMinutes: number = 15
+): string[] {
+  const slots: string[] = [];
+  const startTotal = startHour * 60;
+  const endTotal = endHour * 60;
+
+  for (let current = startTotal; current <= endTotal; current += intervalMinutes) {
+    const h = Math.floor(current / 60);
+    const m = current % 60;
+    slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+  }
+  return slots;
+}
+
+/**
+ * Ensures that a specific target time is present in the list of slots, inserting it in chronological order if missing.
+ */
+export function ensureTimeInSlots(slots: string[], targetTime?: string): string[] {
+  if (!targetTime || !targetTime.includes(':')) return slots;
+  if (slots.includes(targetTime)) return slots;
+
+  const [tH, tM] = targetTime.split(':').map(Number);
+  if (isNaN(tH) || isNaN(tM)) return slots;
+  const targetTotal = tH * 60 + tM;
+
+  const updated = [...slots];
+  const insertIndex = updated.findIndex(slot => {
+    const [sH, sM] = slot.split(':').map(Number);
+    return sH * 60 + sM > targetTotal;
+  });
+
+  if (insertIndex === -1) {
+    updated.push(targetTime);
+  } else {
+    updated.splice(insertIndex, 0, targetTime);
+  }
+
+  return updated;
+}
+
+
 
 

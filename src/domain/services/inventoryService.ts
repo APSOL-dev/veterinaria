@@ -193,3 +193,52 @@ export function createNewProductRecord(productData: Omit<Product, 'id' | 'sku'> 
     updateFrequencyDays: productData.updateFrequencyDays || 30
   };
 }
+
+/**
+ * Applies a percentage price update (inflation adjustment or discount) to selected products or by category.
+ */
+export function applyBulkInflationToProducts(
+  products: Product[],
+  percentage: number,
+  filter?: { productIds?: string[]; category?: string }
+): { updatedProducts: Product[]; updatedCount: number } {
+  if (!Array.isArray(products) || products.length === 0 || percentage === 0 || isNaN(percentage)) {
+    return { updatedProducts: products || [], updatedCount: 0 };
+  }
+
+  const today = new Date().toISOString().substring(0, 10);
+  const factor = 1 + percentage / 100;
+  let updatedCount = 0;
+
+  const targetIds = filter?.productIds && filter.productIds.length > 0 ? new Set(filter.productIds) : null;
+  const targetCategory = filter?.category && filter.category !== 'Todos' ? filter.category : null;
+
+  const updatedProducts = products.map(product => {
+    let shouldUpdate = true;
+
+    if (targetIds) {
+      shouldUpdate = targetIds.has(product.id);
+    } else if (targetCategory) {
+      shouldUpdate = product.category === targetCategory;
+    }
+
+    if (!shouldUpdate) {
+      return product;
+    }
+
+    const currentPrice = Number(product.price) || 0;
+    const rawNewPrice = currentPrice * factor;
+    // Round to 2 decimals or integer if close
+    const newPrice = Math.round(rawNewPrice * 100) / 100;
+
+    updatedCount++;
+    return {
+      ...product,
+      price: Math.max(0, newPrice),
+      priceLastUpdated: today
+    };
+  });
+
+  return { updatedProducts, updatedCount };
+}
+

@@ -7,14 +7,21 @@ import {
 } from '../../domain/types';
 import { 
   calculateEndTime, 
+  calculateDurationMinutes,
   formatTimeRange, 
   isSlotOccupiedByAppointment,
   getWeekDays,
   formatWeekRangeHeader,
   shiftWeek,
   formatDateToISO,
-  filterAppointmentsWithNotes
+  filterAppointmentsWithNotes,
+  filterAppointmentsByQuery,
+  filterAppointmentsByCriteria,
+  formatAppointmentDurationBadge,
+  generateTimeSlots,
+  ensureTimeInSlots
 } from '../../domain/services/agendaService';
+import { formatDate } from '../../utils/dateUtils';
 import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
 import { AutoResizeTextarea } from '../Common/AutoResizeTextarea';
 
@@ -37,12 +44,9 @@ interface AgendaViewProps {
   currentVetName?: string;
 }
 
-const extendedTimeSlots = [
-  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-  '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
-  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-  '17:00', '17:30', '18:00', '18:30', '19:00'
-];
+const extendedTimeSlots = generateTimeSlots(7, 21, 15);
+
+const DURATION_PRESETS = [15, 30, 45, 60, 90, 120];
 
 export const AgendaView: React.FC<AgendaViewProps> = ({
   patients,
@@ -63,6 +67,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   currentVetName = 'Dr. J. Silva'
 }) => {
   const [agendaMode, setAgendaMode] = useState<'medica' | 'peluqueria'>(fixedMode || 'medica');
+  const [patientFilter, setPatientFilter] = useState('');
+  const [tutorFilter, setTutorFilter] = useState('');
   const [showNewModal, setShowNewModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historySearchQuery, setHistorySearchQuery] = useState('');
@@ -79,11 +85,27 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   const [editNotes, setEditNotes] = useState('');
   const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('10:00');
+  const [editDuration, setEditDuration] = useState(45);
 
   const activeMode = fixedMode || agendaMode;
   const todayISO = useMemo(() => formatDateToISO(new Date()), []);
   const weekDays = useMemo(() => getWeekDays(refDate), [refDate]);
   const weekHeaderLabel = useMemo(() => formatWeekRangeHeader(refDate), [refDate]);
+
+  // Filter appointments for calendar grid
+  const filteredMedicalAppointments = useMemo(() => {
+    return filterAppointmentsByCriteria(medicalAppointments, {
+      patientQuery: patientFilter,
+      tutorQuery: tutorFilter
+    });
+  }, [medicalAppointments, patientFilter, tutorFilter]);
+
+  const filteredGroomingAppointments = useMemo(() => {
+    return filterAppointmentsByCriteria(groomingAppointments, {
+      patientQuery: patientFilter,
+      tutorQuery: tutorFilter
+    });
+  }, [groomingAppointments, patientFilter, tutorFilter]);
 
   const notesHistoryList = useMemo(() => {
     if (activeMode === 'medica') {
@@ -98,7 +120,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   const [vetName, setVetName] = useState(currentVetName || 'Dr. J. Silva');
   const [appDate, setAppDate] = useState(() => formatDateToISO(new Date()));
   const [appTime, setAppTime] = useState('10:00');
-  const [appEndTime, setAppEndTime] = useState('11:00');
+  const [appDuration, setAppDuration] = useState(45);
+  const [appEndTime, setAppEndTime] = useState('10:45');
   const [reason, setReason] = useState(initialReason || 'Consulta General');
 
   // Sync initial prefilled props when passed dynamically
@@ -117,16 +140,18 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   // New Grooming Appointment state
   const [selectedGroomServiceId, setSelectedGroomServiceId] = useState(groomingServices[0]?.id || '');
 
-  // Auto update endTime when appTime or service changes
-  useEffect(() => {
+  const handleSlotClick = (dateStr: string, slotTime: string) => {
+    setAppDate(dateStr);
+    setAppTime(slotTime);
+    let duration = appDuration;
     if (activeMode === 'peluqueria') {
       const srv = groomingServices.find(s => s.id === selectedGroomServiceId);
-      const duration = srv ? srv.durationMinutes : 60;
-      setAppEndTime(calculateEndTime(appTime, duration));
-    } else {
-      setAppEndTime(calculateEndTime(appTime, 60));
+      if (srv) duration = srv.durationMinutes;
     }
-  }, [appTime, selectedGroomServiceId, activeMode, groomingServices]);
+    setAppDuration(duration);
+    setAppEndTime(calculateEndTime(slotTime, duration));
+    setShowNewModal(true);
+  };
 
   const handleAddAppointment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,7 +186,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
         date: appDate,
         time: appTime,
         endTime: appEndTime,
-        durationMinutes: srv.durationMinutes,
+        durationMinutes: appDuration || srv.durationMinutes,
         price: srv.price,
         status: 'confirmed'
       });
@@ -172,6 +197,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   };
 
   const handleOpenDetailModal = (appt: MedicalAppointment | GroomingAppointment, mode: 'medica' | 'peluqueria') => {
+    const duration = appt.endTime 
+      ? calculateDurationMinutes(appt.time, appt.endTime) 
+      : (('durationMinutes' in appt && (appt as GroomingAppointment).durationMinutes) || 45);
+
     setDetailModal({
       isOpen: true,
       appointment: appt,
@@ -181,6 +210,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
     setEditNotes(appt.notes || '');
     setEditDate(appt.date);
     setEditTime(appt.time);
+    setEditDuration(duration > 0 ? duration : 45);
   };
 
   const handleSaveNotes = (e: React.FormEvent) => {
@@ -201,19 +231,20 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
     e.preventDefault();
     if (!detailModal) return;
     const { appointment, mode } = detailModal;
+    const resolvedEndTime = calculateEndTime(editTime, editDuration);
 
     if (mode === 'medica' && onUpdateMedicalAppointment) {
       onUpdateMedicalAppointment(appointment.id, {
         date: editDate,
         time: editTime,
-        endTime: calculateEndTime(editTime, 60)
+        endTime: resolvedEndTime
       });
     } else if (mode === 'peluqueria' && onUpdateGroomingAppointment) {
-      const duration = (appointment as GroomingAppointment).durationMinutes || 45;
       onUpdateGroomingAppointment(appointment.id, {
         date: editDate,
         time: editTime,
-        endTime: calculateEndTime(editTime, duration)
+        endTime: resolvedEndTime,
+        durationMinutes: editDuration
       });
     }
     setDetailModal(null);
@@ -244,7 +275,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   return (
     <div className="flex flex-col w-full h-full gap-md font-body-md text-slate-800">
       {/* Module Title Header */}
-      <div className="flex items-center justify-between mb-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-md mb-md">
         <div>
           <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">
             {activeMode === 'medica' ? 'Clínica — Agenda Médica' : 'Peluquería — Agenda de Estética'}
@@ -255,11 +286,22 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
               : 'Gestión de turnos de peluquería, baño y estética canina/felina'}
           </p>
         </div>
+
+        {/* Historial Button at the top header */}
+        <button
+          type="button"
+          onClick={() => setShowHistoryModal(true)}
+          className="flex items-center gap-1.5 bg-purple-100 hover:bg-purple-200 text-[#5C3C7B] px-4 py-2 rounded-full font-label-md text-xs transition-all shadow-xs font-semibold cursor-pointer border border-purple-200 shrink-0"
+          title="Ver historial de anotaciones del paciente"
+        >
+          <span className="material-symbols-outlined text-[18px]">history_edu</span>
+          Historial
+        </button>
       </div>
 
       {/* Top Controls Bar */}
       <div className="flex flex-wrap items-center justify-between gap-md bg-white p-sm px-md rounded-2xl shadow-sm border border-slate-200">
-        <div className="flex items-center gap-sm">
+        <div className="flex flex-wrap items-center gap-sm">
           <div className="flex items-center gap-xs bg-purple-50/80 p-1 rounded-xl border border-purple-100">
             <button 
               onClick={() => setRefDate(prev => shiftWeek(prev, -1))}
@@ -285,6 +327,53 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
           </div>
 
           <span className="font-headline-sm text-sm text-slate-900 font-semibold ml-xs">{weekHeaderLabel}</span>
+        </div>
+
+        {/* Distinct Filters for Patient and Tutor */}
+        <div className="flex flex-wrap items-center gap-2 flex-1 max-w-lg">
+          {/* Patient Filter */}
+          <div className="relative flex items-center min-w-[150px] flex-1">
+            <span className="material-symbols-outlined absolute left-2.5 text-slate-400 text-[16px] pointer-events-none">pets</span>
+            <input
+              type="text"
+              value={patientFilter}
+              onChange={(e) => setPatientFilter(e.target.value)}
+              placeholder="Filtrar por paciente..."
+              className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-[#9A7DB8] rounded-full pl-8 pr-7 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all shadow-2xs"
+            />
+            {patientFilter && (
+              <button
+                type="button"
+                onClick={() => setPatientFilter('')}
+                className="absolute right-2 text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer rounded-full"
+                title="Limpiar filtro de paciente"
+              >
+                <span className="material-symbols-outlined text-[13px]">close</span>
+              </button>
+            )}
+          </div>
+
+          {/* Tutor Filter */}
+          <div className="relative flex items-center min-w-[150px] flex-1">
+            <span className="material-symbols-outlined absolute left-2.5 text-slate-400 text-[16px] pointer-events-none">person</span>
+            <input
+              type="text"
+              value={tutorFilter}
+              onChange={(e) => setTutorFilter(e.target.value)}
+              placeholder="Filtrar por tutor..."
+              className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-[#9A7DB8] rounded-full pl-8 pr-7 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all shadow-2xs"
+            />
+            {tutorFilter && (
+              <button
+                type="button"
+                onClick={() => setTutorFilter('')}
+                className="absolute right-2 text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer rounded-full"
+                title="Limpiar filtro de tutor"
+              >
+                <span className="material-symbols-outlined text-[13px]">close</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-md">
@@ -324,16 +413,16 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
           )}
 
           <button
-            onClick={() => setShowHistoryModal(true)}
-            className="flex items-center gap-xs bg-purple-100 hover:bg-purple-200 text-[#5C3C7B] px-md py-1.5 rounded-full font-label-md text-xs transition-all shadow-xs font-medium cursor-pointer border border-purple-200"
-            title="Ver historial de anotaciones del paciente"
-          >
-            <span className="material-symbols-outlined text-[16px]">history_edu</span>
-            Historial
-          </button>
-
-          <button
-            onClick={() => setShowNewModal(true)}
+            onClick={() => {
+              let duration = appDuration;
+              if (activeMode === 'peluqueria') {
+                const srv = groomingServices.find(s => s.id === selectedGroomServiceId);
+                if (srv) duration = srv.durationMinutes;
+              }
+              setAppDuration(duration);
+              setAppEndTime(calculateEndTime(appTime, duration));
+              setShowNewModal(true);
+            }}
             className="flex items-center gap-xs bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-md py-1.5 rounded-full font-label-md text-xs transition-all shadow-sm font-medium cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
@@ -375,31 +464,48 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
               {/* Days Columns */}
               {weekDays.map((dayObj) => {
                 if (activeMode === 'medica') {
-                  const dayApps = medicalAppointments.filter(app => app.date === dayObj.dateStr);
+                  const dayApps = filteredMedicalAppointments.filter(app => app.date === dayObj.dateStr);
                   
                   // Check if any app occupies this slot
                   const matchingOccupations = dayApps.map(app => ({
                     app,
-                    ...isSlotOccupiedByAppointment(slot, app.time, app.endTime, 60)
+                    ...isSlotOccupiedByAppointment(slot, app.time, app.endTime, 45)
                   })).filter(res => res.isOccupied);
 
                   return (
-                    <div key={dayObj.dateStr} className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1">
+                    <div 
+                      key={dayObj.dateStr} 
+                      onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                          handleSlotClick(dayObj.dateStr, slot);
+                        }
+                      }}
+                      className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1 cursor-pointer"
+                    >
                       {matchingOccupations.map(({ app, isStart }) => {
-                        const timeRangeText = formatTimeRange(app.time, app.endTime, 60);
+                        const timeRangeText = formatTimeRange(app.time, app.endTime, 45);
+                        const durationBadge = formatAppointmentDurationBadge(app.time, app.endTime, 45);
 
                         if (isStart) {
                           return (
                             <div 
                               key={app.id} 
-                              onClick={() => handleOpenDetailModal(app, 'medica')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDetailModal(app, 'medica');
+                              }}
                               className="bg-[#F0FDF4] border border-emerald-300 rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all"
                             >
-                              <div className="flex items-center justify-between">
+                              <div className="flex items-center justify-between gap-1">
                                 <span className="font-semibold text-emerald-950 truncate">{app.patientName}</span>
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded-md font-mono flex items-center gap-0.5">
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded-md font-mono flex items-center gap-0.5 shrink-0">
                                   <span className="material-symbols-outlined text-[10px]">schedule</span>
-                                  {timeRangeText}
+                                  <span>{timeRangeText}</span>
+                                  {durationBadge && (
+                                    <span className="text-[9px] bg-emerald-200/80 text-emerald-950 px-1 rounded ml-0.5 font-bold">
+                                      {durationBadge}
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                               <span className="text-[11px] text-slate-700 truncate font-medium">{app.species} ({app.breed})</span>
@@ -441,7 +547,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                           return (
                             <div 
                               key={app.id} 
-                              onClick={() => handleOpenDetailModal(app, 'medica')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDetailModal(app, 'medica');
+                              }}
                               className="bg-[#F0FDF4]/70 border border-dashed border-emerald-300 rounded-xl p-1.5 flex items-center justify-between text-xs cursor-pointer hover:border-emerald-400"
                             >
                               <div className="flex items-center gap-1 text-emerald-950 font-medium truncate text-[11px]">
@@ -458,30 +567,47 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                     </div>
                   );
                 } else {
-                  const dayGrooms = groomingAppointments.filter(g => g.date === dayObj.dateStr);
+                  const dayGrooms = filteredGroomingAppointments.filter(g => g.date === dayObj.dateStr);
 
                   const matchingOccupations = dayGrooms.map(g => ({
                     g,
-                    ...isSlotOccupiedByAppointment(slot, g.time, g.endTime, g.durationMinutes)
+                    ...isSlotOccupiedByAppointment(slot, g.time, g.endTime, g.durationMinutes || 45)
                   })).filter(res => res.isOccupied);
 
                   return (
-                    <div key={dayObj.dateStr} className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1">
+                    <div 
+                      key={dayObj.dateStr} 
+                      onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                          handleSlotClick(dayObj.dateStr, slot);
+                        }
+                      }}
+                      className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1 cursor-pointer"
+                    >
                       {matchingOccupations.map(({ g, isStart }) => {
-                        const timeRangeText = formatTimeRange(g.time, g.endTime, g.durationMinutes);
+                        const timeRangeText = formatTimeRange(g.time, g.endTime, g.durationMinutes || 45);
+                        const durationBadge = formatAppointmentDurationBadge(g.time, g.endTime, g.durationMinutes || 45);
 
                         if (isStart) {
                           return (
                             <div 
                               key={g.id} 
-                              onClick={() => handleOpenDetailModal(g, 'peluqueria')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDetailModal(g, 'peluqueria');
+                              }}
                               className="bg-[#F0FDF4] border border-emerald-300 rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all"
                             >
                               <div className="flex items-center justify-between gap-1">
                                 <span className="font-semibold text-emerald-950 truncate">{g.patientName}</span>
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded-md font-mono flex items-center gap-0.5">
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded-md font-mono flex items-center gap-0.5 shrink-0">
                                   <span className="material-symbols-outlined text-[10px]">schedule</span>
-                                  {timeRangeText}
+                                  <span>{timeRangeText}</span>
+                                  {durationBadge && (
+                                    <span className="text-[9px] bg-emerald-200/80 text-emerald-950 px-1 rounded ml-0.5 font-bold">
+                                      {durationBadge}
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                               <span className="text-[11px] text-slate-700 truncate font-semibold">{g.serviceName}</span>
@@ -523,7 +649,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                           return (
                             <div 
                               key={g.id} 
-                              onClick={() => handleOpenDetailModal(g, 'peluqueria')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDetailModal(g, 'peluqueria');
+                              }}
                               className="bg-[#F0FDF4]/70 border border-dashed border-emerald-300 rounded-xl p-1.5 flex items-center justify-between text-xs cursor-pointer hover:border-emerald-400"
                             >
                               <div className="flex items-center gap-1 text-emerald-950 font-medium truncate text-[11px]">
@@ -548,7 +677,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
       {/* New Appointment Modal */}
       {showNewModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
             <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
               <h3 className="font-headline-sm text-slate-900 text-base font-semibold">
@@ -601,7 +730,15 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                     <label className="font-semibold text-xs text-slate-700 block mb-1">Servicio de estética *</label>
                     <select
                       value={selectedGroomServiceId}
-                      onChange={(e) => setSelectedGroomServiceId(e.target.value)}
+                      onChange={(e) => {
+                        const newId = e.target.value;
+                        setSelectedGroomServiceId(newId);
+                        const srv = groomingServices.find(s => s.id === newId);
+                        if (srv) {
+                          setAppDuration(srv.durationMinutes);
+                          setAppEndTime(calculateEndTime(appTime, srv.durationMinutes));
+                        }
+                      }}
                       className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
                     >
                       {groomingServices.map(s => (
@@ -625,15 +762,48 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                 />
               </div>
 
+              {/* Duración rápida del turno */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="font-semibold text-xs text-slate-700">Duración del turno</label>
+                  <span className="text-[11px] font-bold text-[#5C3C7B] bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                    {appDuration} min ({appTime} a {appEndTime})
+                  </span>
+                </div>
+                <div className="grid grid-cols-6 gap-1">
+                  {DURATION_PRESETS.map(d => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => {
+                        setAppDuration(d);
+                        setAppEndTime(calculateEndTime(appTime, d));
+                      }}
+                      className={`py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        appDuration === d
+                          ? 'bg-[#9A7DB8] text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {d} min
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-md">
                 <div>
                   <label className="font-semibold text-xs text-slate-700 block mb-1">Hora inicio *</label>
                   <select
                     value={appTime}
-                    onChange={(e) => setAppTime(e.target.value)}
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      setAppTime(newStart);
+                      setAppEndTime(calculateEndTime(newStart, appDuration));
+                    }}
                     className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
                   >
-                    {extendedTimeSlots.map(slot => (
+                    {ensureTimeInSlots(extendedTimeSlots, appTime).map(slot => (
                       <option key={slot} value={slot}>{slot}</option>
                     ))}
                   </select>
@@ -642,10 +812,15 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   <label className="font-semibold text-xs text-slate-700 block mb-1">Hora fin *</label>
                   <select
                     value={appEndTime}
-                    onChange={(e) => setAppEndTime(e.target.value)}
+                    onChange={(e) => {
+                      const newEnd = e.target.value;
+                      setAppEndTime(newEnd);
+                      const d = calculateDurationMinutes(appTime, newEnd);
+                      if (d > 0) setAppDuration(d);
+                    }}
                     className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
                   >
-                    {extendedTimeSlots.map(slot => (
+                    {ensureTimeInSlots(extendedTimeSlots, appEndTime).map(slot => (
                       <option key={slot} value={slot}>{slot}</option>
                     ))}
                   </select>
@@ -665,7 +840,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[18px]">calendar_add_on</span>
-                  <span>Confirmar turno</span>
+                  <span>Confirmar turno ({appDuration} min)</span>
                 </button>
               </div>
             </form>
@@ -675,7 +850,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
       {/* Appointment Action / Detail Modal */}
       {detailModal?.isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-white rounded-2xl max-w-lg w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
             {/* Header with info */}
             <div className="flex justify-between items-start border-b border-slate-200 pb-md">
@@ -702,9 +877,12 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   <span className="font-medium text-slate-800">Tutor:</span> {detailModal.appointment.ownerName} &bull;{' '}
                   <span className="font-medium text-slate-800">Especie/Raza:</span> {detailModal.appointment.species} ({detailModal.appointment.breed})
                 </p>
-                <p className="font-body-md text-xs text-purple-900 font-medium mt-0.5 flex items-center gap-1">
+                <p className="font-body-md text-xs text-purple-900 font-medium mt-0.5 flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[14px]">event</span>
-                  {detailModal.appointment.date} de {detailModal.appointment.time} a {detailModal.appointment.endTime}
+                  <span>{formatDate(detailModal.appointment.date)} de {detailModal.appointment.time} a {detailModal.appointment.endTime}</span>
+                  <span className="px-1.5 py-0.2 bg-purple-100 text-purple-900 font-bold rounded text-[10px]">
+                    {formatAppointmentDurationBadge(detailModal.appointment.time, detailModal.appointment.endTime) || `${editDuration} min`}
+                  </span>
                 </p>
               </div>
               <button 
@@ -839,6 +1017,33 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                     className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
                   />
                 </div>
+
+                {/* Duración rápida del nuevo turno */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="font-semibold text-xs text-slate-700">Duración del turno</label>
+                    <span className="text-[11px] font-bold text-[#5C3C7B] bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                      {editDuration} min ({editTime} a {calculateEndTime(editTime, editDuration)})
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1">
+                    {DURATION_PRESETS.map(d => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setEditDuration(d)}
+                        className={`py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          editDuration === d
+                            ? 'bg-[#9A7DB8] text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {d} min
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div>
                   <label className="font-semibold text-xs text-slate-700 block mb-1">Nueva Hora de Inicio *</label>
                   <select
@@ -846,7 +1051,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                     onChange={(e) => setEditTime(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
                   >
-                    {extendedTimeSlots.map(slot => (
+                    {ensureTimeInSlots(extendedTimeSlots, editTime).map(slot => (
                       <option key={slot} value={slot}>{slot}</option>
                     ))}
                   </select>
@@ -864,7 +1069,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                     className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                   >
                     <span className="material-symbols-outlined text-[16px]">edit_calendar</span>
-                    Guardar nuevo horario
+                    Guardar nuevo horario ({editDuration} min)
                   </button>
                 </div>
               </form>
@@ -907,7 +1112,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
       {/* History Modal Overlay */}
       {showHistoryModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
             {/* Header */}
             <div className="flex justify-between items-start border-b border-slate-200 pb-md">
@@ -970,7 +1175,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                         </div>
                         <span className="text-[11px] font-mono text-slate-600 font-medium flex items-center gap-1">
                           <span className="material-symbols-outlined text-[13px] text-purple-700">calendar_today</span>
-                          {item.date} {item.time ? `(${item.time} hs)` : ''}
+                          {formatDate(item.date)} {item.time ? `(${item.time} hs)` : ''}
                         </span>
                       </div>
 

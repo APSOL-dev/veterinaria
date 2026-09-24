@@ -273,7 +273,7 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
 
       {/* Modal Edit Supplier Credit Term (Estilo Claro) */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-surface-container-lowest text-slate-800 rounded-2xl max-w-md w-full shadow-2xl border border-outline-variant/30 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Header del Modal */}
             <div className="bg-[#5C3C7B] text-white p-4 flex items-center justify-between">

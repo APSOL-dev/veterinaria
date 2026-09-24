@@ -588,6 +588,13 @@ export const App: React.FC = () => {
     upsertProductToSupabase(updatedProduct);
   };
 
+  const handleBulkUpdateProducts = (updatedProducts: Product[]) => {
+    setProducts(updatedProducts);
+    updatedProducts.forEach(p => {
+      upsertProductToSupabase(p);
+    });
+  };
+
   const handleAddPatient = async (patientData: {
     name: string;
     species: any;
@@ -908,7 +915,7 @@ export const App: React.FC = () => {
       }`}>
         {/* Dynamic Main Workspace Container */}
         <main className="flex-1 h-full overflow-hidden flex flex-col p-md bg-surface-container-low">
-          <div key={`${activeModule}-${activeSubmodule}`} className="flex-1 h-full overflow-hidden flex flex-col animate-page-transition">
+          <div className="flex-1 h-full overflow-hidden flex flex-col">
             {/* Module: Proveedores */}
             {activeModule === 'proveedores' && (
               <SuppliersView
@@ -1092,6 +1099,7 @@ export const App: React.FC = () => {
                 onAdjustStock={handleAdjustStock}
                 onUpdateServicesCatalog={handleUpdateServicesCatalog}
                 onAddBill={handleAddSupplierBill}
+                onBulkUpdateProducts={handleBulkUpdateProducts}
               />
             )}
 

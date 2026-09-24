@@ -15,7 +15,12 @@ import {
   getWednesdayOfCurrentWeek,
   filterAppointmentsWithNotes,
   deleteAppointmentFromList,
-  getAppointmentCardTheme
+  getAppointmentCardTheme,
+  filterAppointmentsByQuery,
+  filterAppointmentsByCriteria,
+  formatAppointmentDurationBadge,
+  generateTimeSlots,
+  ensureTimeInSlots
 } from './agendaService';
 
 describe('agendaService', () => {
@@ -242,5 +247,109 @@ describe('agendaService', () => {
       expect(theme.buttonBg).toContain('emerald');
     });
   });
+
+  describe('filterAppointmentsByQuery', () => {
+    const mockAppointments = [
+      { id: '1', patientName: 'Firulais', ownerName: 'Carlos Gomez', date: '2026-09-24' },
+      { id: '2', patientName: 'Milo', ownerName: 'Laura Perez', date: '2026-09-24' },
+      { id: '3', patientName: 'Luna', ownerName: 'Carlos Gomez', date: '2026-09-25' }
+    ];
+
+    it('returns all appointments if query is empty or undefined', () => {
+      expect(filterAppointmentsByQuery(mockAppointments, '')).toEqual(mockAppointments);
+      expect(filterAppointmentsByQuery(mockAppointments, undefined)).toEqual(mockAppointments);
+    });
+
+    it('filters by patient name (case-insensitive)', () => {
+      const res = filterAppointmentsByQuery(mockAppointments, 'firu');
+      expect(res).toHaveLength(1);
+      expect(res[0].id).toBe('1');
+    });
+
+    it('filters by tutor / owner name (case-insensitive)', () => {
+      const res = filterAppointmentsByQuery(mockAppointments, 'Carlos');
+      expect(res).toHaveLength(2);
+      expect(res.map(a => a.id)).toEqual(['1', '3']);
+    });
+
+    it('returns empty array if no match found', () => {
+      const res = filterAppointmentsByQuery(mockAppointments, 'Nonexistent');
+      expect(res).toHaveLength(0);
+    });
+  });
+
+  describe('filterAppointmentsByCriteria', () => {
+    const mockAppointments = [
+      { id: '1', patientName: 'Firulais', ownerName: 'Carlos Gomez', species: 'Canino', breed: 'Labrador', date: '2026-09-24' },
+      { id: '2', patientName: 'Milo', ownerName: 'Laura Perez', species: 'Felino', breed: 'Siames', date: '2026-09-24' },
+      { id: '3', patientName: 'Luna', ownerName: 'Carlos Gomez', species: 'Canino', breed: 'Poodle', date: '2026-09-25' }
+    ];
+
+    it('returns all appointments if no query criteria are provided', () => {
+      expect(filterAppointmentsByCriteria(mockAppointments, {})).toEqual(mockAppointments);
+      expect(filterAppointmentsByCriteria(mockAppointments, { patientQuery: '', tutorQuery: '' })).toEqual(mockAppointments);
+    });
+
+    it('filters strictly by patient query', () => {
+      const res = filterAppointmentsByCriteria(mockAppointments, { patientQuery: 'Luna' });
+      expect(res).toHaveLength(1);
+      expect(res[0].id).toBe('3');
+    });
+
+    it('filters strictly by tutor query', () => {
+      const res = filterAppointmentsByCriteria(mockAppointments, { tutorQuery: 'Laura' });
+      expect(res).toHaveLength(1);
+      expect(res[0].id).toBe('2');
+    });
+
+    it('filters by both patient and tutor query together (AND logic)', () => {
+      const res1 = filterAppointmentsByCriteria(mockAppointments, { patientQuery: 'Luna', tutorQuery: 'Carlos' });
+      expect(res1).toHaveLength(1);
+      expect(res1[0].id).toBe('3');
+
+      const res2 = filterAppointmentsByCriteria(mockAppointments, { patientQuery: 'Luna', tutorQuery: 'Laura' });
+      expect(res2).toHaveLength(0);
+    });
+  });
+
+  describe('formatAppointmentDurationBadge', () => {
+    it('returns duration badge in minutes', () => {
+      expect(formatAppointmentDurationBadge('09:00', '09:45')).toBe('45 min');
+      expect(formatAppointmentDurationBadge('10:00', '10:30')).toBe('30 min');
+      expect(formatAppointmentDurationBadge('10:00', '11:00')).toBe('60 min');
+    });
+
+    it('uses defaultDurationMinutes when endTime is missing', () => {
+      expect(formatAppointmentDurationBadge('09:00', undefined, 45)).toBe('45 min');
+    });
+  });
+
+  describe('generateTimeSlots & ensureTimeInSlots', () => {
+    it('generates 15-minute interval time slots by default including 10:00, 10:15, 10:30, 10:45', () => {
+      const slots = generateTimeSlots(8, 20, 15);
+      expect(slots).toContain('08:00');
+      expect(slots).toContain('08:15');
+      expect(slots).toContain('08:30');
+      expect(slots).toContain('08:45');
+      expect(slots).toContain('10:00');
+      expect(slots).toContain('10:45');
+      expect(slots).toContain('20:00');
+    });
+
+    it('ensureTimeInSlots includes the target time in sorted order if missing', () => {
+      const baseSlots = ['08:00', '09:00', '10:00', '11:00'];
+      const result = ensureTimeInSlots(baseSlots, '10:45');
+      expect(result).toContain('10:45');
+      expect(result.indexOf('10:45')).toBe(3); // after 10:00, before 11:00
+    });
+
+    it('ensureTimeInSlots leaves array unchanged if time already present or empty', () => {
+      const baseSlots = ['08:00', '09:00', '10:00'];
+      expect(ensureTimeInSlots(baseSlots, '09:00')).toEqual(baseSlots);
+      expect(ensureTimeInSlots(baseSlots, undefined)).toEqual(baseSlots);
+      expect(ensureTimeInSlots(baseSlots, '')).toEqual(baseSlots);
+    });
+  });
 });
+
 

@@ -1,6 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { SupplierBill, SupplierPayment, SupplierCreditTerm } from '../../domain/types';
-import { calculateSupplierAccountMovements, getSupplierCreditTerms } from '../../domain/services/supplierService';
+import { 
+  calculateSupplierSummaryBalances, 
+  calculateSupplierAccountMovements, 
+  getSupplierCreditTerms 
+} from '../../domain/services/supplierService';
+import { formatDate } from '../../utils/dateUtils';
 
 interface SupplierCurrentAccountViewProps {
   bills: SupplierBill[];
@@ -28,8 +33,11 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
     'Distribuidora Veterinaria Sur'
   ]
 }) => {
-  const [selectedSupplier, setSelectedSupplier] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterDebtOnly, setFilterDebtOnly] = useState<'all' | 'debt' | 'zero'>('all');
+
+  // Modal State for viewing single supplier details / movements
+  const [selectedSupplierDetail, setSelectedSupplierDetail] = useState<string | null>(null);
 
   // Modal State for percentages
   const [showEditModal, setShowEditModal] = useState(false);
@@ -45,35 +53,44 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
     return Array.from(set);
   }, [registeredSuppliers, bills]);
 
-  // Calculate account movements
-  const movements = useMemo(() => {
-    const supplierToQuery = selectedSupplier === 'all' ? '' : selectedSupplier;
-    return calculateSupplierAccountMovements(supplierToQuery, bills, payments);
-  }, [selectedSupplier, bills, payments]);
+  // Calculate 2-column summary balances per supplier
+  const supplierBalances = useMemo(() => {
+    return calculateSupplierSummaryBalances(bills, payments, registeredSuppliers);
+  }, [bills, payments, registeredSuppliers]);
 
-  // Filter movements by search query
-  const filteredMovements = useMemo(() => {
-    if (!searchQuery.trim()) return movements;
-    const q = searchQuery.toLowerCase().trim();
-    return movements.filter(m =>
-      m.voucherNumber.toLowerCase().includes(q) ||
-      m.date.includes(q) ||
-      (m.status && m.status.toLowerCase().includes(q))
-    );
-  }, [movements, searchQuery]);
+  // Filter summaries
+  const filteredSummaries = useMemo(() => {
+    return supplierBalances.filter(s => {
+      const matchesSearch = !searchQuery.trim() || s.supplierName.toLowerCase().includes(searchQuery.toLowerCase().trim());
+      if (!matchesSearch) return false;
+      if (filterDebtOnly === 'debt') return s.saldo > 0;
+      if (filterDebtOnly === 'zero') return s.saldo <= 0;
+      return true;
+    });
+  }, [supplierBalances, searchQuery, filterDebtOnly]);
 
-  // Total balance for current view
-  const currentTotalSaldo = useMemo(() => {
-    if (movements.length === 0) return 0;
-    return movements[movements.length - 1].saldo;
-  }, [movements]);
+  // Total balance sum
+  const totalSaldoGeneral = useMemo(() => {
+    return supplierBalances.reduce((sum, s) => sum + s.saldo, 0);
+  }, [supplierBalances]);
+
+  // Movements for the selected supplier detail modal
+  const detailMovements = useMemo(() => {
+    if (!selectedSupplierDetail) return [];
+    return calculateSupplierAccountMovements(selectedSupplierDetail, bills, payments);
+  }, [selectedSupplierDetail, bills, payments]);
+
+  const selectedSupplierSummary = useMemo(() => {
+    if (!selectedSupplierDetail) return null;
+    return supplierBalances.find(s => s.supplierName.toLowerCase() === selectedSupplierDetail.toLowerCase()) || null;
+  }, [selectedSupplierDetail, supplierBalances]);
 
   const handleOpenEditPlazos = (supplierName?: string) => {
     if (onNavigateToPlazos) {
       onNavigateToPlazos();
       return;
     }
-    const targetName = supplierName || (selectedSupplier !== 'all' ? selectedSupplier : allSuppliersList[0] || 'Proveedor General');
+    const targetName = supplierName || (selectedSupplierDetail || allSuppliersList[0] || 'Proveedor General');
     const termInfo = getSupplierCreditTerms(targetName, creditTerms);
     setEditingSupplierName(targetName);
 
@@ -130,7 +147,7 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
             Proveedores — Cuentas Corrientes
           </h1>
           <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
-            Estado de cuenta corriente por proveedor: movimiento de facturas (Debe), pagos (Haber) y saldo acumulado
+            Estado de cuenta corriente y saldos consolidados por proveedor
           </p>
         </div>
 
@@ -159,173 +176,151 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
         </div>
       </div>
 
-      {/* Filter Bar */}
+      {/* Filter & Summary Bar */}
       <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-md shadow-xs flex flex-wrap items-center justify-between gap-md">
         <div className="flex items-center gap-md flex-1 min-w-[280px]">
-          {/* Supplier Selector */}
-          <div className="flex flex-col gap-1 min-w-[220px]">
-            <label className="text-[11px] font-medium text-on-surface-variant">Proveedor</label>
-            <div className="relative">
-              <select
-                value={selectedSupplier}
-                onChange={e => setSelectedSupplier(e.target.value)}
-                className="w-full appearance-none bg-surface-container/40 border border-outline-variant/30 rounded-xl pr-8 pl-3 py-2 text-xs text-on-surface outline-none focus:border-primary font-semibold cursor-pointer"
-              >
-                <option value="all">Todos los proveedores</option>
-                {allSuppliersList.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-              <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
-            </div>
-          </div>
-
           {/* Search bar */}
           <div className="flex flex-col gap-1 flex-1">
-            <label className="text-[11px] font-medium text-on-surface-variant">Buscar comprobante / fecha</label>
+            <label className="text-[11px] font-medium text-on-surface-variant">Buscar proveedor</label>
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Buscar por comprobante..."
+                placeholder="Escribir nombre del proveedor..."
                 className="w-full pl-9 pr-3 py-2 bg-surface-container/40 border border-outline-variant/30 rounded-xl text-xs text-on-surface outline-none focus:border-primary font-medium"
               />
+            </div>
+          </div>
+
+          {/* Quick Filters */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-medium text-on-surface-variant">Filtro de saldo</label>
+            <div className="flex items-center gap-1 bg-surface-container/40 p-1 rounded-xl border border-outline-variant/30">
+              <button
+                type="button"
+                onClick={() => setFilterDebtOnly('all')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  filterDebtOnly === 'all'
+                    ? 'bg-[#5C3C7B] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Todos ({supplierBalances.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterDebtOnly('debt')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  filterDebtOnly === 'debt'
+                    ? 'bg-red-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-red-700'
+                }`}
+              >
+                Con deuda ({supplierBalances.filter(s => s.saldo > 0).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterDebtOnly('zero')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  filterDebtOnly === 'zero'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-emerald-700'
+                }`}
+              >
+                Al día ({supplierBalances.filter(s => s.saldo <= 0).length})
+              </button>
             </div>
           </div>
         </div>
 
         {/* Total Saldo Badge */}
         <div className={`border rounded-xl px-4 py-2 flex items-center gap-md ${
-          currentTotalSaldo > 0
+          totalSaldoGeneral > 0
             ? 'bg-red-50/80 border-red-200 text-red-900'
-            : currentTotalSaldo < 0
+            : totalSaldoGeneral < 0
               ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
               : 'bg-surface-container/60 border-outline-variant/40'
         }`}>
           <span className="text-xs font-semibold text-on-surface-variant">
-            {currentTotalSaldo > 0 ? 'Saldo a pagar (Deuda):' : currentTotalSaldo < 0 ? 'Saldo a favor:' : 'Saldo actual:'}
+            {totalSaldoGeneral > 0 ? 'Total a pagar (Deuda global):' : totalSaldoGeneral < 0 ? 'Saldo a favor global:' : 'Saldo actual:'}
           </span>
           <span className={`text-base font-semibold font-mono ${
-            currentTotalSaldo > 0 ? 'text-red-700' : currentTotalSaldo < 0 ? 'text-[#27AE60]' : 'text-slate-700'
+            totalSaldoGeneral > 0 ? 'text-red-700' : totalSaldoGeneral < 0 ? 'text-[#27AE60]' : 'text-slate-700'
           }`}>
-            {currentTotalSaldo < 0 ? `- $ ${Math.abs(currentTotalSaldo).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `$ ${currentTotalSaldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            {totalSaldoGeneral < 0 
+              ? `- $ ${Math.abs(totalSaldoGeneral).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+              : `$ ${totalSaldoGeneral.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           </span>
         </div>
       </div>
 
-      {/* Main Account Ledger Table */}
+      {/* Main 2-Column Table: Proveedor | Saldo */}
       <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-xs overflow-hidden flex-1">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-[#5C3C7B] text-white font-semibold text-[11px] border-b border-purple-900/20">
-                <th className="py-3 px-md w-12 text-center">Anul.</th>
-                <th className="py-3 px-md">Nº comprobante</th>
-                <th className="py-3 px-md text-center">Comprobante adjunto</th>
-                <th className="py-3 px-md text-center">Estado</th>
                 <th className="py-3 px-md">Proveedor</th>
-                <th className="py-3 px-md text-center">Fecha</th>
-                <th className="py-3 px-md text-right">Debe</th>
-                <th className="py-3 px-md text-right">Haber</th>
                 <th className="py-3 px-md text-right">Saldo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/20 font-medium">
-              {filteredMovements.length === 0 ? (
+              {filteredSummaries.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-xl text-center text-slate-500 font-medium">
-                    No hay movimientos registrados en la cuenta corriente.
+                  <td colSpan={2} className="py-xl text-center text-slate-500 font-medium">
+                    No se encontraron proveedores para el criterio de búsqueda.
                   </td>
                 </tr>
               ) : (
-                filteredMovements.map(m => (
-                  <tr key={m.id} className="hover:bg-surface-container/20 transition-colors">
-                    <td className="py-3 px-md text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        {onOpenRegisterPayment && m.type === 'bill' && m.status !== 'Pagado' && m.status !== 'paid' && (
-                          <button
-                            type="button"
-                            onClick={() => onOpenRegisterPayment(m.id)}
-                            className="text-[#5C3C7B] hover:text-[#4A2F66] hover:bg-purple-50 transition-colors p-1 rounded-md cursor-pointer"
-                            title="Registrar pago para esta factura"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">payments</span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => onDeleteBill && m.type === 'bill' && onDeleteBill(m.id)}
-                          className="text-slate-400 hover:text-error transition-colors p-1 rounded-md cursor-pointer"
-                          title="Anular comprobante"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">delete</span>
-                        </button>
+                filteredSummaries.map((supp) => (
+                  <tr 
+                    key={supp.supplierName} 
+                    onClick={() => setSelectedSupplierDetail(supp.supplierName)}
+                    className="hover:bg-purple-50/50 transition-colors cursor-pointer group"
+                  >
+                    {/* Columna 1: Proveedor */}
+                    <td className="py-3.5 px-md">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-purple-100 group-hover:bg-[#5C3C7B] text-[#5C3C7B] group-hover:text-white flex items-center justify-center font-bold text-xs shrink-0 transition-colors shadow-2xs">
+                          {supp.supplierName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-900 text-sm group-hover:text-[#5C3C7B] transition-colors">
+                            {supp.supplierName}
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            {supp.billsCount === 0 
+                              ? 'Sin facturas registradas' 
+                              : `${supp.billsCount} factura${supp.billsCount > 1 ? 's' : ''}${
+                                  supp.pendingBillsCount > 0 ? ` (${supp.pendingBillsCount} pendiente${supp.pendingBillsCount > 1 ? 's' : ''})` : ''
+                                }`}
+                          </span>
+                        </div>
                       </div>
                     </td>
-                    <td className="py-3 px-md font-medium text-slate-900">
-                      {m.voucherNumber}
-                    </td>
-                    <td className="py-3 px-md text-center">
-                      {m.voucherUrl ? (
-                        <a
-                          href={m.voucherUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 rounded-lg text-xs font-semibold transition-all shadow-2xs"
-                          title={m.voucherName || 'Ver comprobante adjunto'}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">description</span>
-                          <span className="max-w-[120px] truncate">{m.voucherName || 'Ver archivo'}</span>
-                        </a>
-                      ) : (
-                        <span className="text-slate-400 text-[11px] font-normal italic">Sin adjunto</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-md text-center">
-                      {m.status && m.status !== '-' ? (
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                          m.status === 'Pagado' || m.status === 'paid'
-                            ? 'bg-[#E8F5E9] text-[#27AE60]'
-                            : m.status === 'Pago parcial' || m.status === 'partial'
-                            ? 'bg-[#FEF9E7] text-[#D35400]'
-                            : 'bg-[#FDEDEC] text-[#C0392B]'
+
+                    {/* Columna 2: Saldo */}
+                    <td className="py-3.5 px-md text-right">
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`text-sm font-bold font-mono ${
+                          supp.saldo > 0 ? 'text-red-700' : supp.saldo < 0 ? 'text-emerald-700' : 'text-slate-600'
                         }`}>
-                          {m.status === 'paid' || m.status === 'Pagado'
-                            ? 'Pagado'
-                            : m.status === 'partial' || m.status === 'Pago parcial'
-                            ? 'Pago parcial'
-                            : 'Pendiente'}
+                          {supp.saldo < 0 
+                            ? `- $ ${Math.abs(supp.saldo).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                            : `$ ${supp.saldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </span>
-                      ) : (
-                        <span className="text-slate-400">-</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-md font-medium text-slate-800">
-                      {m.supplierName}
-                    </td>
-                    <td className="py-3 px-md text-center font-mono text-slate-600">
-                      {m.date}
-                    </td>
-                    <td className="py-3 px-md text-right font-medium text-slate-900">
-                      {m.debe > 0 ? (
-                        `$ ${m.debe.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      ) : (
-                        <span className="text-slate-400 font-normal">-</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-md text-right font-semibold text-[#27AE60]">
-                      {m.haber > 0 ? (
-                        `$ ${m.haber.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      ) : (
-                        <span className="text-slate-400 font-normal">-</span>
-                      )}
-                    </td>
-                    <td className={`py-3 px-md text-right font-semibold font-mono ${
-                      m.saldo > 0 ? 'text-red-700' : m.saldo < 0 ? 'text-[#27AE60]' : 'text-slate-600'
-                    }`}>
-                      {m.saldo < 0 ? `- $ ${Math.abs(m.saldo).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `$ ${m.saldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          supp.saldo > 0 
+                            ? 'bg-red-50 text-red-700 border border-red-200/60' 
+                            : supp.saldo < 0 
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' 
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}>
+                          {supp.saldo > 0 ? 'Saldo a pagar' : supp.saldo < 0 ? 'Saldo a favor' : 'Al día'}
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -335,9 +330,202 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
         </div>
       </div>
 
+      {/* Modal / Drawer de Detalle del Proveedor Seleccionado */}
+      {selectedSupplierDetail && selectedSupplierSummary && (
+        <div className="fixed inset-0 bg-black/25 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+          <div className="bg-surface-container-lowest text-slate-800 rounded-2xl max-w-3xl w-full shadow-2xl border border-outline-variant/30 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header del Modal */}
+            <div className="bg-[#5C3C7B] text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center font-bold text-base text-white">
+                  {selectedSupplierDetail.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white leading-tight">
+                    {selectedSupplierDetail}
+                  </h3>
+                  <p className="text-xs text-purple-200 font-medium">
+                    Detalle de facturas y pagos registrados
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {onOpenRegisterPayment && selectedSupplierSummary.saldo > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const firstPendingBill = bills.find(
+                        b => b.supplierName.trim().toLowerCase() === selectedSupplierDetail.trim().toLowerCase() && 
+                             b.status !== 'paid' && (b.status as string) !== 'Pagado'
+                      );
+                      onOpenRegisterPayment(firstPendingBill?.id);
+                    }}
+                    className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">payments</span>
+                    <span>Registrar Pago</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedSupplierDetail(null)}
+                  className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Resumen de totales */}
+            <div className="p-4 bg-slate-50 border-b border-outline-variant/20 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-6">
+                <div>
+                  <span className="text-[11px] text-slate-500 font-medium block">Total Facturado</span>
+                  <span className="text-sm font-bold text-slate-900 font-mono">
+                    $ {selectedSupplierSummary.totalFacturado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500 font-medium block">Total Pagado</span>
+                  <span className="text-sm font-bold text-emerald-700 font-mono">
+                    $ {selectedSupplierSummary.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              <div className={`px-4 py-2 rounded-xl border flex items-center gap-3 ${
+                selectedSupplierSummary.saldo > 0
+                  ? 'bg-red-50 border-red-200 text-red-900'
+                  : selectedSupplierSummary.saldo < 0
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : 'bg-white border-slate-200 text-slate-700'
+              }`}>
+                <span className="text-xs font-semibold">
+                  {selectedSupplierSummary.saldo > 0 ? 'Saldo a pagar:' : selectedSupplierSummary.saldo < 0 ? 'Saldo a favor:' : 'Saldo:'}
+                </span>
+                <span className={`text-base font-bold font-mono ${
+                  selectedSupplierSummary.saldo > 0 ? 'text-red-700' : selectedSupplierSummary.saldo < 0 ? 'text-emerald-700' : 'text-slate-700'
+                }`}>
+                  {selectedSupplierSummary.saldo < 0 
+                    ? `- $ ${Math.abs(selectedSupplierSummary.saldo).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                    : `$ ${selectedSupplierSummary.saldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </span>
+              </div>
+            </div>
+
+            {/* Lista de Movimientos / Facturas */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <h4 className="text-xs font-bold text-slate-800 mb-2">Comprobantes y Movimientos</h4>
+              {detailMovements.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-500 font-medium">
+                  No hay movimientos registrados para este proveedor.
+                </div>
+              ) : (
+                <div className="border border-outline-variant/30 rounded-xl overflow-hidden shadow-2xs">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-700 font-semibold text-[11px] border-b border-slate-200">
+                        <th className="py-2.5 px-3">Fecha</th>
+                        <th className="py-2.5 px-3">Nº Comprobante</th>
+                        <th className="py-2.5 px-3 text-center">Tipo / Estado</th>
+                        <th className="py-2.5 px-3 text-right">Monto</th>
+                        <th className="py-2.5 px-3 text-center">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {detailMovements.map(m => (
+                        <tr key={m.id} className="hover:bg-slate-50">
+                          <td className="py-2.5 px-3 font-mono text-slate-600">
+                            {formatDate(m.date)}
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-900">
+                            {m.voucherNumber}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            {m.type === 'bill' ? (
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                m.status === 'Pagado' || m.status === 'paid'
+                                  ? 'bg-[#E8F5E9] text-[#27AE60]'
+                                  : m.status === 'Pago parcial' || m.status === 'partial'
+                                  ? 'bg-[#FEF9E7] text-[#D35400]'
+                                  : 'bg-[#FDEDEC] text-[#C0392B]'
+                              }`}>
+                                {m.status || 'Factura'}
+                              </span>
+                            ) : (
+                              <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                                Pago
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-semibold">
+                            {m.type === 'bill' ? (
+                              <span className="text-slate-900">$ {m.debe.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            ) : (
+                              <span className="text-emerald-700">$ {m.haber.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {m.voucherUrl && (
+                                <a
+                                  href={m.voucherUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 text-[#5C3C7B] hover:bg-purple-100 rounded transition-colors"
+                                  title={m.voucherName || 'Ver comprobante adjunto'}
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">description</span>
+                                </a>
+                              )}
+                              {onOpenRegisterPayment && m.type === 'bill' && m.status !== 'Pagado' && m.status !== 'paid' && (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenRegisterPayment(m.id)}
+                                  className="p-1 text-[#5C3C7B] hover:bg-purple-100 rounded transition-colors cursor-pointer"
+                                  title="Registrar pago"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">payments</span>
+                                </button>
+                              )}
+                              {onDeleteBill && m.type === 'bill' && (
+                                <button
+                                  type="button"
+                                  onClick={() => onDeleteBill(m.id)}
+                                  className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors cursor-pointer"
+                                  title="Eliminar factura"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedSupplierDetail(null)}
+                className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Edit Supplier Credit Term (Estilo Claro) */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-surface-container-lowest text-slate-800 rounded-2xl max-w-md w-full shadow-2xl border border-outline-variant/30 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Header del Modal */}
             <div className="bg-[#5C3C7B] text-white p-4 flex items-center justify-between">

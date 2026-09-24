@@ -4,6 +4,8 @@ import {
   getPaymentsForBill,
   getTotalPaidForBill,
   getRemainingBalance,
+  getBillPaymentStatus,
+  applyPartialPaymentToBill,
 } from './paymentService';
 import { SupplierBill, SupplierPayment } from '../types';
 
@@ -172,4 +174,84 @@ describe('paymentService', () => {
       expect(remaining).toBe(0);
     });
   });
+
+  describe('Corroboración: Pagos parciales de facturas', () => {
+    it('determina correctamente el estado de pago de una factura (pending, partial, paid)', () => {
+      expect(getBillPaymentStatus(mockBill, [])).toBe('pending');
+
+      const partialPayments: SupplierPayment[] = [
+        {
+          id: 'pay-p1',
+          billId: 'bill-1',
+          billInvoiceNumber: 'FAC-0001',
+          supplierName: 'Proveedor Ejemplo',
+          date: '2026-09-24',
+          amount: 4000,
+          paymentMethod: 'Transferencia'
+        }
+      ];
+      expect(getBillPaymentStatus(mockBill, partialPayments)).toBe('partial');
+
+      const fullPayments: SupplierPayment[] = [
+        ...partialPayments,
+        {
+          id: 'pay-p2',
+          billId: 'bill-1',
+          billInvoiceNumber: 'FAC-0001',
+          supplierName: 'Proveedor Ejemplo',
+          date: '2026-09-24',
+          amount: 6000,
+          paymentMethod: 'Efectivo'
+        }
+      ];
+      expect(getBillPaymentStatus(mockBill, fullPayments)).toBe('paid');
+    });
+
+    it('aplica un pago parcial reduciendo el saldo pendiente e identificando estado parcial', () => {
+      const result1 = applyPartialPaymentToBill(
+        mockBill,
+        {
+          billId: 'bill-1',
+          billInvoiceNumber: 'FAC-0001',
+          supplierName: 'Proveedor Ejemplo',
+          date: '2026-09-24',
+          amount: 3500,
+          paymentMethod: 'Efectivo',
+          note: 'Primer pago parcial'
+        },
+        []
+      );
+
+      expect(result1.newPayment.id).toBeDefined();
+      expect(result1.newPayment.amount).toBe(3500);
+      expect(result1.totalPaid).toBe(3500);
+      expect(result1.remainingBalance).toBe(6500); // 10000 - 3500
+      expect(result1.status).toBe('partial');
+      expect(result1.isPartiallyPaid).toBe(true);
+      expect(result1.isFullyPaid).toBe(false);
+
+      // Segundo pago parcial que completa la factura
+      const result2 = applyPartialPaymentToBill(
+        mockBill,
+        {
+          billId: 'bill-1',
+          billInvoiceNumber: 'FAC-0001',
+          supplierName: 'Proveedor Ejemplo',
+          date: '2026-09-25',
+          amount: 6500,
+          paymentMethod: 'Transferencia',
+          note: 'Segundo pago que salda la factura'
+        },
+        result1.updatedPayments
+      );
+
+      expect(result2.totalPaid).toBe(10000);
+      expect(result2.remainingBalance).toBe(0);
+      expect(result2.status).toBe('paid');
+      expect(result2.isPartiallyPaid).toBe(false);
+      expect(result2.isFullyPaid).toBe(true);
+      expect(result2.updatedPayments).toHaveLength(2);
+    });
+  });
 });
+

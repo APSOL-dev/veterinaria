@@ -1202,7 +1202,7 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
       {/* MODAL: ESCANEAR CÓDIGO QR PARA CONECTAR INSTANCIA                    */}
       {/* --------------------------------------------------------------------- */}
       {showQrModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+        <div className="fixed inset-0 bg-slate-900/25 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white rounded-[2.5rem] p-8 md:p-12 max-w-4xl md:max-w-5xl w-full shadow-2xl border border-slate-100 relative text-left">
             <button
               onClick={() => setShowQrModal(false)}
@@ -1304,7 +1304,7 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
       {/* MODAL: CONFIRMACIÓN DE CERRAR SESIÓN                                 */}
       {/* --------------------------------------------------------------------- */}
       {showLogoutModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+        <div className="fixed inset-0 bg-slate-900/25 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 text-center">
             <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <LogOut className="w-6 h-6" />

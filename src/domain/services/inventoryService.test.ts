@@ -7,7 +7,8 @@ import {
   findProductByBarcode, 
   getLowStockAlerts,
   processStockReceiptFromBill,
-  createNewProductRecord
+  createNewProductRecord,
+  applyBulkInflationToProducts
 } from './inventoryService';
 
 describe('inventoryService', () => {
@@ -366,4 +367,196 @@ describe('inventoryService', () => {
       })).toThrowError(/nombre del producto es obligatorio/);
     });
   });
+
+  describe('applyBulkInflationToProducts', () => {
+    const testProducts: Product[] = [
+      {
+        id: 'p-1',
+        sku: 'VET-MED-01',
+        name: 'Antiparasitario Canino',
+        category: 'Medicamentos',
+        currentStock: 10,
+        minStock: 2,
+        price: 10000,
+        priceLastUpdated: '2026-01-01'
+      },
+      {
+        id: 'p-2',
+        sku: 'VET-MED-02',
+        name: 'Antibiótico Felino',
+        category: 'Medicamentos',
+        currentStock: 5,
+        minStock: 1,
+        price: 20000,
+        priceLastUpdated: '2026-01-01'
+      },
+      {
+        id: 'p-3',
+        sku: 'VET-ALM-01',
+        name: 'Alimento Premium 15kg',
+        category: 'Alimentación',
+        currentStock: 8,
+        minStock: 3,
+        price: 50000,
+        priceLastUpdated: '2026-01-01'
+      },
+      {
+        id: 'p-4',
+        sku: 'VET-ACC-01',
+        name: 'Collar Ajustable',
+        category: 'Accesorios',
+        currentStock: 12,
+        minStock: 5,
+        price: 4000,
+        priceLastUpdated: '2026-01-01'
+      }
+    ];
+
+    it('applies inflation percentage to all products when no filter is provided', () => {
+      const today = new Date().toISOString().substring(0, 10);
+      const { updatedProducts, updatedCount } = applyBulkInflationToProducts(testProducts, 10);
+
+      expect(updatedCount).toBe(4);
+      expect(updatedProducts[0].price).toBe(11000); // 10000 + 10%
+      expect(updatedProducts[1].price).toBe(22000); // 20000 + 10%
+      expect(updatedProducts[2].price).toBe(55000); // 50000 + 10%
+      expect(updatedProducts[3].price).toBe(4400);  // 4000 + 10%
+      expect(updatedProducts[0].priceLastUpdated).toBe(today);
+    });
+
+    it('applies inflation percentage only to specific selected product IDs', () => {
+      const { updatedProducts, updatedCount } = applyBulkInflationToProducts(testProducts, 20, {
+        productIds: ['p-1', 'p-3']
+      });
+
+      expect(updatedCount).toBe(2);
+      expect(updatedProducts.find(p => p.id === 'p-1')?.price).toBe(12000); // +20%
+      expect(updatedProducts.find(p => p.id === 'p-2')?.price).toBe(20000); // Unchanged
+      expect(updatedProducts.find(p => p.id === 'p-3')?.price).toBe(60000); // +20%
+      expect(updatedProducts.find(p => p.id === 'p-4')?.price).toBe(4000);  // Unchanged
+    });
+
+    it('applies inflation percentage only to products in a specific category', () => {
+      const { updatedProducts, updatedCount } = applyBulkInflationToProducts(testProducts, 15, {
+        category: 'Medicamentos'
+      });
+
+      expect(updatedCount).toBe(2);
+      expect(updatedProducts.find(p => p.id === 'p-1')?.price).toBe(11500); // +15%
+      expect(updatedProducts.find(p => p.id === 'p-2')?.price).toBe(23000); // +15%
+      expect(updatedProducts.find(p => p.id === 'p-3')?.price).toBe(50000); // Unchanged (Alimentación)
+      expect(updatedProducts.find(p => p.id === 'p-4')?.price).toBe(4000);  // Unchanged (Accesorios)
+    });
+
+    it('supports price reduction with negative percentage', () => {
+      const { updatedProducts, updatedCount } = applyBulkInflationToProducts(testProducts, -10, {
+        productIds: ['p-1']
+      });
+
+      expect(updatedCount).toBe(1);
+      expect(updatedProducts.find(p => p.id === 'p-1')?.price).toBe(9000); // 10000 - 10%
+    });
+
+    it('handles 0% percentage or empty products without modifying prices', () => {
+      const { updatedProducts, updatedCount } = applyBulkInflationToProducts(testProducts, 0);
+      expect(updatedCount).toBe(0);
+      expect(updatedProducts).toEqual(testProducts);
+
+      const emptyRes = applyBulkInflationToProducts([], 10);
+      expect(emptyRes.updatedCount).toBe(0);
+      expect(emptyRes.updatedProducts).toEqual([]);
+    });
+  });
+
+  describe('Corroboración: Los productos se suman al inventario al cargar una factura', () => {
+    it('suma correctamente las cantidades recibidas al stock actual de los productos existentes', () => {
+      const initialCatalog: Product[] = [
+        {
+          id: 'prod-10',
+          sku: 'MED-010',
+          name: 'Amoxicilina 500mg',
+          category: 'Medicamentos',
+          currentStock: 15,
+          minStock: 5,
+          price: 1200
+        },
+        {
+          id: 'prod-20',
+          sku: 'INS-020',
+          name: 'Gasas estériles',
+          category: 'Insumos Clínicos',
+          currentStock: 50,
+          minStock: 20,
+          price: 300
+        }
+      ];
+
+      const bill = {
+        id: 'bill-101',
+        supplierName: 'Droguería Central',
+        invoiceNumber: 'FC-A-0001-00009999',
+        date: '2026-09-24',
+        amount: 30000,
+        itemsCount: 2,
+        status: 'pending' as const,
+        items: [
+          {
+            id: 'bi-1',
+            productId: 'prod-10',
+            productName: 'Amoxicilina 500mg',
+            quantity: 25,
+            unitCost: 1000,
+            subtotal: 25000
+          },
+          {
+            id: 'bi-2',
+            productId: 'prod-20',
+            productName: 'Gasas estériles',
+            quantity: 50,
+            unitCost: 250,
+            subtotal: 12500
+          }
+        ]
+      };
+
+      const updated = processStockReceiptFromBill(bill, initialCatalog);
+
+      const amoxi = updated.find(p => p.id === 'prod-10');
+      const gasas = updated.find(p => p.id === 'prod-20');
+
+      expect(amoxi?.currentStock).toBe(40); // 15 + 25
+      expect(gasas?.currentStock).toBe(100); // 50 + 50
+    });
+
+    it('crea automáticamente nuevos productos en el inventario con el stock de la factura si no existían previamente', () => {
+      const initialCatalog: Product[] = [];
+
+      const bill = {
+        id: 'bill-102',
+        supplierName: 'Distribuidora PetFood',
+        invoiceNumber: 'FC-B-0002-00003333',
+        date: '2026-09-24',
+        amount: 80000,
+        itemsCount: 1,
+        status: 'pending' as const,
+        items: [
+          {
+            id: 'bi-3',
+            productName: 'Pipetas Antipulgas Plus',
+            quantity: 30,
+            unitCost: 2500,
+            subtotal: 75000
+          }
+        ]
+      };
+
+      const updated = processStockReceiptFromBill(bill, initialCatalog);
+
+      expect(updated).toHaveLength(1);
+      expect(updated[0].name).toBe('Pipetas Antipulgas Plus');
+      expect(updated[0].currentStock).toBe(30);
+      expect(updated[0].price).toBe(2500);
+    });
+  });
 });
+

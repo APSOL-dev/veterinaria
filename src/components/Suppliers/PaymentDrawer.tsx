@@ -128,7 +128,7 @@ export const PaymentDrawer: React.FC<PaymentDrawerProps> = ({
   const calculatedSaldoRestante = Math.max(0, activeRemaining - currentPayAmount);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+    <div className="fixed inset-0 z-50 bg-slate-900/25 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
       <div 
         className="w-full max-w-lg bg-surface-container-lowest text-slate-800 max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border border-outline-variant/30 overflow-hidden font-body-md text-xs"
         onClick={(e) => e.stopPropagation()}

@@ -11,6 +11,7 @@ import { uploadVoucherToSupabase } from '../../domain/services/supabaseService';
 import { ExpenseCategoryModal } from './ExpenseCategoryModal';
 import { SupplierCreditTermsView } from './SupplierCreditTermsView';
 import { SupplierCurrentAccountView } from './SupplierCurrentAccountView';
+import { formatDate } from '../../utils/dateUtils';
 
 interface SuppliersViewProps {
   bills: SupplierBill[];
@@ -1019,8 +1020,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             onClick={() => handleOpenEditBill(bill)}
                             className="border-b border-surface-container-low hover:bg-surface-container transition-colors cursor-pointer"
                           >
-                            <td className="p-sm px-md font-normal text-slate-700">{bill.date}</td>
-                            <td className="p-sm px-md font-normal text-slate-700">{bill.paymentDate || bill.date}</td>
+                            <td className="p-sm px-md font-normal text-slate-700">{formatDate(bill.date)}</td>
+                            <td className="p-sm px-md font-normal text-slate-700">{formatDate(bill.paymentDate || bill.date)}</td>
                             <td className="p-sm px-md font-medium text-slate-900">{bill.supplierName}</td>
                             <td className="p-sm px-md font-mono text-[11px]">{formatInvoiceFullNumber(bill)}</td>
                             <td className="p-sm px-md text-center">{bill.itemsCount}</td>
@@ -1133,7 +1134,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
                     return (
                       <tr key={pay.id} className="border-b border-surface-container-low hover:bg-surface-container transition-colors">
-                        <td className="p-sm px-md font-normal text-slate-700">{pay.date}</td>
+                        <td className="p-sm px-md font-normal text-slate-700">{formatDate(pay.date)}</td>
                         <td className="p-sm px-md font-medium text-slate-900">{pay.supplierName}</td>
                         <td className="p-sm px-md font-mono text-[11px]">{pay.billInvoiceNumber}</td>
                         <td className="p-sm px-md">
@@ -1311,7 +1312,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                 <tbody className="text-on-surface">
                   {filteredExpenses.map((exp) => (
                     <tr key={exp.id} className="border-b border-surface-container-low hover:bg-surface-container/60 transition-colors">
-                      <td className="p-sm px-md font-mono text-[11px]">{exp.date}</td>
+                      <td className="p-sm px-md font-mono text-[11px]">{formatDate(exp.date)}</td>
                       <td className="p-sm px-md font-semibold text-primary capitalize">{exp.responsible}</td>
                       <td className="p-sm px-md">{exp.category}</td>
                       <td className="p-sm px-md">{exp.allocation}</td>
@@ -1398,8 +1399,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
       {/* Register / Edit Expense Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-md">
-          <div className="bg-surface-container-lowest text-on-surface rounded-2xl max-w-lg w-full p-lg shadow-2xl border border-outline-variant/30 animate-fade-in flex flex-col gap-md">
+        <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xs flex items-center justify-center p-md animate-fade-in">
+          <div className="bg-surface-container-lowest text-on-surface rounded-2xl max-w-lg w-full p-lg shadow-2xl border border-outline-variant/30 flex flex-col gap-md">
             <div className="flex items-center justify-between border-b border-outline-variant/20 pb-sm">
               <h3 className="font-display-lg text-base font-semibold text-primary">
                 {editingExpenseId ? 'Editar gasto registrado' : 'Registrar nuevo gasto'}

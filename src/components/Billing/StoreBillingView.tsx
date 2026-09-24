@@ -414,7 +414,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
 
       {/* Add Item Modal */}
       {showAddItemModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Agregar ítem al carrito</h3>

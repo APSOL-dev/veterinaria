@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Product, ProductCategory, ServiceCatalogItem, SupplierBill } from '../../domain/types';
 import { updateServicePrice, toggleServiceStatus, getPriceUpdateStatusInfo } from '../../domain/services/serviceCatalogService';
+import { applyBulkInflationToProducts } from '../../domain/services/inventoryService';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
 import { AutoResizeTextarea } from '../Common/AutoResizeTextarea';
 import { NewInvoiceDrawer } from '../Suppliers/NewInvoiceDrawer';
@@ -19,6 +20,7 @@ interface StockControlViewProps {
   onAdjustStock: (productId: string, newStock: number, reason: string) => void;
   onUpdateServicesCatalog: (services: ServiceCatalogItem[]) => void;
   onAddBill?: (bill: Omit<SupplierBill, 'id'>) => void;
+  onBulkUpdateProducts?: (products: Product[]) => void;
 }
 
 export const StockControlView: React.FC<StockControlViewProps> = ({
@@ -34,7 +36,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   onDeleteServiceCatalogItem,
   onAdjustStock,
   onUpdateServicesCatalog,
-  onAddBill
+  onAddBill,
+  onBulkUpdateProducts
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,6 +58,14 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedService, setSelectedService] = useState<ServiceCatalogItem | null>(null);
   const [newServicePrice, setNewServicePrice] = useState(0);
+
+  // Bulk inflation update state
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [showInflationModal, setShowInflationModal] = useState(false);
+  const [inflationScope, setInflationScope] = useState<'selected' | 'category' | 'all'>('all');
+  const [inflationCategory, setInflationCategory] = useState<string>('Medicamentos');
+  const [inflationPercentage, setInflationPercentage] = useState<number>(10);
+  const [inflationSuccessMsg, setInflationSuccessMsg] = useState<string | null>(null);
 
   // Service form state
   const [serviceFormName, setServiceFormName] = useState('');
@@ -251,6 +262,40 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
     setShowPriceModal(false);
   };
 
+  const handleApplyInflation = (e: React.FormEvent) => {
+    e.preventDefault();
+    const pct = Number(inflationPercentage);
+    if (isNaN(pct) || pct === 0) return;
+
+    let filter: { productIds?: string[]; category?: string } | undefined;
+    if (inflationScope === 'selected') {
+      if (selectedProductIds.length === 0) return;
+      filter = { productIds: selectedProductIds };
+    } else if (inflationScope === 'category') {
+      filter = { category: inflationCategory };
+    }
+
+    const result = applyBulkInflationToProducts(products, pct, filter);
+    if (result.updatedCount > 0) {
+      if (onBulkUpdateProducts) {
+        onBulkUpdateProducts(result.updatedProducts);
+      } else if (onUpdateProduct) {
+        result.updatedProducts.forEach(p => {
+          const orig = products.find(o => o.id === p.id);
+          if (orig && orig.price !== p.price) {
+            onUpdateProduct(p.id, { price: p.price, priceLastUpdated: p.priceLastUpdated });
+          }
+        });
+      }
+      setInflationSuccessMsg(`¡Precios actualizados exitosamente en ${result.updatedCount} producto(s) (${pct > 0 ? '+' : ''}${pct}%)!`);
+      setSelectedProductIds([]);
+      setTimeout(() => {
+        setShowInflationModal(false);
+        setInflationSuccessMsg(null);
+      }, 1500);
+    }
+  };
+
   return (
     <div className="flex flex-col w-full gap-md">
       {/* Top Header */}
@@ -267,6 +312,24 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         </div>
         {activeSubmodule === 'productos-fisicos' ? (
           <div className="flex items-center gap-sm">
+            <button
+              onClick={() => {
+                if (selectedProductIds.length > 0) {
+                  setInflationScope('selected');
+                } else if (selectedCategory !== 'Todos') {
+                  setInflationScope('category');
+                  setInflationCategory(selectedCategory);
+                } else {
+                  setInflationScope('all');
+                }
+                setShowInflationModal(true);
+              }}
+              className="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition-colors px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
+              title="Aumentar o ajustar precios por inflación masivamente"
+            >
+              <span className="material-symbols-outlined text-[16px]">trending_up</span>
+              <span>Actualizar por inflación {selectedProductIds.length > 0 ? `(${selectedProductIds.length})` : ''}</span>
+            </button>
             <button
               onClick={handleOpenEntryModal}
               className="bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
@@ -337,12 +400,59 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               </div>
             </div>
 
+            {/* Selection Banner */}
+            {selectedProductIds.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 px-4 flex items-center justify-between gap-3 text-xs animate-fade-in shadow-xs">
+                <div className="flex items-center gap-2 text-amber-950 font-semibold">
+                  <span className="material-symbols-outlined text-[18px] text-amber-700">check_box</span>
+                  <span>{selectedProductIds.length} producto{selectedProductIds.length > 1 ? 's' : ''} seleccionado{selectedProductIds.length > 1 ? 's' : ''} para actualizar</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInflationScope('selected');
+                      setShowInflationModal(true);
+                    }}
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-xs cursor-pointer transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">trending_up</span>
+                    Actualizar precios por inflación
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProductIds([])}
+                    className="bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                  >
+                    Deseleccionar
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Products Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse font-body-md text-xs">
                 <thead>
                   <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
-                    <th className="p-sm px-md rounded-tl-lg">Producto</th>
+                    <th className="p-sm px-2 text-center w-10 rounded-tl-lg">
+                      <input
+                        type="checkbox"
+                        checked={filteredProducts.length > 0 && filteredProducts.every(p => selectedProductIds.includes(p.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            const newSelected = Array.from(new Set([...selectedProductIds, ...filteredProducts.map(p => p.id)]));
+                            setSelectedProductIds(newSelected);
+                          } else {
+                            const filteredIds = new Set(filteredProducts.map(p => p.id));
+                            setSelectedProductIds(selectedProductIds.filter(id => !filteredIds.has(id)));
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-[#5C3C7B]"
+                        title="Seleccionar / Deseleccionar todos los visibles"
+                      />
+                    </th>
+                    <th className="p-sm px-md">Producto</th>
                     <th className="p-sm px-md">Categoría</th>
                     <th className="p-sm px-md text-right">Stock actual</th>
                     <th className="p-sm px-md text-right">Min.</th>
@@ -363,7 +473,23 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                     );
 
                     return (
-                      <tr key={p.id} className="bg-surface-container-lowest hover:bg-surface-container transition-colors group border-b border-surface-container-low">
+                      <tr key={p.id} className={`hover:bg-surface-container transition-colors group border-b border-surface-container-low ${
+                        selectedProductIds.includes(p.id) ? 'bg-purple-50/60' : 'bg-surface-container-lowest'
+                      }`}>
+                        <td className="p-sm px-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedProductIds.includes(p.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedProductIds(prev => [...prev, p.id]);
+                              } else {
+                                setSelectedProductIds(prev => prev.filter(id => id !== p.id));
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-[#5C3C7B]"
+                          />
+                        </td>
                         <td className="p-sm px-md font-semibold text-primary">
                           {p.name}
                         </td>
@@ -536,7 +662,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
       {/* Modals */}
       {showEntryModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Registrar entrada de mercadería</h3>
@@ -578,7 +704,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
       )}
 
       {showAdjustModal && selectedProduct && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Ajuste manual de stock</h3>
@@ -609,7 +735,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
       )}
 
       {showPriceModal && selectedService && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Actualizar precio de servicio</h3>
@@ -642,7 +768,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
       {/* New Product Modal */}
       {showNewProductModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Nuevo producto del inventario</h3>
@@ -730,7 +856,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
       {/* Edit Product Modal */}
       {showEditProductModal && selectedProduct && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Editar producto del inventario</h3>
@@ -802,7 +928,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
       {/* Service Catalog Add/Edit Modal */}
       {showServiceModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">
@@ -909,6 +1035,229 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
           }}
           products={products}
         />
+      )}
+
+      {/* Modal: Actualización masiva de precios por inflación */}
+      {showInflationModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
+            <div className="flex justify-between items-start border-b border-slate-200 pb-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[20px]">trending_up</span>
+                </div>
+                <div>
+                  <h3 className="font-display-lg text-base text-slate-900 font-semibold">
+                    Actualización de precios por inflación
+                  </h3>
+                  <p className="font-body-md text-xs text-slate-600">
+                    Aplica un ajuste porcentual masivo sobre el catálogo de productos
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setShowInflationModal(false); setInflationSuccessMsg(null); }}
+                className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {inflationSuccessMsg ? (
+              <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-md text-center text-emerald-900 font-semibold text-xs animate-fade-in flex flex-col items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-600 text-[28px]">check_circle</span>
+                <span>{inflationSuccessMsg}</span>
+              </div>
+            ) : (
+              <form onSubmit={handleApplyInflation} className="flex flex-col gap-md text-xs">
+                {/* Scope Selection */}
+                <div>
+                  <label className="font-semibold text-xs text-slate-800 block mb-1.5">
+                    ¿A qué productos desea aplicar el ajuste?
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button
+                      type="button"
+                      disabled={selectedProductIds.length === 0}
+                      onClick={() => setInflationScope('selected')}
+                      className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                        inflationScope === 'selected'
+                          ? 'bg-[#5C3C7B] text-white border-[#5C3C7B] shadow-xs'
+                          : selectedProductIds.length === 0
+                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold">Seleccionados</span>
+                      <span className="text-[10px] opacity-80 font-medium">({selectedProductIds.length} items)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setInflationScope('category')}
+                      className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                        inflationScope === 'category'
+                          ? 'bg-[#5C3C7B] text-white border-[#5C3C7B] shadow-xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold">Por categoría</span>
+                      <span className="text-[10px] opacity-80 font-medium">({inflationCategory})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setInflationScope('all')}
+                      className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                        inflationScope === 'all'
+                          ? 'bg-[#5C3C7B] text-white border-[#5C3C7B] shadow-xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold">Todos</span>
+                      <span className="text-[10px] opacity-80 font-medium">({products.length} productos)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Category Dropdown if Scope is Category */}
+                {inflationScope === 'category' && (
+                  <div className="animate-fade-in">
+                    <label className="font-semibold text-xs text-slate-800 block mb-1">
+                      Seleccionar categoría a actualizar *
+                    </label>
+                    <select
+                      value={inflationCategory}
+                      onChange={(e) => setInflationCategory(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 font-semibold outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 cursor-pointer"
+                    >
+                      {categories.filter(c => c !== 'Todos').map(c => (
+                        <option key={c} value={c}>
+                          {c} ({products.filter(p => p.category === c).length} productos)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Percentage Input & Quick Preset Buttons */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-xs text-slate-800">
+                      Porcentaje de variación (%) *
+                    </label>
+                    <span className="text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      {inflationPercentage > 0 ? `+${inflationPercentage}% Aumento` : `${inflationPercentage}% Descuento`}
+                    </span>
+                  </div>
+
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={inflationPercentage}
+                      onChange={(e) => setInflationPercentage(Number(e.target.value))}
+                      placeholder="Ej: 15"
+                      required
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 pr-10 text-xs text-slate-900 font-bold text-sm outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20"
+                    />
+                    <span className="absolute right-3 font-bold text-slate-500">%</span>
+                  </div>
+
+                  {/* Preset Pills */}
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {[5, 10, 15, 20, 25, 30].map(pct => (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => setInflationPercentage(pct)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          inflationPercentage === pct
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        +{pct}%
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setInflationPercentage(-5)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        inflationPercentage === -5
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                      }`}
+                    >
+                      -5%
+                    </button>
+                  </div>
+                </div>
+
+                {/* Live Preview List */}
+                <div>
+                  <label className="font-semibold text-xs text-slate-800 block mb-1">
+                    Vista previa de cálculo (Primeros productos afectados):
+                  </label>
+                  <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50/70 p-1.5 flex flex-col gap-1">
+                    {(() => {
+                      const targets = products.filter(p => {
+                        if (inflationScope === 'selected') return selectedProductIds.includes(p.id);
+                        if (inflationScope === 'category') return p.category === inflationCategory;
+                        return true;
+                      });
+
+                      if (targets.length === 0) {
+                        return (
+                          <div className="text-center py-3 text-slate-400 text-xs">
+                            No hay productos que coincidan con la selección.
+                          </div>
+                        );
+                      }
+
+                      return targets.slice(0, 5).map(p => {
+                        const newPrice = Math.round(p.price * (1 + inflationPercentage / 100) * 100) / 100;
+                        const diff = newPrice - p.price;
+                        return (
+                          <div key={p.id} className="flex items-center justify-between text-[11px] bg-white p-1.5 px-2 rounded-lg border border-slate-200">
+                            <span className="font-semibold text-slate-800 truncate max-w-[160px]">{p.name}</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-slate-500 line-through">${p.price.toLocaleString('es-AR')}</span>
+                              <span className="material-symbols-outlined text-[12px] text-slate-400">arrow_forward</span>
+                              <span className="font-bold text-[#5C3C7B]">${newPrice.toLocaleString('es-AR')}</span>
+                              <span className={`text-[10px] font-semibold px-1 rounded ${
+                                diff >= 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'
+                              }`}>
+                                {diff >= 0 ? `+$${diff.toLocaleString('es-AR')}` : `-$${Math.abs(diff).toLocaleString('es-AR')}`}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-sm pt-sm border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => { setShowInflationModal(false); setInflationSuccessMsg(null); }}
+                    className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-[#5C3C7B] hover:bg-[#4A2F66] text-white px-5 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">check</span>
+                    <span>Aplicar {inflationPercentage > 0 ? `aumento (+${inflationPercentage}%)` : `ajuste (${inflationPercentage}%)`}</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

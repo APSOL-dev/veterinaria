@@ -14,6 +14,7 @@ import {
 import { updateTutorInSupabase, insertPatientToSupabase, updatePatientInSupabase } from '../../domain/services/supabaseService';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 import { ComprobanteDetailModal } from '../Billing/ComprobanteDetailModal';
+import { formatDate } from '../../utils/dateUtils';
 
 interface TutoresViewProps {
   patients: Patient[];
@@ -480,7 +481,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                       title="Haga clic para ver el detalle del comprobante / abono"
                     >
                       <td className="py-2.5 px-md text-center font-mono text-slate-600">
-                        {m.date}
+                        {formatDate(m.date)}
                       </td>
                       <td className="py-2.5 px-md font-medium text-slate-900">
                         <div className="flex items-center justify-between gap-2">
@@ -561,7 +562,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                     <div className="flex items-center gap-md text-[#5C3C7B] font-medium text-[11px]">
                       <span className="flex items-center gap-0.5">
                         <span className="material-symbols-outlined text-[13px]">event</span>
-                        {app.date}
+                        {formatDate(app.date)}
                       </span>
                       <span className="flex items-center gap-0.5">
                         <span className="material-symbols-outlined text-[13px]">schedule</span>
@@ -621,7 +622,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
 
       {/* Modal Registrar Pago / Abono a Tutor */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
             <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
               <div className="flex items-center gap-2">
@@ -707,7 +708,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
 
       {/* Edit Tutor & Pets Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-surface-container-lowest rounded-2xl max-w-2xl w-full p-lg shadow-xl flex flex-col gap-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary font-semibold text-base flex items-center gap-xs">

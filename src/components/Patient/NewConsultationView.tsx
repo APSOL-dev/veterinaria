@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Patient } from '../../domain/types';
 import { formatAttachmentFileList, prepareConsultationPrescriptionText, shouldAutoTriggerPdfOnSave } from '../../domain/services/patientService';
 import { uploadConsultationAttachmentToSupabase, uploadPrescriptionToSupabase } from '../../domain/services/supabaseService';
+import { formatDate } from '../../utils/dateUtils';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
 import { AutoResizeTextarea } from '../Common/AutoResizeTextarea';
@@ -48,11 +49,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentPatient = patients.find(p => p.id === targetPatientId) || selectedPatient;
-  const currentDateFormatted = new Date().toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  });
+  const currentDateFormatted = formatDate(new Date());
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -127,7 +124,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
     let finalPrescriptionUrl: string | undefined = undefined;
 
     if (finalPrescription) {
-      const prescriptionBlob = new Blob([`RECETA VETSOFT\n\nPaciente: ${currentPatient.name}\nVeterinario: ${vetName}\nFecha: ${new Date().toLocaleDateString('es-AR')}\n\nIndicaciones:\n${finalPrescription}`], { type: 'text/plain;charset=utf-8' });
+      const prescriptionBlob = new Blob([`RECETA VETSOFT\n\nPaciente: ${currentPatient.name}\nVeterinario: ${vetName}\nFecha: ${formatDate(new Date())}\n\nIndicaciones:\n${finalPrescription}`], { type: 'text/plain;charset=utf-8' });
       const resPresc = await uploadPrescriptionToSupabase(prescriptionBlob, `receta_${currentPatient.name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.txt`);
       if (resPresc) {
         finalPrescriptionUrl = resPresc.fileUrl;

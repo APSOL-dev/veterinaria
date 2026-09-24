@@ -1,5 +1,6 @@
 import React from 'react';
 import { TutorAccountMovement, BillReceipt } from '../../domain/types';
+import { formatDate } from '../../utils/dateUtils';
 
 interface ComprobanteDetailModalProps {
   isOpen: boolean;
@@ -44,7 +45,7 @@ export const ComprobanteDetailModal: React.FC<ComprobanteDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/25 backdrop-blur-xs animate-fade-in">
       <div 
         className="bg-surface-container-lowest rounded-3xl shadow-2xl border border-outline-variant/40 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden text-on-surface"
         onClick={e => e.stopPropagation()}
@@ -83,7 +84,7 @@ export const ComprobanteDetailModal: React.FC<ComprobanteDetailModalProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-surface-container-low p-4 rounded-2xl border border-outline-variant/30">
             <div>
               <span className="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Fecha</span>
-              <span className="font-semibold text-slate-900 text-xs font-mono">{movement.date}</span>
+              <span className="font-semibold text-slate-900 text-xs font-mono">{formatDate(movement.date)}</span>
             </div>
             <div>
               <span className="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Tutor / Titular</span>
@@ -217,7 +218,7 @@ export const ComprobanteDetailModal: React.FC<ComprobanteDetailModalProps> = ({
               </div>
               <div className="text-xs text-emerald-800 space-y-1">
                 <div><strong>Detalle:</strong> {payment?.concept || movement.concept}</div>
-                <div><strong>Fecha de acreditación:</strong> {movement.date}</div>
+                <div><strong>Fecha de acreditación:</strong> {formatDate(movement.date)}</div>
                 <div><strong>Titular:</strong> {movement.tutorName}</div>
               </div>
               <div className="pt-2 border-t border-emerald-200/60 flex justify-between items-center">

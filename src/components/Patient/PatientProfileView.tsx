@@ -7,6 +7,7 @@ import { PrescriptionModal } from './PrescriptionModal';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
 import { AutoResizeTextarea } from '../Common/AutoResizeTextarea';
+import { formatDate } from '../../utils/dateUtils';
 
 const PREDEFINED_ALERTS = [
   'Alérgico a Penicilina',
@@ -498,7 +499,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                     <div key={app.id} className={`px-2.5 py-1 rounded-lg border text-[11px] flex items-center gap-2 ${
                       isPending ? 'bg-emerald-100/90 border-emerald-300 font-semibold text-emerald-950' : 'bg-white border-slate-200 text-slate-700'
                     }`}>
-                      <span>{app.type} ({app.date} {app.time}hs)</span>
+                      <span>{app.type} ({formatDate(app.date)} {app.time}hs)</span>
                       <span className="text-slate-600 font-normal">• {app.detail}</span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
                         app.status === 'completed' ? 'bg-emerald-200 text-emerald-950' : isPending ? 'bg-emerald-200 text-emerald-950' : 'bg-slate-100 text-slate-700'
@@ -781,8 +782,8 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                     <div className="flex flex-col gap-0.5">
                       <span className="font-bold text-xs text-emerald-950">{vac.vaccineName}</span>
                       <span className="text-[11px] text-emerald-800 font-medium">
-                        Fecha sugerida: <strong>{vac.suggestedDate}</strong>
-                        {vac.appliedDate && ` • Aplicada el: ${vac.appliedDate}`}
+                        Fecha sugerida: <strong>{formatDate(vac.suggestedDate)}</strong>
+                        {vac.appliedDate && ` • Aplicada el: ${formatDate(vac.appliedDate)}`}
                       </span>
                       {vac.notes && <span className="text-[11px] text-emerald-700 italic">{vac.notes}</span>}
                     </div>
@@ -850,7 +851,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* Edit Pet Modal */}
       {showEditPetModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-white rounded-2xl max-w-lg w-full p-md shadow-2xl flex flex-col gap-md border border-slate-200">
             <div className="flex justify-between items-center border-b border-slate-200 pb-xs">
               <h3 className="font-headline-sm text-slate-900 text-sm font-semibold flex items-center gap-xs">
@@ -1057,7 +1058,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* Modal Carga Vacuna Requerida Manual */}
       {showAddVaccineModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
             <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
               <div className="flex items-center gap-2">
@@ -1173,7 +1174,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* Modal: Editar Consulta */}
       {editingNote && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-slate-900/25 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="font-headline-sm text-base font-semibold text-slate-900 flex items-center gap-2">
@@ -1246,7 +1247,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* Modal: Confirmación Eliminar Consulta */}
       {deletingNoteId && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-slate-900/25 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-red-600">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
@@ -1290,7 +1291,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* Modal Visor de Historia Clínica (Vista previa + Descargar PDF / Imprimir) */}
       {showClinicalHistoryModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in overflow-y-auto print:bg-white print:p-8 print:static print:block print:inset-auto print:backdrop-blur-none">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in overflow-y-auto print:bg-white print:p-8 print:static print:block print:inset-auto print:backdrop-blur-none">
           <div className="relative bg-white rounded-2xl max-w-4xl w-full p-8 shadow-2xl flex flex-col gap-6 border border-slate-200 my-auto text-slate-900 font-body-md print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:m-0">
             
             {/* Botón Cerrar (X) Arriba a la Derecha */}
@@ -1322,7 +1323,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 </div>
                 <div className="flex items-center justify-end shrink-0">
                   <span className="inline-flex items-center justify-center px-4 py-1.5 bg-purple-50 text-[#5C3C7B] border border-purple-200 rounded-full text-xs font-bold leading-none">
-                    Fecha de emisión: {new Date().toLocaleDateString('es-AR')}
+                    Fecha de emisión: {formatDate(new Date())}
                   </span>
                 </div>
               </div>
@@ -1333,7 +1334,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ficha de la Mascota</span>
                   <span className="font-bold text-base text-slate-900">{selectedPatient.name}</span>
                   <span className="text-slate-700 font-medium">{selectedPatient.species} • {selectedPatient.breed} ({selectedPatient.sex})</span>
-                  <span className="text-slate-700 font-medium">Nacimiento: {selectedPatient.birthDate}</span>
+                  <span className="text-slate-700 font-medium">Nacimiento: {formatDate(selectedPatient.birthDate)}</span>
                   <span className="text-slate-700 font-medium">Peso actual: <strong>{selectedPatient.weightKg || '--'} kg</strong></span>
                   {selectedPatient.alerts && selectedPatient.alerts.length > 0 && (
                     <span className="text-red-700 font-semibold mt-1">
@@ -1364,7 +1365,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                     <div key={note.id || index} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col gap-2 break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
                       <div className="flex items-center justify-between border-b border-slate-200 pb-1 text-xs">
                         <span className="font-bold text-[#5C3C7B]">
-                          Fecha: {new Date(note.date).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          Fecha: {formatDate(note.date)}
                         </span>
                         <span className="text-slate-600 font-semibold">Vet: {note.vetName}</span>
                       </div>
@@ -1397,7 +1398,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                       <div key={i} className="p-2.5 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between">
                         <span className="font-semibold text-slate-900">{v.vaccineName}</span>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${v.status === 'aplicada' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                          {v.status === 'aplicada' ? `Aplicada (${v.appliedDate || ''})` : `Sugerida (${v.suggestedDate})`}
+                          {v.status === 'aplicada' ? `Aplicada (${formatDate(v.appliedDate)})` : `Sugerida (${formatDate(v.suggestedDate)})`}
                         </span>
                       </div>
                     ))}

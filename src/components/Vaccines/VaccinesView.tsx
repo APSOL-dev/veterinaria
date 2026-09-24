@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Patient, VaccineCatalogItem, VaccineDosis } from '../../domain/types';
 import { formatVaccineReminderMessage } from '../../domain/services/vaccineService';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
+import { formatDate } from '../../utils/dateUtils';
 
 interface VaccinesViewProps {
   patients?: Patient[];
@@ -244,7 +245,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
 
         {/* Modal Catalog Add/Edit */}
         {showCatalogModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
             <div className="bg-white rounded-2xl max-w-lg w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
               <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
                 <h3 className="font-headline-sm text-slate-900 font-semibold text-base">
@@ -455,8 +456,8 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       <div className="flex flex-col gap-0.5 min-w-0">
                         <span className="font-semibold text-xs text-emerald-950 truncate">{vac.vaccineName}</span>
                         <span className="text-[11px] text-emerald-800 font-medium">
-                          Sugerida: <strong>{vac.suggestedDate}</strong>
-                          {vac.appliedDate && ` • Aplicada: ${vac.appliedDate}`}
+                          Sugerida: <strong>{formatDate(vac.suggestedDate)}</strong>
+                          {vac.appliedDate && ` • Aplicada: ${formatDate(vac.appliedDate)}`}
                         </span>
                         {vac.notes && <span className="text-[11px] text-emerald-700 italic truncate">{vac.notes}</span>}
                       </div>
@@ -522,7 +523,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                             return (
                               <tr key={dose.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
                                 <td className="py-sm px-md font-medium text-slate-900 text-xs">{dose.vaccineName}</td>
-                                <td className="py-sm px-md font-medium text-slate-800">{dose.applicationDate}</td>
+                                <td className="py-sm px-md font-medium text-slate-800">{formatDate(dose.applicationDate)}</td>
                                 <td className="py-sm px-md flex items-center gap-xs font-medium text-slate-800">
                                   <div className="w-5 h-5 rounded-full bg-purple-100 text-[#5C3C7B] flex items-center justify-center font-semibold text-[10px]">
                                     {dose.vetName.slice(0, 2).toUpperCase()}
@@ -532,7 +533,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                                 <td className={`py-sm px-md font-semibold ${
                                   isExpired ? 'text-red-700' : 'text-slate-800'
                                 }`}>
-                                  {dose.expirationDate}
+                                  {formatDate(dose.expirationDate)}
                                 </td>
                                 <td className="py-sm px-md">
                                   {isExpired ? (
@@ -568,7 +569,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                                 <td className={`py-sm px-md font-semibold ${
                                   isExpired ? 'text-red-700' : 'text-slate-800'
                                 }`}>
-                                  {req.suggestedDate}
+                                  {formatDate(req.suggestedDate)}
                                 </td>
                                 <td className="py-sm px-md">
                                   {isExpired ? (
@@ -612,7 +613,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                   <p className="font-body-md text-purple-100 text-xs flex items-center gap-xs mb-md font-medium">
                     <span className="material-symbols-outlined text-[14px]">warning</span>
                     {dueOrExpiredDosis 
-                      ? `${dueOrExpiredDosis.status === 'expired' ? 'Vencida desde el' : 'Próxima a vencer el'} ${dueOrExpiredDosis.expirationDate}`
+                      ? `${dueOrExpiredDosis.status === 'expired' ? 'Vencida desde el' : 'Próxima a vencer el'} ${formatDate(dueOrExpiredDosis.expirationDate)}`
                       : 'Sin vacunas vencidas pendientes'}
                   </p>
                 </div>
@@ -725,7 +726,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
 
       {/* Register Dosis Modal */}
       {showRegisterModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
             <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
               <h3 className="font-headline-sm text-slate-900 text-base font-semibold">

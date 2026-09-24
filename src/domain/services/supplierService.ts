@@ -531,6 +531,86 @@ export function calculateSupplierAccountMovements(
   });
 }
 
+export interface SupplierBalanceSummary {
+  supplierName: string;
+  totalFacturado: number;
+  totalPagado: number;
+  saldo: number;
+  billsCount: number;
+  pendingBillsCount: number;
+  lastMovementDate?: string;
+}
+
+export function calculateSupplierSummaryBalances(
+  bills: SupplierBill[],
+  payments: SupplierPayment[] = [],
+  registeredSuppliers: string[] = []
+): SupplierBalanceSummary[] {
+  const supplierNamesMap = new Map<string, string>();
+
+  registeredSuppliers.forEach(name => {
+    const trimmed = name.trim();
+    if (trimmed) supplierNamesMap.set(trimmed.toLowerCase(), trimmed);
+  });
+
+  bills.forEach(b => {
+    const trimmed = (b.supplierName || '').trim();
+    if (trimmed && !supplierNamesMap.has(trimmed.toLowerCase())) {
+      supplierNamesMap.set(trimmed.toLowerCase(), trimmed);
+    }
+  });
+
+  payments.forEach(p => {
+    const trimmed = (p.supplierName || '').trim();
+    if (trimmed && !supplierNamesMap.has(trimmed.toLowerCase())) {
+      supplierNamesMap.set(trimmed.toLowerCase(), trimmed);
+    }
+  });
+
+  const summaries: SupplierBalanceSummary[] = [];
+
+  for (const [key, displayName] of supplierNamesMap.entries()) {
+    const suppBills = bills.filter(b => (b.supplierName || '').trim().toLowerCase() === key);
+    const suppPayments = payments.filter(p => (p.supplierName || '').trim().toLowerCase() === key);
+
+    const totalFacturado = suppBills.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    const totalPagado = suppPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const saldo = totalFacturado - totalPagado;
+
+    const pendingBillsCount = suppBills.filter(b => {
+      const remaining = getRemainingBalance(b, suppPayments);
+      return remaining > 0 && b.status !== 'paid' && (b.status as string) !== 'Pagado';
+    }).length;
+
+    let lastMovementDate: string | undefined;
+    const dates = [
+      ...suppBills.map(b => b.date),
+      ...suppPayments.map(p => p.date)
+    ].filter(Boolean).sort();
+
+    if (dates.length > 0) {
+      lastMovementDate = dates[dates.length - 1];
+    }
+
+    summaries.push({
+      supplierName: displayName,
+      totalFacturado,
+      totalPagado,
+      saldo,
+      billsCount: suppBills.length,
+      pendingBillsCount,
+      lastMovementDate
+    });
+  }
+
+  return summaries.sort((a, b) => {
+    if (b.saldo !== a.saldo) {
+      return b.saldo - a.saldo;
+    }
+    return a.supplierName.localeCompare(b.supplierName, 'es-AR');
+  });
+}
+
 export function groupProjectionsByYear(projections: MonthlyExpenditureProjection[]): YearlyExpenditureProjection[] {
   const groups: Record<number, MonthlyExpenditureProjection[]> = {};
 

@@ -63,3 +63,50 @@ export function getRemainingBalance(
   const paid = getTotalPaidForBill(payments, bill.id);
   return Math.max(0, bill.amount - paid);
 }
+
+/**
+ * Determina el estado de pago de una factura: 'pending' (sin pagos), 'partial' (pago parcial), 'paid' (pagada totalmente).
+ */
+export function getBillPaymentStatus(
+  bill: SupplierBill,
+  payments: SupplierPayment[]
+): 'paid' | 'partial' | 'pending' {
+  const totalPaid = getTotalPaidForBill(payments, bill.id);
+  if (totalPaid <= 0) return 'pending';
+  if (totalPaid >= bill.amount) return 'paid';
+  return 'partial';
+}
+
+/**
+ * Registra un pago (parcial o total) para una factura y calcula el saldo resultante.
+ */
+export function applyPartialPaymentToBill(
+  bill: SupplierBill,
+  paymentData: CreatePaymentData,
+  existingPayments: SupplierPayment[]
+): {
+  newPayment: SupplierPayment;
+  updatedPayments: SupplierPayment[];
+  totalPaid: number;
+  remainingBalance: number;
+  status: 'paid' | 'partial' | 'pending';
+  isFullyPaid: boolean;
+  isPartiallyPaid: boolean;
+} {
+  const newPayment = createPaymentRecord(paymentData);
+  const updatedPayments = [...existingPayments, newPayment];
+  const totalPaid = getTotalPaidForBill(updatedPayments, bill.id);
+  const remainingBalance = Math.max(0, bill.amount - totalPaid);
+  const status = getBillPaymentStatus(bill, updatedPayments);
+
+  return {
+    newPayment,
+    updatedPayments,
+    totalPaid,
+    remainingBalance,
+    status,
+    isFullyPaid: status === 'paid',
+    isPartiallyPaid: status === 'partial'
+  };
+}
+
