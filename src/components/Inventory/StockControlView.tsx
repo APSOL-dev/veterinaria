@@ -299,9 +299,9 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   return (
     <div className="flex flex-col w-full gap-md">
       {/* Top Header */}
-      <div className="flex items-center justify-between mb-md">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-sm mb-md">
         <div className="flex flex-col">
-          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">
+          <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 leading-tight font-semibold">
             {activeSubmodule === 'productos-fisicos' ? 'Inventario — Productos Físicos' : 'Inventario — Catálogo de Servicios'}
           </h1>
           <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
@@ -311,7 +311,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
           </p>
         </div>
         {activeSubmodule === 'productos-fisicos' ? (
-          <div className="flex items-center gap-sm">
+          <div className="flex items-center flex-wrap gap-sm">
             <button
               onClick={() => {
                 if (selectedProductIds.length > 0) {
@@ -324,7 +324,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 }
                 setShowInflationModal(true);
               }}
-              className="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition-colors px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
+              className="bg-[#27AE60] hover:bg-[#219653] text-white border border-[#219653] transition-colors px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
               title="Aumentar o ajustar precios por inflación masivamente"
             >
               <span className="material-symbols-outlined text-[16px]">trending_up</span>
@@ -402,9 +402,9 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
             {/* Selection Banner */}
             {selectedProductIds.length > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 px-4 flex items-center justify-between gap-3 text-xs animate-fade-in shadow-xs">
-                <div className="flex items-center gap-2 text-amber-950 font-semibold">
-                  <span className="material-symbols-outlined text-[18px] text-amber-700">check_box</span>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 px-4 flex items-center justify-between gap-3 text-xs animate-fade-in shadow-xs">
+                <div className="flex items-center gap-2 text-emerald-950 font-semibold">
+                  <span className="material-symbols-outlined text-[18px] text-emerald-700">check_box</span>
                   <span>{selectedProductIds.length} producto{selectedProductIds.length > 1 ? 's' : ''} seleccionado{selectedProductIds.length > 1 ? 's' : ''} para actualizar</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -414,7 +414,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                       setInflationScope('selected');
                       setShowInflationModal(true);
                     }}
-                    className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-xs cursor-pointer transition-colors"
+                    className="bg-[#27AE60] hover:bg-[#219653] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-xs cursor-pointer transition-colors"
                   >
                     <span className="material-symbols-outlined text-[15px]">trending_up</span>
                     Actualizar precios por inflación
@@ -422,7 +422,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedProductIds([])}
-                    className="bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                    className="bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
                   >
                     Deseleccionar
                   </button>
@@ -431,7 +431,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
             )}
 
             {/* Products Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
               <table className="w-full text-left border-collapse font-body-md text-xs">
                 <thead>
                   <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
@@ -575,7 +575,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
           </div>
         ) : (
           /* Services Catalog Table */
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto border border-slate-200 rounded-xl">
             <table className="w-full text-left border-collapse font-body-md text-xs">
               <thead>
                 <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
@@ -1248,7 +1248,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="bg-[#5C3C7B] hover:bg-[#4A2F66] text-white px-5 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                    className="bg-[#27AE60] hover:bg-[#219653] text-white px-5 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                   >
                     <span className="material-symbols-outlined text-[16px]">check</span>
                     <span>Aplicar {inflationPercentage > 0 ? `aumento (+${inflationPercentage}%)` : `ajuste (${inflationPercentage}%)`}</span>

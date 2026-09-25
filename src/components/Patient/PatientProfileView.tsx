@@ -117,6 +117,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   const [reqVaccineName, setReqVaccineName] = useState('');
   const [reqVaccineDate, setReqVaccineDate] = useState('2026-10-15');
   const [reqVaccineNotes, setReqVaccineNotes] = useState('');
+  const todayStr = new Date().toISOString().split('T')[0];
 
   // Edit Pet Modal state
   const [showEditPetModal, setShowEditPetModal] = useState(false);
@@ -350,11 +351,11 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-md w-full h-full flex-1 overflow-y-auto font-body-md text-slate-800 pr-1">
+    <div className="flex flex-col gap-md w-full flex-1 font-body-md text-slate-800 fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full lg:pr-1">
       {/* Top Header Bar con Selector de Pacientes a Ancho Completo */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md shrink-0 bg-white p-md rounded-2xl border border-slate-200 shadow-xs">
         <div>
-          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">
+          <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 leading-tight font-semibold">
             Ficha del Paciente — {selectedPatient.name}
           </h1>
           <p className="font-body-md text-xs text-slate-600 font-normal mt-0.5">
@@ -362,7 +363,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-sm flex-nowrap shrink-0 w-full md:w-auto">
+        <div className="flex items-center flex-wrap md:flex-nowrap gap-sm shrink-0 w-full md:w-auto">
           <SearchablePatientSelect
             patients={patients}
             selectedPatientId={selectedPatient.id}
@@ -372,7 +373,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             }}
             labelPrefix="Seleccionar paciente:"
             variant="full"
-            className="w-full md:w-auto min-w-[280px]"
+            className="w-full md:w-auto md:min-w-[280px]"
           />
 
           <button
@@ -559,7 +560,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* CONTENIDO PESTAÑA 1: HISTORIA CLÍNICA */}
       {activeTab === 'ficha' && (
-        <section className="flex flex-col gap-sm flex-1 min-h-0 overflow-y-auto pr-1">
+        <section className="flex flex-col gap-sm lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           {/* Quick Consultation Form */}
           <div className="bg-white shadow-sm rounded-xl p-sm px-md flex flex-col gap-xs border border-slate-200 shrink-0">
             <div className="flex items-center gap-xs">
@@ -749,7 +750,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* CONTENIDO PESTAÑA 2: VACUNAS REQUERIDAS & PLAN SANITARIO */}
       {activeTab === 'vacunas' && (
-        <section className="flex flex-col gap-md flex-1 min-h-0 overflow-y-auto pr-1">
+        <section className="flex flex-col gap-md lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           <div className="bg-emerald-50/50 rounded-2xl shadow-sm p-md border border-emerald-300 flex flex-col gap-xs shrink-0 w-full">
             <div className="flex items-center justify-between flex-wrap gap-sm">
               <div className="flex items-center gap-xs">
@@ -774,46 +775,72 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               </p>
             ) : (
               <div className="flex flex-col gap-xs mt-1 w-full">
-                {selectedPatient.requiredVaccines.map(vac => (
-                  <div
-                    key={vac.id}
-                    className="p-3 rounded-xl border border-emerald-200 bg-emerald-100/60 text-emerald-950 flex items-center justify-between gap-sm text-xs w-full shadow-2xs"
-                  >
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-bold text-xs text-emerald-950">{vac.vaccineName}</span>
-                      <span className="text-[11px] text-emerald-800 font-medium">
-                        Fecha sugerida: <strong>{formatDate(vac.suggestedDate)}</strong>
-                        {vac.appliedDate && ` • Aplicada el: ${formatDate(vac.appliedDate)}`}
-                      </span>
-                      {vac.notes && <span className="text-[11px] text-emerald-700 italic">{vac.notes}</span>}
-                    </div>
+                {selectedPatient.requiredVaccines.map(vac => {
+                  const isExpired = vac.status !== 'aplicada' && vac.suggestedDate < todayStr;
+                  return (
+                    <div
+                      key={vac.id}
+                      className={`p-3 rounded-xl border flex items-center justify-between gap-sm text-xs w-full shadow-2xs ${
+                        vac.status === 'aplicada'
+                          ? 'border-emerald-200 bg-emerald-100/60 text-emerald-950'
+                          : isExpired
+                          ? 'border-red-200 bg-red-100/60 text-red-950'
+                          : 'border-amber-200 bg-amber-100/60 text-amber-950'
+                      }`}
+                    >
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-xs flex-wrap">
+                          <span className="font-bold text-xs">{vac.vaccineName}</span>
+                          {vac.status === 'aplicada' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-semibold">Aplicada</span>
+                          ) : isExpired ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-semibold">Vencida</span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-600 text-white text-[9px] font-semibold">Pendiente</span>
+                          )}
+                        </div>
+                        <span className={`text-[11px] font-medium ${
+                          vac.status === 'aplicada' ? 'text-emerald-800' : isExpired ? 'text-red-800' : 'text-amber-800'
+                        }`}>
+                          Fecha sugerida: <strong>{formatDate(vac.suggestedDate)}</strong>
+                          {vac.appliedDate && ` • Aplicada el: ${formatDate(vac.appliedDate)}`}
+                        </span>
+                        {vac.notes && (
+                          <span className={`text-[11px] italic ${
+                            vac.status === 'aplicada' ? 'text-emerald-700' : isExpired ? 'text-red-700' : 'text-amber-700'
+                          }`}>{vac.notes}</span>
+                        )}
+                      </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      {onScheduleAppointment && vac.status !== 'aplicada' && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        {onScheduleAppointment && vac.status !== 'aplicada' && (
+                          <button
+                            type="button"
+                            onClick={() => onScheduleAppointment(selectedPatient.id, vac.vaccineName)}
+                            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#5C3C7B] text-white hover:bg-[#4A2F66] shadow-2xs cursor-pointer whitespace-nowrap transition-all flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">calendar_month</span>
+                            <span>Agendar turno</span>
+                          </button>
+                        )}
+
                         <button
                           type="button"
-                          onClick={() => onScheduleAppointment(selectedPatient.id, vac.vaccineName)}
-                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#5C3C7B] text-white hover:bg-[#4A2F66] shadow-2xs cursor-pointer whitespace-nowrap transition-all flex items-center gap-1"
+                          onClick={() => handleToggleVaccineApplied(vac.id)}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
+                            vac.status === 'aplicada'
+                              ? 'bg-emerald-800 text-white hover:bg-emerald-900'
+                              : isExpired
+                              ? 'bg-red-600 text-white hover:bg-red-700'
+                              : 'bg-amber-600 text-white hover:bg-amber-700'
+                          }`}
                         >
-                          <span className="material-symbols-outlined text-[15px]">calendar_month</span>
-                          <span>Agendar turno</span>
+                          {vac.status === 'aplicada' ? '✓ Aplicada' : 'Marcar aplicada'}
                         </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleToggleVaccineApplied(vac.id)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-bold shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
-                          vac.status === 'aplicada'
-                            ? 'bg-emerald-800 text-white hover:bg-emerald-900'
-                            : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                        }`}
-                      >
-                        {vac.status === 'aplicada' ? '✓ Aplicada' : 'Marcar aplicada'}
-                      </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

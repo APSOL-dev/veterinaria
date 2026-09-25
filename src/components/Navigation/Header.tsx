@@ -1,5 +1,8 @@
 import React from 'react';
 import { ActiveModule } from './Sidebar';
+import { getSubmodulesForModule } from './submodulesConfig';
+
+export { getSubmodulesForModule };
 
 interface HeaderProps {
   activeModule: ActiveModule;
@@ -8,6 +11,8 @@ interface HeaderProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   isSidebarCollapsed?: boolean;
+  isMobile?: boolean;
+  onOpenMobileNav?: () => void;
   lowStockCount?: number;
   onToggleAlerts?: () => void;
 }
@@ -19,96 +24,94 @@ export const Header: React.FC<HeaderProps> = React.memo(({
   searchQuery,
   setSearchQuery,
   isSidebarCollapsed = false,
+  isMobile = false,
+  onOpenMobileNav,
   lowStockCount = 0,
   onToggleAlerts
 }) => {
-  const getSubmodules = () => {
-    switch (activeModule) {
-      case 'proveedores':
-        return [
-          { id: 'facturas', label: 'Resumen y Facturas', icon: 'receipt' },
-          { id: 'presupuestos', label: 'Registrar gastos', icon: 'payments' },
-          { id: 'cuentas', label: 'Cuentas corrientes', icon: 'account_balance' },
-        ];
-      case 'clinica':
-        return [
-          { id: 'fichas-medicas', label: 'Registrar consultas', icon: 'stethoscope' },
-          { id: 'vacunas', label: 'Vacunas', icon: 'vaccines' },
-          { id: 'calendario-clinica', label: 'Calendario de clínica', icon: 'calendar_month' },
-        ];
-      case 'peluqueria':
-        return [
-          { id: 'calendario-peluqueria', label: 'Gestionar calendario', icon: 'content_cut' },
-        ];
-      case 'pacientes':
-        return [
-          { id: 'ficha-pacientes', label: 'Pacientes', icon: 'pets' },
-          { id: 'tutores', label: 'Tutores', icon: 'badge' },
-          { id: 'control-vacunas', label: 'Control de vacunas', icon: 'vaccines' },
-        ];
-      case 'inventario':
-        return [
-          { id: 'productos-fisicos', label: 'Productos', icon: 'inventory_2' },
-          { id: 'servicios-catalogo', label: 'Servicios', icon: 'medical_services' },
-        ];
-      case 'cobros':
-        return [
-          { id: 'nueva-facturacion', label: 'Nueva facturación', icon: 'point_of_sale' },
-          { id: 'historial-cobros', label: 'Historial de cobros', icon: 'receipt_long' },
-        ];
-      default:
-        return [];
-    }
-  };
+  const submodules = getSubmodulesForModule(activeModule);
 
-  const submodules = getSubmodules();
+  const submoduleButtons = submodules.map((sub) => {
+    const isActive = activeSubmodule === sub.id;
+    return (
+      <button
+        key={sub.id}
+        onClick={() => setActiveSubmodule(sub.id)}
+        className={`px-3.5 py-2 rounded-lg transition-all font-label-md text-xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+          isActive
+            ? 'bg-secondary text-on-secondary shadow-md font-semibold'
+            : 'text-on-primary hover:bg-primary/40 font-medium'
+        }`}
+      >
+        <span className="material-symbols-outlined text-[16px]">{sub.icon}</span>
+        <span>{sub.label}</span>
+      </button>
+    );
+  });
+
+  const notificationsButton = (
+    <button
+      onClick={onToggleAlerts}
+      className="text-on-primary hover:bg-primary p-2 rounded-full transition-colors relative cursor-pointer"
+      title={lowStockCount > 0 ? `${lowStockCount} alertas de stock activo` : "Notificaciones"}
+    >
+      <span className="material-symbols-outlined text-[22px]">notifications</span>
+      {lowStockCount > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 bg-error text-on-error text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+          {lowStockCount}
+        </span>
+      )}
+    </button>
+  );
+
+  if (isMobile) {
+    return (
+      <header className="fixed top-0 left-0 right-0 bg-primary-container z-50 shadow-lg flex flex-col">
+        {/* Fila 1: Menú hamburguesa, marca y notificaciones */}
+        <div className="h-16 shrink-0 flex items-center justify-between pr-md">
+          <div className="h-full flex items-center gap-xs px-sm">
+            <button
+              onClick={onOpenMobileNav}
+              className="text-on-primary p-1.5 -ml-1 rounded-lg hover:bg-primary/40 transition-colors cursor-pointer"
+              title="Abrir menú"
+              aria-label="Abrir menú de módulos"
+            >
+              <span className="material-symbols-outlined text-[22px]">menu</span>
+            </button>
+            <span className="font-headline-sm text-on-primary text-[19px] font-bold truncate">VetSoft</span>
+          </div>
+          {notificationsButton}
+        </div>
+
+        {/* Fila 2: Submódulos a todo el ancho, debajo del encabezado */}
+        {submodules.length > 0 && (
+          <nav className="h-12 shrink-0 flex items-center gap-xs px-sm pb-2 overflow-x-auto scrollbar-hide border-t border-white/20">
+            {submoduleButtons}
+          </nav>
+        )}
+      </header>
+    );
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 h-16 bg-primary-container z-50 flex items-center justify-between shadow-lg pr-md">
       {/* Brand / Logo Section (Abarca el ancho de la sidebar y se separa con línea blanca) */}
-      <div className={`h-full flex items-center border-r border-white/60 transition-all duration-300 ${
+      <div className={`h-full flex items-center gap-xs border-r border-white/60 transition-all duration-300 shrink-0 ${
         isSidebarCollapsed ? 'w-16 justify-center px-xs' : 'w-64 px-md justify-start'
-      } shrink-0`}>
+      }`}>
         <span className="font-headline-sm text-on-primary text-[19px] font-bold truncate">
-          {isSidebarCollapsed ? 'Vs' : 'Vetsoft'}
+          {isSidebarCollapsed ? 'Vs' : 'VetSoft'}
         </span>
       </div>
 
       {/* Top Header Submodules Bar (Separado con línea blanca del logo) */}
       <nav className="flex items-center gap-xs px-md overflow-x-auto scrollbar-hide flex-1 min-w-0">
-        {submodules.map((sub) => {
-          const isActive = activeSubmodule === sub.id;
-          return (
-            <button
-              key={sub.id}
-              onClick={() => setActiveSubmodule(sub.id)}
-              className={`px-3.5 py-2 rounded-lg transition-all font-label-md text-xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                isActive
-                  ? 'bg-secondary text-on-secondary shadow-md font-semibold'
-                  : 'text-on-primary hover:bg-primary/40 font-medium'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">{sub.icon}</span>
-              <span>{sub.label}</span>
-            </button>
-          );
-        })}
+        {submoduleButtons}
       </nav>
 
       {/* Notifications Bell Button */}
       <div className="flex items-center gap-sm shrink-0">
-        <button
-          onClick={onToggleAlerts}
-          className="text-on-primary hover:bg-primary p-2 rounded-full transition-colors relative cursor-pointer"
-          title={lowStockCount > 0 ? `${lowStockCount} alertas de stock activo` : "Notificaciones"}
-        >
-          <span className="material-symbols-outlined text-[22px]">notifications</span>
-          {lowStockCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 bg-error text-on-error text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
-              {lowStockCount}
-            </span>
-          )}
-        </button>
+        {notificationsButton}
       </div>
     </header>
   );

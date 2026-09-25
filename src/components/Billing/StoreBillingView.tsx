@@ -208,7 +208,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display-lg text-[22px] text-on-surface leading-tight font-semibold">Nueva facturación y tienda (POS)</h1>
+          <h1 className="font-display-lg text-lg lg:text-[22px] text-on-surface leading-tight font-semibold">Nueva facturación y tienda (POS)</h1>
           <div className="flex items-center gap-xs mt-1">
             <span className="material-symbols-outlined text-[16px] text-slate-500">pets</span>
             <SearchablePatientSelect

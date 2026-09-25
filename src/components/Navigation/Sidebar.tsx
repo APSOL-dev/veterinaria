@@ -1,5 +1,6 @@
 import React from 'react';
 import { canAccessModule, UserRoleType } from '../../domain/services/rbacService';
+import { getSubmodulesForModule } from './submodulesConfig';
 
 export type ActiveModule = 
   | 'proveedores' 
@@ -15,6 +16,9 @@ interface SidebarProps {
   setActiveModule: (module: ActiveModule) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  isMobile?: boolean;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
   userName?: string;
   userRole?: string;
   userRoleType?: UserRoleType;
@@ -26,11 +30,18 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   setActiveModule,
   isCollapsed = false,
   onToggleCollapse,
+  isMobile = false,
+  isMobileOpen = false,
+  onCloseMobile,
   userName = 'Dr. J. Silva',
   userRole = 'Veterinario / Admin',
   userRoleType = 'Administrador',
   onLogout
 }) => {
+  // En mobile la sidebar es un drawer oculto por defecto: no ocupa espacio hasta que se abre.
+  if (isMobile && !isMobileOpen) {
+    return null;
+  }
   const allModules: { id: ActiveModule; label: string; icon: string }[] = [
     { id: 'pacientes', label: 'Pacientes', icon: 'pets' },
     { id: 'clinica', label: 'Clínica', icon: 'stethoscope' },
@@ -48,37 +59,64 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
     onLogout?.();
   };
 
+  // En el drawer mobile siempre se muestran las etiquetas completas, sin importar
+  // el estado de "colapsado" de la barra lateral de escritorio.
+  const collapsed = isMobile ? false : isCollapsed;
+
+  // En mobile el header puede tener una o dos filas (según si el módulo activo
+  // tiene submódulos), así que el drawer arranca justo debajo de esa altura real.
+  const mobileTopOffset = getSubmodulesForModule(activeModule).length > 0 ? 'top-28' : 'top-16';
+
   return (
-    <aside className={`fixed left-0 top-16 bottom-0 ${
-      isCollapsed ? 'w-16' : 'w-64'
-    } bg-surface-container-lowest z-30 shadow-md flex flex-col border-r border-outline-variant transition-all duration-300`}>
-      {/* Floating Edge Collapse / Expand Toggle Button (Centrado Vertical) */}
-      {onToggleCollapse && (
-        <button
-          onClick={onToggleCollapse}
-          className="absolute -right-3.5 top-1/2 -translate-y-1/2 z-50 bg-surface-container-lowest border border-outline-variant shadow-md text-primary rounded-full p-1.5 hover:bg-primary hover:text-white transition-all cursor-pointer flex items-center justify-center"
-          title={isCollapsed ? "Expandir barra lateral" : "Colapsar barra lateral"}
-        >
-          <span className="material-symbols-outlined text-[16px]">
-            {isCollapsed ? 'chevron_right' : 'chevron_left'}
-          </span>
-        </button>
+    <>
+      {isMobile && (
+        <div
+          onClick={onCloseMobile}
+          className="fixed inset-0 bg-black/30 backdrop-blur-xs z-40 animate-fade-in"
+          aria-hidden="true"
+        />
       )}
 
+      <aside className={`fixed left-0 ${isMobile ? mobileTopOffset : 'top-16'} bottom-0 ${
+        collapsed ? 'w-16' : 'w-64'
+      } bg-surface-container-lowest ${isMobile ? 'z-50 shadow-xl' : 'z-30 shadow-md'} flex flex-col border-r border-outline-variant transition-all duration-300`}>
+        {/* Floating Edge Collapse / Expand Toggle Button (solo escritorio) */}
+        {!isMobile && onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            className="absolute -right-3.5 top-1/2 -translate-y-1/2 z-50 bg-surface-container-lowest border border-outline-variant shadow-md text-primary rounded-full p-1.5 hover:bg-primary hover:text-white transition-all cursor-pointer flex items-center justify-center"
+            title={collapsed ? "Expandir barra lateral" : "Colapsar barra lateral"}
+          >
+            <span className="material-symbols-outlined text-[16px]">
+              {collapsed ? 'chevron_right' : 'chevron_left'}
+            </span>
+          </button>
+        )}
+
       {/* Header Title */}
-      <div className={`p-md border-b border-outline-variant ${isCollapsed ? 'px-xs text-center' : 'px-lg'}`}>
-        {!isCollapsed ? (
+      <div className={`p-md border-b border-outline-variant flex items-center justify-between ${collapsed ? 'px-xs text-center' : 'px-lg'}`}>
+        {!collapsed ? (
           <h2 className="font-label-md text-on-surface-variant text-xs font-semibold truncate">
             Módulos del sistema
           </h2>
         ) : (
           <span className="material-symbols-outlined text-primary text-[20px]">widgets</span>
         )}
+        {isMobile && (
+          <button
+            onClick={onCloseMobile}
+            className="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-lg p-1 transition-colors cursor-pointer"
+            title="Cerrar menú"
+            aria-label="Cerrar menú de módulos"
+          >
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        )}
       </div>
 
       {/* Navigation Buttons */}
       <nav className="flex-1 py-sm overflow-y-auto flex flex-col gap-xs px-xs">
-        {!isCollapsed && (
+        {!collapsed && (
           <div className="px-md mb-xs text-on-surface-variant font-label-sm text-[10px] font-medium">
             Navegación principal
           </div>
@@ -90,9 +128,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
             <button
               key={mod.id}
               onClick={() => setActiveModule(mod.id)}
-              title={isCollapsed ? mod.label : undefined}
+              title={collapsed ? mod.label : undefined}
               className={`w-full flex items-center ${
-                isCollapsed ? 'justify-center p-2.5' : 'gap-md px-md py-2.5'
+                collapsed ? 'justify-center p-2.5' : 'gap-md px-md py-2.5'
               } rounded-xl text-left transition-all font-body-md text-sm ${
                 isActive
                   ? 'bg-primary text-on-primary shadow-sm font-semibold'
@@ -102,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
               <span className={`material-symbols-outlined text-[20px] ${isActive ? 'text-on-primary' : 'text-primary'}`}>
                 {mod.icon}
               </span>
-              {!isCollapsed && <span className="truncate">{mod.label}</span>}
+              {!collapsed && <span className="truncate">{mod.label}</span>}
             </button>
           );
         })}
@@ -110,7 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
 
       {/* User Profile & Logout Footer */}
       <div className="p-sm border-t border-outline-variant flex flex-col gap-xs">
-        {!isCollapsed ? (
+        {!collapsed ? (
           <>
             <div className="bg-surface-container text-on-surface-variant p-sm px-md rounded-xl text-[11px]">
               <p className="font-medium text-on-surface">Veterinaria Arlekyn</p>
@@ -153,6 +191,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
           </div>
         )}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 });

@@ -175,11 +175,11 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full h-full flex-1 gap-md overflow-hidden">
+    <div className="flex flex-col w-full flex-1 gap-md fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full lg:overflow-hidden">
       {/* Top Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md mb-md">
         <div>
-          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">
+          <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 leading-tight font-semibold">
             Clínica — Nueva consulta ({currentPatient.name})
           </h1>
           <p className="font-body-md text-xs text-slate-600 font-medium flex flex-wrap items-center gap-2 mt-0.5">
@@ -202,7 +202,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
       </div>
 
       {/* Main Form Body */}
-      <div className="flex-1 flex flex-col justify-between overflow-hidden bg-surface-container-lowest rounded-2xl p-lg shadow-md gap-md border border-outline-variant/30">
+      <div className="flex flex-col justify-between lg:flex-1 lg:overflow-hidden bg-surface-container-lowest rounded-2xl p-lg shadow-md gap-md border border-outline-variant/30">
         <div className="shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-sm border-b border-surface-variant pb-xs">
           <div className="flex items-center gap-sm">
             <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>

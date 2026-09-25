@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { SupplierBill, SupplierPayment, SupplierCreditTerm } from '../../domain/types';
 import { getSupplierCreditTerms, saveSupplierCreditTerm, formatTermLabel, formatCreditTermSummary } from '../../domain/services/supplierService';
 import { getRemainingBalance } from '../../domain/services/paymentService';
+import { formatDate } from '../../utils/dateUtils';
 
 interface SupplierCreditTermsViewProps {
   bills: SupplierBill[];
@@ -130,11 +131,11 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
   };
 
   return (
-    <div className="flex flex-col w-full h-full gap-md font-body-md text-on-surface">
+    <div className="flex flex-col w-full flex-1 lg:h-full gap-md font-body-md text-on-surface">
       {/* Header */}
-      <div className="flex items-center justify-between mb-xs">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-sm mb-xs">
         <div>
-          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+          <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 leading-tight font-bold">
             Proveedores — Plazos
           </h1>
           <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
@@ -192,7 +193,7 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
       </div>
 
       {/* Supplier Credit Terms Table */}
-      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-xs overflow-hidden flex-1">
+      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-xs lg:overflow-hidden lg:flex-1">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
@@ -220,7 +221,7 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
                       <td className="py-3 px-md font-semibold text-slate-900">
                         {row.supplierName}
                       </td>
-                      <td className="py-3 px-md text-slate-600 font-mono">
+                      <td className="py-3 px-md text-slate-600 font-medium">
                         {row.cuit}
                       </td>
                       <td className="py-3 px-md">
@@ -237,7 +238,7 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
                         {row.pendingBillsCount > 0 ? (
                           <div>
                             <span className="font-semibold text-slate-900">{row.pendingBillsCount} facturas</span>
-                            <div className="text-[11px] text-amber-700 font-medium">$ {row.pendingTotal.toLocaleString('es-AR')}</div>
+                            <div className="text-[11px] text-amber-700 font-semibold">$ {row.pendingTotal.toLocaleString('es-AR')}</div>
                           </div>
                         ) : (
                           <span className="text-slate-400 font-medium">Al día</span>
@@ -245,8 +246,8 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
                       </td>
                       <td className="py-3 px-md">
                         {row.nextDueDate ? (
-                          <span className="font-mono text-slate-700 bg-surface-container px-2 py-0.5 rounded-lg border border-outline-variant/30 font-medium">
-                            {row.nextDueDate}
+                          <span className="text-slate-700 bg-surface-container px-2 py-0.5 rounded-lg border border-outline-variant/30 font-medium">
+                            {formatDate(row.nextDueDate)}
                           </span>
                         ) : (
                           <span className="text-slate-400">-</span>

@@ -139,11 +139,11 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
   };
 
   return (
-    <div className="flex flex-col w-full h-full gap-md font-body-md text-on-surface">
+    <div className="flex flex-col w-full flex-1 lg:h-full gap-md font-body-md text-on-surface">
       {/* Header con título e Icono / Botón de Plazos arriba a la derecha */}
       <div className="flex items-center justify-between mb-xs flex-wrap gap-sm">
         <div>
-          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-bold">
+          <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 leading-tight font-bold">
             Proveedores — Cuentas Corrientes
           </h1>
           <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
@@ -246,7 +246,7 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
           <span className="text-xs font-semibold text-on-surface-variant">
             {totalSaldoGeneral > 0 ? 'Total a pagar (Deuda global):' : totalSaldoGeneral < 0 ? 'Saldo a favor global:' : 'Saldo actual:'}
           </span>
-          <span className={`text-base font-semibold font-mono ${
+          <span className={`text-base font-bold ${
             totalSaldoGeneral > 0 ? 'text-red-700' : totalSaldoGeneral < 0 ? 'text-[#27AE60]' : 'text-slate-700'
           }`}>
             {totalSaldoGeneral < 0 
@@ -257,7 +257,7 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
       </div>
 
       {/* Main 2-Column Table: Proveedor | Saldo */}
-      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-xs overflow-hidden flex-1">
+      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-xs lg:overflow-hidden lg:flex-1">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
@@ -304,7 +304,7 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
                     {/* Columna 2: Saldo */}
                     <td className="py-3.5 px-md text-right">
                       <div className="flex flex-col items-end gap-1">
-                        <span className={`text-sm font-bold font-mono ${
+                        <span className={`text-sm font-bold ${
                           supp.saldo > 0 ? 'text-red-700' : supp.saldo < 0 ? 'text-emerald-700' : 'text-slate-600'
                         }`}>
                           {supp.saldo < 0 
@@ -382,13 +382,13 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
               <div className="flex items-center gap-6">
                 <div>
                   <span className="text-[11px] text-slate-500 font-medium block">Total Facturado</span>
-                  <span className="text-sm font-bold text-slate-900 font-mono">
+                  <span className="text-sm font-bold text-slate-900">
                     $ {selectedSupplierSummary.totalFacturado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div>
                   <span className="text-[11px] text-slate-500 font-medium block">Total Pagado</span>
-                  <span className="text-sm font-bold text-emerald-700 font-mono">
+                  <span className="text-sm font-bold text-emerald-700">
                     $ {selectedSupplierSummary.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -404,7 +404,7 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
                 <span className="text-xs font-semibold">
                   {selectedSupplierSummary.saldo > 0 ? 'Saldo a pagar:' : selectedSupplierSummary.saldo < 0 ? 'Saldo a favor:' : 'Saldo:'}
                 </span>
-                <span className={`text-base font-bold font-mono ${
+                <span className={`text-base font-bold ${
                   selectedSupplierSummary.saldo > 0 ? 'text-red-700' : selectedSupplierSummary.saldo < 0 ? 'text-emerald-700' : 'text-slate-700'
                 }`}>
                   {selectedSupplierSummary.saldo < 0 
@@ -436,7 +436,7 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
                     <tbody className="divide-y divide-slate-100">
                       {detailMovements.map(m => (
                         <tr key={m.id} className="hover:bg-slate-50">
-                          <td className="py-2.5 px-3 font-mono text-slate-600">
+                          <td className="py-2.5 px-3 text-slate-600">
                             {formatDate(m.date)}
                           </td>
                           <td className="py-2.5 px-3 font-semibold text-slate-900">
@@ -459,7 +459,7 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
                               </span>
                             )}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-semibold">
+                          <td className="py-2.5 px-3 text-right font-semibold">
                             {m.type === 'bill' ? (
                               <span className="text-slate-900">$ {m.debe.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             ) : (

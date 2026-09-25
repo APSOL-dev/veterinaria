@@ -241,7 +241,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
   }
 
   return (
-    <div className="flex flex-col md:flex-row gap-md w-full h-full flex-1 overflow-hidden font-body-md text-on-surface">
+    <div className="flex flex-col md:flex-row gap-md w-full flex-1 font-body-md text-on-surface fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full lg:overflow-hidden">
       {/* Left Column: Tutores Master List */}
       <aside className="flex flex-col w-full md:w-64 xl:w-72 gap-xs shrink-0 overflow-hidden">
         <div className="flex items-center justify-between px-xs">
@@ -265,7 +265,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
         </div>
 
         {/* Scrollable Tutor Items */}
-        <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-xs min-h-0">
+        <div className="lg:flex-1 lg:overflow-y-auto pr-1 flex flex-col gap-xs lg:min-h-0">
           {filteredTutores.map((tutor) => {
             const isSelected = tutor.ownerName.toLowerCase() === activeTutor.ownerName.toLowerCase();
             return (
@@ -348,7 +348,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
       </aside>
 
       {/* Right Main Panel: Tutor Info & Account Ledger */}
-      <main className="flex-1 flex flex-col gap-md min-w-0 overflow-y-auto pr-1">
+      <main className="flex flex-col gap-md min-w-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
         {/* Tutor Profile Header Card */}
         <div className="bg-surface-container-lowest rounded-2xl p-lg shadow-md border border-outline-variant/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-md">
           <div className="flex items-center gap-md">
@@ -444,10 +444,10 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
 
         {/* Cuenta Corriente del Tutor (Debe, Haber, Saldo) */}
         <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex flex-col gap-sm">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-0.5 lg:gap-sm">
             <h2 className="font-headline-sm text-sm font-semibold text-slate-900 flex items-center gap-xs">
               <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">account_balance</span>
-              Cuenta corriente del tutor — Movimientos de saldo
+              Cuenta corriente del tutor
             </h2>
             <span className="text-xs text-slate-500 font-medium">
               Servicios cobrados (Debe) y abonos recibidos (Haber)
@@ -524,7 +524,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
 
         {/* Turnos Programados del Tutor / Mascotas */}
         <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex flex-col gap-sm">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-0.5 lg:gap-sm">
             <h2 className="font-headline-sm text-sm font-semibold text-slate-900 flex items-center gap-xs">
               <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">calendar_month</span>
               Turnos programados del tutor ({tutorAppointments.length})

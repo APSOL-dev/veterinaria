@@ -453,7 +453,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full h-full gap-md font-body-md text-on-surface">
+    <div className="flex flex-col w-full flex-1 gap-md font-body-md text-on-surface fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full">
       {activeSubModule === 'cuentas' ? (
         <SupplierCurrentAccountView
           bills={bills}
@@ -482,9 +482,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
       ) : (
         <>
           {/* Header */}
-          <div className="flex items-center justify-between mb-md">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-sm mb-md">
             <div>
-              <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">
+              <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 leading-tight font-semibold">
                 {activeSubModule === 'facturas'
                   ? 'Proveedores — Facturas de Compras'
                   : activeSubModule === 'pagos'
@@ -600,11 +600,12 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           </div>
 
           {/* Main Content Card for Facturas */}
-          <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex-1 overflow-hidden flex flex-col">
-            <div className="overflow-x-auto flex-1">
+          <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex flex-col lg:flex-1 lg:overflow-hidden">
+            <div className="overflow-x-auto lg:flex-1">
               {facturasTab === 'resumen' ? (
                 <div>
                   <h2 className="font-headline-sm text-base font-semibold text-primary mb-md">Resumen de proyección (por fecha de pago)</h2>
+                  <div className="overflow-x-auto border border-outline-variant/30 rounded-xl">
                   <table className="w-full text-left font-body-md text-xs border-collapse">
                     <thead className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
                       <tr>
@@ -810,6 +811,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                       })}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col gap-xs flex-1">
@@ -887,6 +889,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     )}
                   </div>
 
+                  <div className="overflow-x-auto border border-outline-variant/30 rounded-xl">
                   <table className="w-full text-left font-body-md text-xs">
                     <thead className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
                       <tr>
@@ -1089,6 +1092,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                       }))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -1096,7 +1100,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
         </>
       ) : activeSubModule === 'pagos' ? (
         /* SUBMODULE: Pagos */
-        <div className="bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/30 flex-1 overflow-hidden flex flex-col">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/30 flex flex-col lg:flex-1 lg:overflow-hidden">
           {payments.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 gap-sm text-on-surface-variant py-xl">
               <span className="material-symbols-outlined text-[48px] opacity-30">wallet</span>
@@ -1111,7 +1115,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto flex-1">
+            <div className="overflow-x-auto lg:flex-1 border border-outline-variant/30 rounded-xl">
               <table className="w-full text-left font-body-md text-xs">
                 <thead className="bg-surface-container-low text-on-surface-variant font-label-md uppercase text-[10px]">
                   <tr>
@@ -1293,8 +1297,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           </div>
 
           {/* Expenses Table */}
-          <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex-1 overflow-hidden flex flex-col">
-            <div className="overflow-x-auto flex-1">
+          <div className="bg-surface-container-lowest rounded-2xl p-md shadow-sm border border-outline-variant/30 flex flex-col lg:flex-1 lg:overflow-hidden">
+            <div className="overflow-x-auto lg:flex-1 border border-outline-variant/30 rounded-xl">
               <table className="w-full text-left font-body-md text-xs">
                 <thead className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
                   <tr>

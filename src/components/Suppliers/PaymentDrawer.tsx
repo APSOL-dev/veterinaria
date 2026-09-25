@@ -189,7 +189,7 @@ export const PaymentDrawer: React.FC<PaymentDrawerProps> = ({
           {activeBill && (
             <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3 flex items-center justify-between text-xs">
               <span className="text-amber-900 font-medium">Saldo adeudado actual:</span>
-              <span className="font-bold text-amber-800 text-sm font-mono">${activeRemaining.toLocaleString('es-AR')}</span>
+              <span className="font-bold text-amber-800 text-sm">${activeRemaining.toLocaleString('es-AR')}</span>
             </div>
           )}
 
@@ -221,7 +221,7 @@ export const PaymentDrawer: React.FC<PaymentDrawerProps> = ({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value !== '' ? Number(e.target.value) : '')}
                 placeholder="0.00"
-                className="bg-white border border-outline-variant/50 rounded-xl p-2.5 text-xs text-slate-900 font-bold font-mono outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20"
+                className="bg-white border border-outline-variant/50 rounded-xl p-2.5 text-xs text-slate-900 font-bold outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20"
                 required
               />
             </div>
@@ -267,7 +267,7 @@ export const PaymentDrawer: React.FC<PaymentDrawerProps> = ({
           {activeBill && (
             <div className="bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 flex items-center justify-between text-xs">
               <span className="text-slate-600 font-medium">Saldo restante tras el pago:</span>
-              <span className={`font-bold font-mono text-sm ${calculatedSaldoRestante === 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+              <span className={`font-bold text-sm ${calculatedSaldoRestante === 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
                 ${calculatedSaldoRestante.toLocaleString('es-AR')}
               </span>
             </div>

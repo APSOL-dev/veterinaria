@@ -32,7 +32,8 @@ import {
   AlertCircle,
   MoreVertical,
   Settings,
-  Smartphone
+  Smartphone,
+  ArrowLeft
 } from 'lucide-react';
 
 import { evolutionService } from '../services/evolutionService';
@@ -766,7 +767,7 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
           /* INTERFAZ COMPLETA DE CHAT CUANDO CONEXIÓN === 'open' */
           <>
             {/* PANEL LATERAL IZQUIERDO: LISTA DE CHATS */}
-            <aside className="w-80 md:w-96 bg-white border-r border-slate-200 flex flex-col h-full shrink-0">
+            <aside className={`w-full md:w-80 lg:w-96 bg-white border-r border-slate-200 flex-col h-full shrink-0 ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
               {/* Buscador de Contactos */}
               <div className="p-3 border-b border-slate-100 flex flex-col gap-2">
                 <div className="relative">
@@ -882,12 +883,20 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
             </aside>
 
             {/* ÁREA PRINCIPAL DERECHA: CONVERSACIÓN SELECCIONADA */}
-            <main className="flex-1 flex flex-col bg-[#efeae2] h-full overflow-hidden">
+            <main className={`flex-1 flex-col bg-[#efeae2] h-full overflow-hidden ${selectedChat ? 'flex' : 'hidden md:flex'}`}>
               {selectedChat ? (
                 <>
                   {/* Header Chat Seleccionado */}
                   <header className="bg-[#f0f2f5] border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-xs z-10">
                     <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedChat(null)}
+                        className="md:hidden -ml-2 p-2 rounded-full text-slate-600 hover:bg-slate-200/70 transition-colors cursor-pointer"
+                        title="Volver a la lista de chats"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                      </button>
                       {(() => {
                         const selectedAvatarUrl = getChatAvatarUrl(selectedChat);
                         const selectedChatId = selectedChat.id || selectedChat.remoteJid;

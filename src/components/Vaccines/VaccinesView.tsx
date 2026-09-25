@@ -104,6 +104,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   const activePatient = selectedPatient;
   const patientDoses = vaccineDoses.filter(d => d.patientId === activePatient.id);
   const dueOrExpiredDosis = patientDoses.find(d => d.status === 'expired' || d.status === 'due_soon');
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const filteredPatients = (patients || []).filter(p => 
     p.name.toLowerCase().includes(patientSearch.toLowerCase()) ||
@@ -156,11 +157,11 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   // General Clinic Vaccine Catalog View (NO Patient Selector)
   if (isGeneralCatalog) {
     return (
-      <div className="flex flex-col w-full gap-md font-body-md text-slate-800">
+      <div className="flex flex-col w-full gap-md font-body-md text-slate-800 fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0">
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md mb-md">
           <div>
-            <h1 className="font-display-lg text-[22px] text-slate-900 font-semibold leading-tight">
+            <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 font-semibold leading-tight">
               Vacunas — Catálogo general (Clínica)
             </h1>
             <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
@@ -183,7 +184,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
         </div>
 
         {/* Catalog Table */}
-        <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 flex-1 overflow-hidden">
+        <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 lg:flex-1 lg:overflow-hidden">
           <div className="flex items-center justify-between mb-md">
             <h2 className="font-headline-sm text-sm font-semibold text-slate-900 flex items-center gap-xs">
               <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">list_alt</span>
@@ -191,7 +192,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
             </h2>
           </div>
 
-          <div className="w-full overflow-x-auto">
+          <div className="w-full overflow-x-auto border border-slate-200 rounded-xl">
             <table className="w-full text-left font-body-md text-xs whitespace-nowrap">
               <thead>
                 <tr className="bg-slate-50 text-slate-700 font-semibold text-[11px] border-b border-slate-200">
@@ -324,7 +325,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
 
   // Patients Module: Control de Vacunas (With Master Patient Selection)
   return (
-    <div className="flex flex-col md:flex-row gap-md w-full h-full flex-1 overflow-hidden font-body-md text-slate-800">
+    <div className="flex flex-col md:flex-row gap-md w-full flex-1 font-body-md text-slate-800 fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full lg:overflow-hidden">
       {/* Left Column: All Patients Master List */}
       {patients && patients.length > 0 && (
         <aside className="flex flex-col w-full md:w-64 xl:w-72 gap-xs shrink-0 overflow-hidden">
@@ -349,7 +350,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
           </div>
 
           {/* Patient List */}
-          <div className="flex flex-col gap-xs overflow-y-auto flex-1 pr-1 mt-xs">
+          <div className="flex flex-col gap-xs lg:overflow-y-auto lg:flex-1 pr-1 mt-xs">
             {filteredPatients.map((p) => {
               const isSelected = p.id === activePatient.id;
               const pDoses = vaccineDoses.filter(d => d.patientId === p.id);
@@ -403,7 +404,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
       )}
 
       {/* Right Main Column: Active Patient Vaccine Detail */}
-      <main className="flex flex-col flex-1 gap-md min-w-0 overflow-y-auto">
+      <main className="flex flex-col gap-md min-w-0 lg:flex-1 lg:overflow-y-auto">
         {/* Header Hero */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md bg-white p-md rounded-2xl shadow-sm border border-slate-200 shrink-0">
           <div className="flex items-center gap-md">
@@ -415,7 +416,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
               )}
             </div>
             <div>
-              <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">{activePatient.name}</h1>
+              <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 leading-tight font-semibold">{activePatient.name}</h1>
               <p className="font-body-md text-xs text-slate-600 font-medium flex items-center gap-xs mt-0.5">
                 <span>{activePatient.species}, {activePatient.breed} • {activePatient.sex} • Dueño: <strong className="text-slate-900 font-semibold">{activePatient.ownerName}</strong></span>
               </p>
@@ -448,33 +449,59 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-xs mt-1 w-full">
-                  {activePatient.requiredVaccines.map(vac => (
-                    <div
-                      key={vac.id}
-                      className="p-3 rounded-xl border border-emerald-200 bg-emerald-100/60 text-emerald-950 flex items-center justify-between gap-sm text-xs w-full shadow-2xs"
-                    >
-                      <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className="font-semibold text-xs text-emerald-950 truncate">{vac.vaccineName}</span>
-                        <span className="text-[11px] text-emerald-800 font-medium">
-                          Sugerida: <strong>{formatDate(vac.suggestedDate)}</strong>
-                          {vac.appliedDate && ` • Aplicada: ${formatDate(vac.appliedDate)}`}
-                        </span>
-                        {vac.notes && <span className="text-[11px] text-emerald-700 italic truncate">{vac.notes}</span>}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleToggleVaccineAppliedInVaccinesView(vac.id)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-medium shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
+                  {activePatient.requiredVaccines.map(vac => {
+                    const isExpired = vac.status !== 'aplicada' && vac.suggestedDate < todayStr;
+                    return (
+                      <div
+                        key={vac.id}
+                        className={`p-3 rounded-xl border flex items-center justify-between gap-sm text-xs w-full shadow-2xs ${
                           vac.status === 'aplicada'
-                            ? 'bg-emerald-800 text-white hover:bg-emerald-900'
-                            : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            ? 'border-emerald-200 bg-emerald-100/60 text-emerald-950'
+                            : isExpired
+                            ? 'border-red-200 bg-red-100/60 text-red-950'
+                            : 'border-amber-200 bg-amber-100/60 text-amber-950'
                         }`}
                       >
-                        {vac.status === 'aplicada' ? '✓ Aplicada' : 'Marcar aplicada'}
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <div className="flex items-center gap-xs flex-wrap">
+                            <span className="font-semibold text-xs truncate">{vac.vaccineName}</span>
+                            {vac.status === 'aplicada' ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-semibold">Aplicada</span>
+                            ) : isExpired ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-semibold">Vencida</span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-600 text-white text-[9px] font-semibold">Pendiente</span>
+                            )}
+                          </div>
+                          <span className={`text-[11px] font-medium ${
+                            vac.status === 'aplicada' ? 'text-emerald-800' : isExpired ? 'text-red-800' : 'text-amber-800'
+                          }`}>
+                            Sugerida: <strong>{formatDate(vac.suggestedDate)}</strong>
+                            {vac.appliedDate && ` • Aplicada: ${formatDate(vac.appliedDate)}`}
+                          </span>
+                          {vac.notes && (
+                            <span className={`text-[11px] italic truncate ${
+                              vac.status === 'aplicada' ? 'text-emerald-700' : isExpired ? 'text-red-700' : 'text-amber-700'
+                            }`}>{vac.notes}</span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleVaccineAppliedInVaccinesView(vac.id)}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-medium shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
+                            vac.status === 'aplicada'
+                              ? 'bg-emerald-800 text-white hover:bg-emerald-900'
+                              : isExpired
+                              ? 'bg-red-600 text-white hover:bg-red-700'
+                              : 'bg-amber-600 text-white hover:bg-amber-700'
+                          }`}
+                        >
+                          {vac.status === 'aplicada' ? '✓ Aplicada' : 'Marcar aplicada'}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -486,7 +513,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 Historial de vacunación — {activePatient.name}
               </h2>
 
-              <div className="w-full overflow-x-auto">
+              <div className="w-full overflow-x-auto border border-slate-200 rounded-xl">
                 <table className="w-full text-left font-body-md text-xs whitespace-nowrap">
                   <thead>
                     <tr className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 text-[11px]">
@@ -500,7 +527,6 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                   </thead>
                   <tbody className="text-slate-800">
                     {(() => {
-                      const todayStr = new Date().toISOString().split('T')[0];
                       const pendingReqs = (activePatient.requiredVaccines || []).filter(
                         v => v.status === 'pendiente' && !patientDoses.some(d => d.vaccineName.toLowerCase() === v.vaccineName.toLowerCase())
                       );

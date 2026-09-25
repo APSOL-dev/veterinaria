@@ -37,7 +37,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       {/* Top Header */}
       <header className="w-full flex justify-between items-start p-6 md:p-8 absolute top-0 left-0 right-0 z-10">
         <div className="flex flex-col">
-          <h1 className="text-3xl font-bold tracking-wide text-white">VETSOFT</h1>
+          <h1 className="text-3xl font-bold tracking-wide text-white">VetSoft</h1>
           <p className="text-sm opacity-80 mt-1">Sistema de Gestión para Clínicas Veterinarias</p>
         </div>
       </header>
@@ -147,10 +147,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       </main>
 
       {/* Footer */}
-      <footer className="w-full flex justify-between items-center p-6 md:p-8 absolute bottom-0 left-0 right-0 text-xs opacity-70 pointer-events-none">
-        <p className="">VETSOFT © 2026 • Todos los derechos reservados</p>
-        <p className="absolute left-1/2 -translate-x-1/2 font-semibold">APSOL 2026</p>
-        <p className="hidden sm:inline">Sistema Seguro SSL • Control de Accesos</p>
+      <footer className="w-full flex flex-col items-center gap-1 sm:grid sm:grid-cols-3 sm:items-center p-6 md:p-8 absolute bottom-0 left-0 right-0 text-xs opacity-70 pointer-events-none text-center sm:text-left">
+        <p className="">VetSoft © 2026 • Todos los derechos reservados</p>
+        <p className="font-semibold sm:text-center">APSOL 2026</p>
+        <p className="hidden sm:inline sm:text-right">Sistema Seguro SSL • Control de Accesos</p>
       </footer>
     </div>
   );

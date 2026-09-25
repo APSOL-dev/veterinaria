@@ -1,5 +1,6 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Header } from './components/Navigation/Header';
+import { getSubmodulesForModule } from './components/Navigation/submodulesConfig';
 import { ActiveModule, Sidebar } from './components/Navigation/Sidebar';
 import { PatientProfileView } from './components/Patient/PatientProfileView';
 import { NewConsultationView } from './components/Patient/NewConsultationView';
@@ -137,6 +138,22 @@ export const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     return typeof window !== 'undefined' ? window.innerWidth < 1280 : false;
   });
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.innerWidth < 1024 : false;
+  });
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 1023px)');
+    const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      setIsMobile(e.matches);
+      if (!e.matches) setIsMobileNavOpen(false);
+    };
+    handleChange(mediaQuery);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
 
   // Domain state
@@ -236,6 +253,7 @@ export const App: React.FC = () => {
     }
     setActiveModuleState(nav.module);
     setActiveSubmodule(nav.submodule);
+    setIsMobileNavOpen(false);
   }, [userSession]);
 
   const handleToggleSidebar = useCallback(() => {
@@ -890,16 +908,21 @@ export const App: React.FC = () => {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         isSidebarCollapsed={isSidebarCollapsed}
+        isMobile={isMobile}
+        onOpenMobileNav={() => setIsMobileNavOpen(true)}
         lowStockCount={getLowStockAlerts(products).length}
         onToggleAlerts={() => setShowLowStockModal(prev => !prev)}
       />
 
-      {/* Fixed Left Sidebar with Main Modules */}
+      {/* Fixed Left Sidebar with Main Modules (off-canvas drawer on mobile) */}
       <Sidebar
         activeModule={activeModule}
         setActiveModule={handleSetActiveModule}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebar}
+        isMobile={isMobile}
+        isMobileOpen={isMobileNavOpen}
+        onCloseMobile={() => setIsMobileNavOpen(false)}
         userName={userSession.name}
         userRole={userSession.roleLabel}
         userRoleType={userSession.role}
@@ -910,8 +933,10 @@ export const App: React.FC = () => {
       />
 
       {/* Main Layout Area (Pegado directamente a la barra lateral) */}
-      <div className={`pt-16 h-screen w-full overflow-hidden flex flex-col transition-all duration-300 ${
-        isSidebarCollapsed ? 'pl-16' : 'pl-64'
+      <div className={`h-screen w-full overflow-hidden flex flex-col transition-all duration-300 ${
+        isMobile ? (getSubmodulesForModule(activeModule).length > 0 ? 'pt-28' : 'pt-16') : 'pt-16'
+      } ${
+        isMobile ? 'pl-0' : (isSidebarCollapsed ? 'pl-16' : 'pl-64')
       }`}>
         {/* Dynamic Main Workspace Container */}
         <main className="flex-1 h-full overflow-hidden flex flex-col p-md bg-surface-container-low">

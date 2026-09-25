@@ -788,21 +788,30 @@ export function getDefaultDateRange(referenceDateStr?: string): { startDate: str
   return { startDate, endDate };
 }
 
+export function isInvoiceDocTypeWithoutIva(documentType?: string): boolean {
+  if (!documentType) return false;
+  const doc = documentType.trim().toLowerCase();
+  return doc.includes('factura c') || doc === 'c' || doc.includes('remito');
+}
+
 export function calculateInvoiceSubtotalAndTax(
   items: { subtotal?: number }[],
   applyIva: boolean = true,
   ivaRate: number = 0.21,
-  perceptions: number = 0
+  perceptions: number = 0,
+  documentType?: string
 ): {
   itemsSum: number;
   totalAmount: number;
   subtotal: number;
   taxAmount: number;
 } {
+  const isNoIvaDoc = documentType ? isInvoiceDocTypeWithoutIva(documentType) : false;
+  const effectiveApplyIva = applyIva && !isNoIvaDoc;
   const itemsSum = items.reduce((acc, curr) => acc + (curr.subtotal || 0), 0);
   const totalAmount = itemsSum + (Number(perceptions) || 0);
 
-  if (!applyIva) {
+  if (!effectiveApplyIva) {
     return {
       itemsSum,
       totalAmount,

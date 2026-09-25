@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { SupplierBill, SupplierBillItem, SupplierCreditTerm, Product } from '../../domain/types';
 import { sendInvoiceWebhook, parseN8nInvoiceResponse } from '../../domain/services/webhookService';
-import { resetInvoiceDrawerState, shouldShowResetButton, getSupplierCreditTerms, calculateDueDateFromTerm, calculateInvoiceSubtotalAndTax } from '../../domain/services/supplierService';
+import { 
+  resetInvoiceDrawerState, 
+  shouldShowResetButton, 
+  getSupplierCreditTerms, 
+  calculateDueDateFromTerm, 
+  calculateInvoiceSubtotalAndTax,
+  isInvoiceDocTypeWithoutIva 
+} from '../../domain/services/supplierService';
 import { uploadInvoiceVoucherToSupabase } from '../../domain/services/supabaseService';
 import { initialProducts } from '../../data/mockData';
 import { SearchableProductSelect } from '../Common/SearchableProductSelect';
@@ -59,7 +66,8 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
   const updateTotalsFromItems = (
     items: SupplierBillItem[], 
     currentPerceptions: number | '', 
-    useIva: boolean = applyIva
+    useIva: boolean = applyIva,
+    docType: string = documentType
   ) => {
     const perc = Number(currentPerceptions) || 0;
     if (items.length > 0) {
@@ -67,7 +75,8 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
         items,
         useIva,
         0.21,
-        perc
+        perc,
+        docType
       );
       setTotalAmount(newTotal);
       setSubtotal(newSubtotal);
@@ -79,7 +88,8 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
           [{ subtotal: tot - perc }],
           useIva,
           0.21,
-          perc
+          perc,
+          docType
         );
         setTotalAmount(tot);
         setSubtotal(newSubtotal);
@@ -88,10 +98,22 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
     }
   };
 
+  const handleDocumentTypeChange = (newDocType: string) => {
+    setDocumentType(newDocType);
+    const isNoIva = isInvoiceDocTypeWithoutIva(newDocType);
+    const nextApply = isNoIva ? false : applyIva;
+    if (isNoIva) {
+      setApplyIva(false);
+      setTaxAmount(0);
+    }
+    updateTotalsFromItems(billItems, perceptions, nextApply, newDocType);
+  };
+
   const handleToggleIva = () => {
+    if (isInvoiceDocTypeWithoutIva(documentType)) return;
     const nextApply = !applyIva;
     setApplyIva(nextApply);
-    updateTotalsFromItems(billItems, perceptions, nextApply);
+    updateTotalsFromItems(billItems, perceptions, nextApply, documentType);
   };
 
   const handleAddBillItem = () => {
@@ -184,11 +206,13 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
       setRazonSocial(editingBill.razonSocial || '');
       setInvoiceDate(editingBill.date || new Date().toISOString().split('T')[0]);
       setPaymentDate(editingBill.paymentDate || '');
-      setDocumentType(editingBill.documentType || 'Factura A');
+      const docType = editingBill.documentType || 'Factura A';
+      setDocumentType(docType);
+      const isNoIva = isInvoiceDocTypeWithoutIva(docType);
       setInvoiceNumber(editingBill.invoiceNumber || '');
       setSubtotal(editingBill.subtotal !== undefined ? editingBill.subtotal : '');
       setTaxAmount(editingBill.taxAmount !== undefined ? editingBill.taxAmount : '');
-      setApplyIva(editingBill.taxAmount === undefined || editingBill.taxAmount > 0);
+      setApplyIva(!isNoIva && (editingBill.taxAmount === undefined || editingBill.taxAmount > 0));
       setPerceptions(editingBill.perceptions !== undefined ? editingBill.perceptions : '');
       setCurrency(editingBill.currency || 'AR$ (Pesos)');
       setTotalAmount(editingBill.amount !== undefined ? editingBill.amount : '');
@@ -247,7 +271,13 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
             setRazonSocial(supplierVal);
           }
           if (parsed.cuit) setCuit(parsed.cuit);
-          if (parsed.documentType) setDocumentType(parsed.documentType);
+          if (parsed.documentType) {
+            setDocumentType(parsed.documentType);
+            if (isInvoiceDocTypeWithoutIva(parsed.documentType)) {
+              setApplyIva(false);
+              setTaxAmount(0);
+            }
+          }
           if (parsed.invoiceNumber) setInvoiceNumber(parsed.invoiceNumber);
           if (parsed.date) setInvoiceDate(parsed.date);
           if (parsed.paymentDate) setPaymentDate(parsed.paymentDate);
@@ -570,13 +600,13 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                   <div className="relative">
                     <select
                       value={documentType}
-                      onChange={(e) => setDocumentType(e.target.value)}
+                      onChange={(e) => handleDocumentTypeChange(e.target.value)}
                       className="w-full appearance-none bg-surface-container/60 border border-outline-variant/40 rounded-xl pr-8 pl-3 py-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 cursor-pointer font-medium"
                     >
                       <option value="Factura A">Factura A</option>
                       <option value="Factura B">Factura B</option>
-                      <option value="Factura C">Factura C</option>
-                      <option value="Remito">Remito</option>
+                      <option value="Factura C">Factura C (Sin IVA)</option>
+                      <option value="Remito">Remito (Sin IVA)</option>
                     </select>
                     <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-[18px]">expand_more</span>
                   </div>
@@ -591,7 +621,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                     onChange={(e) => setInvoiceNumber(e.target.value.replace(/[^0-9]/g, ''))}
                     placeholder=""
                     required
-                    className="bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 font-mono font-medium"
+                    className="bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 font-medium"
                   />
                 </div>
               </div>
@@ -605,28 +635,32 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                     step="0.01"
                     value={subtotal}
                     readOnly
-                    className="bg-surface-container/30 border border-outline-variant/30 rounded-xl p-2.5 text-xs text-slate-700 outline-none cursor-not-allowed font-medium font-mono"
+                    className="bg-surface-container/30 border border-outline-variant/30 rounded-xl p-2.5 text-xs text-slate-700 outline-none cursor-not-allowed font-medium"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-semibold text-slate-700">IVA / Impuestos ($)</label>
-                    <div className="flex items-center gap-1.5 cursor-pointer" onClick={handleToggleIva}>
+                    <div 
+                      className={`flex items-center gap-1.5 ${isInvoiceDocTypeWithoutIva(documentType) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`} 
+                      onClick={handleToggleIva}
+                    >
                       <span className="text-[10px] text-purple-900 font-semibold select-none">
-                        {applyIva ? 'IVA (21%)' : 'Sin IVA'}
+                        {isInvoiceDocTypeWithoutIva(documentType) ? 'Sin IVA (Factura C / Remito)' : applyIva ? 'IVA (21%)' : 'Sin IVA'}
                       </span>
                       <button
                         type="button"
                         role="switch"
-                        aria-checked={applyIva}
+                        aria-checked={applyIva && !isInvoiceDocTypeWithoutIva(documentType)}
+                        disabled={isInvoiceDocTypeWithoutIva(documentType)}
                         onClick={(e) => { e.stopPropagation(); handleToggleIva(); }}
                         className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border transition-colors duration-200 ease-in-out focus:outline-none ${
-                          applyIva ? 'bg-[#5C3C7B] border-[#5C3C7B]' : 'bg-slate-300 border-slate-400'
+                          applyIva && !isInvoiceDocTypeWithoutIva(documentType) ? 'bg-[#5C3C7B] border-[#5C3C7B]' : 'bg-slate-300 border-slate-400'
                         }`}
                       >
                         <span
                           className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out mt-[1px] ${
-                            applyIva ? 'translate-x-4' : 'translate-x-0.5'
+                            applyIva && !isInvoiceDocTypeWithoutIva(documentType) ? 'translate-x-4' : 'translate-x-0.5'
                           }`}
                         />
                       </button>
@@ -636,15 +670,15 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                     type="number"
                     step="0.01"
                     value={taxAmount}
-                    readOnly={!applyIva}
-                    disabled={!applyIva}
+                    readOnly={!applyIva || isInvoiceDocTypeWithoutIva(documentType)}
+                    disabled={!applyIva || isInvoiceDocTypeWithoutIva(documentType)}
                     onChange={(e) => {
                       const newTax = e.target.value === '' ? 0 : Number(e.target.value);
                       setTaxAmount(newTax);
                       const tot = Number(totalAmount) || 0;
                       setSubtotal(tot - newTax);
                     }}
-                    className={`bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] font-mono ${!applyIva ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] font-medium ${(!applyIva || isInvoiceDocTypeWithoutIva(documentType)) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   />
                 </div>
               </div>
@@ -717,7 +751,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                               min="1"
                               value={item.quantity}
                               onChange={(e) => handleBillItemChange(item.id, 'quantity', e.target.value)}
-                              className="w-full bg-surface-container/50 border border-outline-variant/30 rounded-lg p-1.5 text-xs text-slate-900 text-center outline-none font-mono"
+                              className="w-full bg-surface-container/50 border border-outline-variant/30 rounded-lg p-1.5 text-xs text-slate-900 text-center outline-none font-medium"
                             />
                           </div>
                           <div>
@@ -728,12 +762,12 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                               min="0"
                               value={item.unitCost}
                               onChange={(e) => handleBillItemChange(item.id, 'unitCost', e.target.value)}
-                              className="w-full bg-surface-container/50 border border-outline-variant/30 rounded-lg p-1.5 text-xs text-slate-900 text-right outline-none font-mono"
+                              className="w-full bg-surface-container/50 border border-outline-variant/30 rounded-lg p-1.5 text-xs text-slate-900 text-right outline-none font-medium"
                             />
                           </div>
                           <div>
                             <label className="text-[10px] text-slate-600 font-medium block">Subtotal ($)</label>
-                            <div className="p-1.5 text-right font-bold text-slate-900 font-mono">
+                            <div className="p-1.5 text-right font-bold text-slate-900">
                               ${(item.subtotal || 0).toLocaleString('es-AR')}
                             </div>
                           </div>
@@ -767,7 +801,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                       setPerceptions(newPerc);
                       updateTotalsFromItems(billItems, newPerc, applyIva);
                     }}
-                    className="bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 font-mono"
+                    className="bg-surface-container/60 border border-outline-variant/40 rounded-xl p-2.5 text-xs text-slate-900 outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 font-medium"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -795,7 +829,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                   value={totalAmount}
                   readOnly
                   required
-                  className="bg-surface-container/30 border border-outline-variant/30 rounded-xl p-2.5 text-sm text-slate-900 font-bold font-mono outline-none cursor-not-allowed"
+                  className="bg-surface-container/30 border border-outline-variant/30 rounded-xl p-2.5 text-sm text-slate-900 font-bold outline-none cursor-not-allowed"
                 />
               </div>
 

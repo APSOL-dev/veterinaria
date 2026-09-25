@@ -277,7 +277,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
       {/* Module Title Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-md mb-md">
         <div>
-          <h1 className="font-display-lg text-[22px] text-slate-900 leading-tight font-semibold">
+          <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 leading-tight font-semibold">
             {activeMode === 'medica' ? 'Clínica — Agenda Médica' : 'Peluquería — Agenda de Estética'}
           </h1>
           <p className="font-body-md text-xs text-slate-600 font-normal mt-0.5">

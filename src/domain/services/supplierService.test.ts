@@ -24,7 +24,8 @@ import {
   filterAndSortSupplierBills,
   prepareDuplicatedExpenseInput,
   getDeleteBillConfirmationDetails,
-  calculateSupplierSummaryBalances
+  calculateSupplierSummaryBalances,
+  isInvoiceDocTypeWithoutIva
 } from './supplierService';
 
 describe('supplierService', () => {
@@ -539,6 +540,33 @@ describe('supplierService', () => {
       expect(res.totalAmount).toBe(556850);
       expect(res.subtotal).toBe(556850);
       expect(res.taxAmount).toBe(0);
+    });
+
+    it('should NOT calculate IVA for Factura C or Remito even if applyIva is true', () => {
+      const items = [
+        { id: '1', productName: 'Insumo Monotributista', quantity: 1, unitCost: 100000, subtotal: 100000 }
+      ];
+
+      const resFacturaC = calculateInvoiceSubtotalAndTax(items, true, 0.21, 0, 'Factura C');
+      expect(resFacturaC.itemsSum).toBe(100000);
+      expect(resFacturaC.totalAmount).toBe(100000);
+      expect(resFacturaC.subtotal).toBe(100000);
+      expect(resFacturaC.taxAmount).toBe(0);
+
+      const resRemito = calculateInvoiceSubtotalAndTax(items, true, 0.21, 0, 'Remito');
+      expect(resRemito.taxAmount).toBe(0);
+      expect(resRemito.subtotal).toBe(100000);
+    });
+  });
+
+  describe('isInvoiceDocTypeWithoutIva', () => {
+    it('should return true for Factura C and Remito, and false for Factura A and Factura B', () => {
+      expect(isInvoiceDocTypeWithoutIva('Factura C')).toBe(true);
+      expect(isInvoiceDocTypeWithoutIva('factura c')).toBe(true);
+      expect(isInvoiceDocTypeWithoutIva('Remito')).toBe(true);
+      expect(isInvoiceDocTypeWithoutIva('Factura A')).toBe(false);
+      expect(isInvoiceDocTypeWithoutIva('Factura B')).toBe(false);
+      expect(isInvoiceDocTypeWithoutIva(undefined)).toBe(false);
     });
   });
 

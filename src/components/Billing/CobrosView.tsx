@@ -207,10 +207,10 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
 
   if (activeSubmodule === 'historial-cobros') {
     return (
-      <div className="flex flex-col w-full gap-md font-body-md text-slate-800">
+      <div className="flex flex-col w-full gap-md font-body-md text-slate-800 fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-display-lg text-[22px] text-slate-900 font-semibold leading-tight">
+            <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 font-semibold leading-tight">
               {activeSubmodule === 'historial-cobros' ? 'Cobros — Historial de Facturación y Recibos' : 'Cobros — Punto de Venta y Facturación'}
             </h1>
             <p className="font-body-md text-xs text-slate-600 font-normal mt-0.5">
@@ -220,9 +220,9 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
             </p>
           </div>
         </div>
-        <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 flex-1 overflow-hidden">
-          <div className="w-full overflow-x-auto">
-            <table className="w-full text-left font-body-md text-xs whitespace-nowrap">
+        <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 lg:flex-1 lg:overflow-hidden">
+          <div className="w-full overflow-x-auto border border-slate-200 rounded-xl">
+            <table className="w-full text-left font-body-md text-xs whitespace-nowrap border-collapse">
               <thead>
                 <tr className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 text-[11px]">
                   <th className="p-sm px-md">Comprobante Nº</th>
@@ -299,17 +299,17 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
   }
 
   return (
-    <div className="flex flex-col w-full h-full gap-md font-body-md text-slate-800 overflow-hidden">
+    <div className="flex flex-col w-full flex-1 gap-md font-body-md text-slate-800 fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full lg:overflow-hidden">
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between shrink-0 mb-md">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-sm shrink-0 mb-md">
         <div>
-          <h1 className="font-display-lg text-[22px] text-slate-900 font-semibold leading-tight">Cobros — Nueva facturación</h1>
+          <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 font-semibold leading-tight">Cobros — Nueva facturación</h1>
           <p className="font-body-md text-xs text-slate-600 font-medium mt-0.5">
             Paciente seleccionado: <strong className="text-slate-900 font-semibold">{currentPatient.name}</strong> ({currentPatient.species}, {currentPatient.breed} • Dueño: {currentPatient.ownerName})
           </p>
         </div>
 
-        <div className="flex items-center gap-sm">
+        <div className="flex items-center flex-wrap gap-sm">
           {/* Patient Selector */}
           <SearchablePatientSelect
             patients={patients}
@@ -332,10 +332,10 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
       </div>
 
       {/* Main Grid: POS Left + Summary Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-md flex-1 overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-md lg:flex-1 lg:overflow-hidden">
         {/* Left Section: Bill Items (8 Cols) */}
-        <div className="lg:col-span-8 flex flex-col gap-md h-full overflow-hidden">
-          <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
+        <div className="lg:col-span-8 flex flex-col gap-md lg:h-full lg:overflow-hidden">
+          <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 flex flex-col lg:flex-1 lg:overflow-hidden">
             {/* Header row */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-sm mb-sm shrink-0">
               <h2 className="font-headline-sm text-sm font-semibold text-slate-900 flex items-center gap-xs">
@@ -354,7 +354,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
             </div>
 
             {/* Table Container */}
-            <div className="flex-1 overflow-y-auto relative z-10">
+            <div className="lg:flex-1 lg:overflow-y-auto relative z-10">
               <table className="w-full text-left font-body-md text-xs">
                 <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 border-b border-slate-200 text-[11px]">
                   <tr>
@@ -451,7 +451,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
         </div>
 
         {/* Right Section: Summary & Payment Settings (4 Cols) */}
-        <div className="lg:col-span-4 flex flex-col gap-md h-full overflow-y-auto">
+        <div className="lg:col-span-4 flex flex-col gap-md lg:h-full lg:overflow-y-auto">
           {/* Summary Card */}
           <div className="bg-[#9A7DB8] text-white rounded-2xl p-md shadow-md relative overflow-hidden shrink-0">
             <h3 className="font-label-md text-purple-100 text-xs mb-xs font-semibold">
