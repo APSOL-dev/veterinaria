@@ -16,156 +16,19 @@ import {
   ExpenseRecord
 } from '../domain/types';
 
-export const initialOwners: Owner[] = [
-  {
-    id: 'owner-1',
-    name: 'Carlos Mendoza',
-    phone: '+54 9 11 2345-6789',
-    email: 'carlos.mendoza@email.com',
-    address: 'Av. Libertador 1420'
-  },
-  {
-    id: 'owner-2',
-    name: 'Laura Vargas',
-    phone: '+54 9 11 8765-4321',
-    email: 'laura.vargas@email.com',
-    address: 'Calle San Martín 850'
-  },
-  {
-    id: 'owner-3',
-    name: 'Miguel Torres',
-    phone: '+54 9 11 5555-4444',
-    email: 'miguel.torres@email.com',
-    address: 'Belgrano 320'
-  }
-];
+import {
+  importedOwners,
+  importedPatients,
+  importedClinicalNotes,
+  importedVaccineCatalog,
+  importedVaccineDoses
+} from './importedVeterinaryData';
 
-export const initialPatients: Patient[] = [
-  {
-    id: 'patient-1',
-    ownerId: 'owner-1',
-    ownerName: 'Carlos Mendoza',
-    ownerPhone: '+54 9 11 2345-6789',
-    name: 'Rocky',
-    species: 'Canino',
-    breed: 'Golden Retriever',
-    sex: 'Macho',
-    birthDate: '2018-03-12',
-    photoUrl: undefined,
-    status: 'active',
-    weightKg: 32.4,
-    alerts: ['Alérgico a Penicilina', 'Diabético', 'Esterilizado'],
-    weightHistory: [
-      { date: 'Ene', weightKg: 31.0 },
-      { date: 'Mar', weightKg: 31.8 },
-      { date: 'May', weightKg: 32.0 },
-      { date: 'Jul', weightKg: 32.2 },
-      { date: 'Ago', weightKg: 32.4 }
-    ]
-  },
-  {
-    id: 'patient-2',
-    ownerId: 'owner-2',
-    ownerName: 'Laura Vargas',
-    ownerPhone: '+54 9 11 8765-4321',
-    name: 'Muna',
-    species: 'Felino',
-    breed: 'Gato Siamés',
-    sex: 'Hembra',
-    birthDate: '2021-06-15',
-    photoUrl: undefined,
-    status: 'active',
-    weightKg: 4.1,
-    alerts: ['Esterilizado', 'Dieta Prescrita Renal'],
-    weightHistory: [
-      { date: 'Feb', weightKg: 3.9 },
-      { date: 'Abr', weightKg: 4.0 },
-      { date: 'Ago', weightKg: 4.1 }
-    ]
-  },
-  {
-    id: 'patient-3',
-    ownerId: 'owner-3',
-    ownerName: 'Miguel Torres',
-    ownerPhone: '+54 9 11 5555-4444',
-    name: 'Buster',
-    species: 'Canino',
-    breed: 'Bulldog Francés',
-    sex: 'Macho',
-    birthDate: '2022-01-20',
-    status: 'active',
-    weightKg: 12.8,
-    alerts: ['Sensibilidad Cutánea'],
-    weightHistory: [
-      { date: 'Mar', weightKg: 12.0 },
-      { date: 'Jun', weightKg: 12.5 },
-      { date: 'Ago', weightKg: 12.8 }
-    ]
-  }
-];
-
-export const initialClinicalNotes: ClinicalNote[] = [
-  {
-    id: 'note-1',
-    patientId: 'patient-1',
-    date: '2024-05-15T10:30:00Z',
-    vetName: 'Dra. Ana López',
-    notes: 'Paciente acude para refuerzo de vacuna séxtuple y antirrábica. Presenta buen estado general, mucosas rosadas, ganglios normales. Se recomienda continuar con dieta actual y profilaxis dental en 6 meses.',
-    prescription: 'Continuar profilaxis antiparasitaria mensual.'
-  },
-  {
-    id: 'note-2',
-    patientId: 'patient-1',
-    date: '2024-01-02T16:15:00Z',
-    vetName: 'Dr. Marcos Silva',
-    notes: 'Propietario reporta rascado excesivo y lamido de patas delanteras. A la inspección se observa eritema en zona interdigital. Diagnóstico presuntivo: Dermatitis atópica. Se indica tratamiento con oclacitinib y champú medicado.',
-    prescription: 'Oclacitinib 16mg cada 12hs por 7 días. Champú con clorhexidina 2 veces por semana.'
-  }
-];
-
-export const initialVaccineCatalog: VaccineCatalogItem[] = [
-  { id: 'cat-vac-1', name: 'Séxtuple Canina', frequencyDays: 365 },
-  { id: 'cat-vac-2', name: 'Antirrábica', frequencyDays: 365 },
-  { id: 'cat-vac-3', name: 'Tos de las perreras (Bordetella)', frequencyDays: 365 },
-  { id: 'cat-vac-4', name: 'Triple Felina', frequencyDays: 365 },
-  { id: 'cat-vac-5', name: 'Leucemia Felina', frequencyDays: 365 }
-];
-
-export const initialVaccineDoses: VaccineDosis[] = [
-  {
-    id: 'dose-1',
-    patientId: 'patient-1',
-    vaccineId: 'cat-vac-1',
-    vaccineName: 'Séxtuple Canina',
-    applicationDate: '2024-03-15',
-    expirationDate: '2025-03-15',
-    vetName: 'Dr. J. Silva',
-    batch: 'LOT-SEX-99',
-    status: 'ok'
-  },
-  {
-    id: 'dose-2',
-    patientId: 'patient-1',
-    vaccineId: 'cat-vac-2',
-    vaccineName: 'Antirrábica',
-    applicationDate: '2023-05-22',
-    expirationDate: '2024-05-22',
-    vetName: 'Dra. A. López',
-    batch: 'LOT-ANT-12',
-    status: 'expired'
-  },
-  {
-    id: 'dose-3',
-    patientId: 'patient-1',
-    vaccineId: 'cat-vac-3',
-    vaccineName: 'Tos de las perreras',
-    applicationDate: '2023-06-10',
-    expirationDate: '2024-06-10',
-    vetName: 'Dr. J. Silva',
-    batch: 'LOT-BORD-44',
-    status: 'due_soon'
-  }
-];
+export const initialOwners: Owner[] = importedOwners;
+export const initialPatients: Patient[] = importedPatients;
+export const initialClinicalNotes: ClinicalNote[] = importedClinicalNotes;
+export const initialVaccineCatalog: VaccineCatalogItem[] = importedVaccineCatalog;
+export const initialVaccineDoses: VaccineDosis[] = importedVaccineDoses;
 
 import { getWednesdayOfCurrentWeek } from '../domain/services/agendaService';
 
