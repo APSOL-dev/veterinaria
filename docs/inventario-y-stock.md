@@ -31,6 +31,13 @@ Permite administrar tanto el inventario de productos físicos (medicamentos, ali
   - **Frecuencia de Actualización de Precios:** Configuración del plazo de vencimiento o actualización en días (campo numérico directo, ej: 30 días).
   - **Indicador de Vencimiento de Precio en Productos:** Cálculo en tiempo real en las columnas `Última actualización` y `Frecuencia / Vencimiento` de la tabla de Productos Físicos (Badge **Vencido (Xd)** / Badge **Vigente**).
 
+- **Paginación Inteligente de Tablas:**
+  - **Navegación por páginas:** Control numérico con cálculo inteligente de rangos (`1 2 3 4 5 ... N`), botones anterior/siguiente con chevron (`<` y `>`) y estado deshabilitado en bordes.
+  - **Selector de tamaño de página:** Opciones configurables (`10/page`, `20/page`, `50/page`, `100/page`), por defecto en `20/page`.
+  - **Resumen de registros:** Muestra el rango actual respecto al total filtrado (ej: `Mostrando 1-20 de 608 productos`).
+  - **Reset contextual:** Al cambiar de categoría o escribir en la barra de búsqueda rápida, la página activa se reinicializa automáticamente a la primera página (`página 1`).
+  - **Selección múltiple en página:** La casilla del encabezado selecciona y deselecciona los productos visibles en la página activa sin perder las selecciones previas.
+
 - **Catálogo de Servicios:**
   - Clasificación de servicios por categoría (`Clínica`, `Cirugía`, `Peluquería`, `Laboratorio`, `Ecografía / Rayos`).
   - Control de estado del servicio (`Activo` / `Inactivo`).
@@ -38,11 +45,14 @@ Permite administrar tanto el inventario de productos físicos (medicamentos, ali
   - **Frecuencia de Actualización de Precios:** Configuración del plazo de vencimiento o actualización en días (campo numérico directo, ej: 30 días).
   - **Indicador de Vencimiento de Precio:** Cálculo en tiempo real (`si hoy > última actualización + frecuencia` = Badge **Vencido** en rojo; caso contrario = Badge **Vigente** en verde).
   - Seguimiento de fecha de última venta (`lastSoldAt`).
+  - **Paginación integrada:** Soporta navegación paginada con selector de elementos por página.
 
 **Casos borde conocidos:**
 - Pagos que superan el saldo: El saldo restante no toma valores negativos (`Math.max(0, importe - pagado)`).
 - Aumento del 0% o lista vacía: No modifica los precios ni altera las fechas de actualización.
 - Intento de facturación de servicios inactivos: El sistema alerta y requiere activación previa en el catálogo.
+- Búsqueda sin resultados: La paginación muestra `Mostrando 0-0 de 0 productos` de forma segura sin desbordes.
 
 **Restricciones o supuestos:**
 - Los precios calculados por inflación se redondean a 2 decimales para evitar inconsistencias de punto flotante.
+

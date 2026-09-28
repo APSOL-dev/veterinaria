@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Product, ProductCategory, ServiceCatalogItem, SupplierBill } from '../../domain/types';
+
 import { updateServicePrice, toggleServiceStatus, getPriceUpdateStatusInfo } from '../../domain/services/serviceCatalogService';
 import { applyBulkInflationToProducts } from '../../domain/services/inventoryService';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
 import { AutoResizeTextarea } from '../Common/AutoResizeTextarea';
 import { NewInvoiceDrawer } from '../Suppliers/NewInvoiceDrawer';
+import { Pagination } from '../Common/Pagination';
 
 interface StockControlViewProps {
   products: Product[];
@@ -41,6 +43,11 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [searchQuery, setSearchQuery] = useState('');
+  const [productPage, setProductPage] = useState<number>(1);
+  const [productPageSize, setProductPageSize] = useState<number>(20);
+  const [servicePage, setServicePage] = useState<number>(1);
+  const [servicePageSize, setServicePageSize] = useState<number>(20);
+
   const [showEntryModal, setShowEntryModal] = useState(false);
   const [showInvoiceDrawer, setShowInvoiceDrawer] = useState(false);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
@@ -207,6 +214,17 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
     return matchesCategory && matchesQuery;
   });
 
+  const paginatedProducts = useMemo(() => {
+    const start = (productPage - 1) * productPageSize;
+    return filteredProducts.slice(start, start + productPageSize);
+  }, [filteredProducts, productPage, productPageSize]);
+
+  const paginatedServices = useMemo(() => {
+    const start = (servicePage - 1) * servicePageSize;
+    return servicesCatalog.slice(start, start + servicePageSize);
+  }, [servicesCatalog, servicePage, servicePageSize]);
+
+
   const handleOpenEntryModal = () => {
     setEntryProductId(entryProductId || products[0]?.id || '');
     setEntryQty(10);
@@ -297,9 +315,9 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full gap-md">
+    <div className="flex flex-col w-full gap-md flex-1 font-body-md text-slate-800 fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full lg:overflow-y-auto lg:pr-1">
       {/* Top Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-sm mb-md">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-sm mb-md shrink-0">
         <div className="flex flex-col">
           <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 leading-tight font-semibold">
             {activeSubmodule === 'productos-fisicos' ? 'Inventario — Productos Físicos' : 'Inventario — Catálogo de Servicios'}
@@ -364,9 +382,10 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
       </div>
 
       {/* Main Container */}
-      <div className="bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/30 flex-1 overflow-hidden p-md">
+      <div className="bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/30 p-md flex flex-col gap-md mb-8">
         {activeSubmodule === 'productos-fisicos' ? (
-          <div className="flex flex-col gap-md h-full">
+          <div className="flex flex-col gap-md">
+
             {/* Search & Categories Bar */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-sm">
               <div className="bg-surface-container rounded-xl p-xs flex items-center w-full sm:w-80 border border-outline-variant/30">
@@ -374,7 +393,10 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setProductPage(1);
+                  }}
                   placeholder="Buscar por nombre..."
                   className="bg-transparent text-xs text-on-surface outline-none w-full font-medium"
                 />
@@ -386,7 +408,10 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   return (
                     <button
                       key={cat}
-                      onClick={() => setSelectedCategory(cat)}
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        setProductPage(1);
+                      }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                         isSelected
                           ? 'bg-primary text-on-primary shadow-xs'
@@ -438,18 +463,18 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                     <th className="p-sm px-2 text-center w-10 rounded-tl-lg">
                       <input
                         type="checkbox"
-                        checked={filteredProducts.length > 0 && filteredProducts.every(p => selectedProductIds.includes(p.id))}
+                        checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedProductIds.includes(p.id))}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            const newSelected = Array.from(new Set([...selectedProductIds, ...filteredProducts.map(p => p.id)]));
+                            const newSelected = Array.from(new Set([...selectedProductIds, ...paginatedProducts.map(p => p.id)]));
                             setSelectedProductIds(newSelected);
                           } else {
-                            const filteredIds = new Set(filteredProducts.map(p => p.id));
-                            setSelectedProductIds(selectedProductIds.filter(id => !filteredIds.has(id)));
+                            const pageIds = new Set(paginatedProducts.map(p => p.id));
+                            setSelectedProductIds(selectedProductIds.filter(id => !pageIds.has(id)));
                           }
                         }}
                         className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-[#5C3C7B]"
-                        title="Seleccionar / Deseleccionar todos los visibles"
+                        title="Seleccionar / Deseleccionar visibles de la página"
                       />
                     </th>
                     <th className="p-sm px-md">Producto</th>
@@ -464,7 +489,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="text-on-surface">
-                  {filteredProducts.map((p) => {
+                  {paginatedProducts.map((p) => {
+
                     const isOutOfStock = p.currentStock === 0;
                     const isLowStock = p.currentStock > 0 && p.currentStock <= p.minStock;
                     const priceUpdateInfo = getPriceUpdateStatusInfo(
@@ -572,90 +598,113 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 </tbody>
               </table>
             </div>
+
+            <Pagination
+              currentPage={productPage}
+              totalItems={filteredProducts.length}
+              pageSize={productPageSize}
+              pageSizeOptions={[10, 20, 50, 100]}
+              onPageChange={setProductPage}
+              onPageSizeChange={setProductPageSize}
+              itemLabel="productos"
+            />
           </div>
         ) : (
           /* Services Catalog Table */
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
-            <table className="w-full text-left border-collapse font-body-md text-xs">
-              <thead>
-                <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
-                  <th className="p-sm px-md">Categoría</th>
-                  <th className="p-sm px-md">Servicio</th>
-                  <th className="p-sm px-md">Descripción</th>
-                  <th className="p-sm px-md text-center">Cantidad</th>
-                  <th className="p-sm px-md text-center">Estado</th>
-                  <th className="p-sm px-md text-right">Precio actual</th>
-                  <th className="p-sm px-md text-center">Última actualización</th>
-                  <th className="p-sm px-md text-center">Frecuencia / Vencimiento</th>
-                  <th className="p-sm px-md text-center">Última venta</th>
-                  <th className="p-sm px-md text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="text-on-surface">
-                {servicesCatalog.map((srv) => {
-                  const statusInfo = getPriceUpdateStatusInfo(srv.priceLastUpdated, srv.updateFrequencyDays || 30);
-                  return (
-                    <tr key={srv.id} className="bg-surface-container-lowest hover:bg-surface-container transition-colors group border-b border-surface-container-low">
-                      <td className="p-sm px-md font-medium text-primary capitalize">{srv.category}</td>
-                      <td className="p-sm px-md font-semibold text-on-surface">{srv.name}</td>
-                      <td className="p-sm px-md text-on-surface-variant max-w-xs truncate">{srv.description}</td>
-                      <td className="p-sm px-md text-center font-medium">{srv.quantity}</td>
-                      <td className="p-sm px-md text-center">
-                        <button
-                          onClick={() => handleToggleService(srv)}
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-all ${
-                            srv.isActive ? 'bg-[#E8F5E9] text-[#27AE60]' : 'bg-[#FDEDEC] text-[#C0392B]'
-                          }`}
-                          title="Clic para cambiar estado Activo/Inactivo"
-                        >
-                          {srv.isActive ? 'Activo' : 'Inactivo'}
-                        </button>
-                      </td>
-                      <td className="p-sm px-md text-right font-semibold text-primary">${srv.price.toLocaleString('es-AR')}</td>
-                      <td className="p-sm px-md text-center text-on-surface-variant">{srv.priceLastUpdated}</td>
-                      <td className="p-sm px-md text-center">
-                        <div className="flex flex-col items-center gap-0.5">
-                          <span className="text-[10px] text-slate-500 font-medium">
-                            Cada {srv.updateFrequencyDays || 30} días
-                          </span>
-                          {statusInfo.isExpired ? (
-                            <span className="inline-flex px-2 py-0.5 bg-[#FDEDEC] text-[#C0392B] border border-red-200 rounded-full text-[10px] font-semibold" title={`Vencido (hoy > última actualización + ${srv.updateFrequencyDays || 30} días)`}>
-                              Vencido ({statusInfo.daysDifference}d)
+          <div className="flex flex-col gap-md">
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+
+              <table className="w-full text-left border-collapse font-body-md text-xs">
+                <thead>
+                  <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
+                    <th className="p-sm px-md">Categoría</th>
+                    <th className="p-sm px-md">Servicio</th>
+                    <th className="p-sm px-md">Descripción</th>
+                    <th className="p-sm px-md text-center">Cantidad</th>
+                    <th className="p-sm px-md text-center">Estado</th>
+                    <th className="p-sm px-md text-right">Precio actual</th>
+                    <th className="p-sm px-md text-center">Última actualización</th>
+                    <th className="p-sm px-md text-center">Frecuencia / Vencimiento</th>
+                    <th className="p-sm px-md text-center">Última venta</th>
+                    <th className="p-sm px-md text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="text-on-surface">
+                  {paginatedServices.map((srv) => {
+                    const statusInfo = getPriceUpdateStatusInfo(srv.priceLastUpdated, srv.updateFrequencyDays || 30);
+                    return (
+                      <tr key={srv.id} className="bg-surface-container-lowest hover:bg-surface-container transition-colors group border-b border-surface-container-low">
+                        <td className="p-sm px-md font-medium text-primary capitalize">{srv.category}</td>
+                        <td className="p-sm px-md font-semibold text-on-surface">{srv.name}</td>
+                        <td className="p-sm px-md text-on-surface-variant max-w-xs truncate">{srv.description}</td>
+                        <td className="p-sm px-md text-center font-medium">{srv.quantity}</td>
+                        <td className="p-sm px-md text-center">
+                          <button
+                            onClick={() => handleToggleService(srv)}
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-all ${
+                              srv.isActive ? 'bg-[#E8F5E9] text-[#27AE60]' : 'bg-[#FDEDEC] text-[#C0392B]'
+                            }`}
+                            title="Clic para cambiar estado Activo/Inactivo"
+                          >
+                            {srv.isActive ? 'Activo' : 'Inactivo'}
+                          </button>
+                        </td>
+                        <td className="p-sm px-md text-right font-semibold text-primary">${srv.price.toLocaleString('es-AR')}</td>
+                        <td className="p-sm px-md text-center text-on-surface-variant">{srv.priceLastUpdated}</td>
+                        <td className="p-sm px-md text-center">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              Cada {srv.updateFrequencyDays || 30} días
                             </span>
-                          ) : (
-                            <span className="inline-flex px-2 py-0.5 bg-[#E8F5E9] text-[#27AE60] border border-green-200 rounded-full text-[10px] font-semibold" title="Precio actualizado dentro de la frecuencia recomendada">
-                              Vigente
-                            </span>
+                            {statusInfo.isExpired ? (
+                              <span className="inline-flex px-2 py-0.5 bg-[#FDEDEC] text-[#C0392B] border border-red-200 rounded-full text-[10px] font-semibold" title={`Vencido (hoy > última actualización + ${srv.updateFrequencyDays || 30} días)`}>
+                                Vencido ({statusInfo.daysDifference}d)
+                              </span>
+                            ) : (
+                              <span className="inline-flex px-2 py-0.5 bg-[#E8F5E9] text-[#27AE60] border border-green-200 rounded-full text-[10px] font-semibold" title="Precio actualizado dentro de la frecuencia recomendada">
+                                Vigente
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      <td className="p-sm px-md text-center text-on-surface-variant">{srv.lastSoldAt || 'Sin ventas'}</td>
+                      <td className="p-sm px-md text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleOpenEditService(srv)}
+                            className="px-2.5 py-1.5 bg-surface-container-high hover:bg-primary hover:text-white rounded-lg text-[11px] font-semibold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                            title="Editar servicio / precio"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">edit</span>
+                            <span>Editar</span>
+                          </button>
+                          {onDeleteServiceCatalogItem && (
+                            <button
+                              onClick={() => setDeleteConfirm({ isOpen: true, type: 'service', id: srv.id, name: srv.name })}
+                              className="p-1.5 bg-red-50 text-error hover:bg-red-100 rounded-lg text-[11px] font-semibold transition-all shadow-2xs cursor-pointer"
+                              title="Eliminar servicio del catálogo"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                            </button>
                           )}
                         </div>
                       </td>
-                    <td className="p-sm px-md text-center text-on-surface-variant">{srv.lastSoldAt || 'Sin ventas'}</td>
-                    <td className="p-sm px-md text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => handleOpenEditService(srv)}
-                          className="px-2.5 py-1.5 bg-surface-container-high hover:bg-primary hover:text-white rounded-lg text-[11px] font-semibold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
-                          title="Editar servicio / precio"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">edit</span>
-                          <span>Editar</span>
-                        </button>
-                        {onDeleteServiceCatalogItem && (
-                          <button
-                            onClick={() => setDeleteConfirm({ isOpen: true, type: 'service', id: srv.id, name: srv.name })}
-                            className="p-1.5 bg-red-50 text-error hover:bg-red-100 rounded-lg text-[11px] font-semibold transition-all shadow-2xs cursor-pointer"
-                            title="Eliminar servicio del catálogo"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              </tbody>
-            </table>
+                    </tr>
+                  );
+                })}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              currentPage={servicePage}
+              totalItems={servicesCatalog.length}
+              pageSize={servicePageSize}
+              pageSizeOptions={[10, 20, 50, 100]}
+              onPageChange={setServicePage}
+              onPageSizeChange={setServicePageSize}
+              itemLabel="servicios"
+            />
           </div>
         )}
       </div>
