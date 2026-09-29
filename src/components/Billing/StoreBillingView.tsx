@@ -90,6 +90,18 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
   const [customServicePrice, setCustomServicePrice] = useState(15000);
   const [addQty, setAddQty] = useState(1);
 
+  React.useEffect(() => {
+    if (products.length > 0 && (!selectedProductId || !products.some(p => p.id === selectedProductId))) {
+      setSelectedProductId(products[0].id);
+    }
+  }, [products, selectedProductId]);
+
+  React.useEffect(() => {
+    if (groomingServices.length > 0 && (!selectedGroomSrvId || !groomingServices.some(s => s.id === selectedGroomSrvId))) {
+      setSelectedGroomSrvId(groomingServices[0].id);
+    }
+  }, [groomingServices, selectedGroomSrvId]);
+
   // Summary calculations
   const applyTax = documentType !== 'remito';
   const summary = calculateBillSummary(cartItems, applyTax);

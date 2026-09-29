@@ -51,7 +51,7 @@ export function mapRowToPatient(row: any): Patient {
     status: row.status || 'active',
     weightKg: Number(row.weightKg ?? row.weight_kg ?? 0),
     alerts: Array.isArray(row.alerts) ? row.alerts : [],
-    weightHistory: Array.isArray(row.weightHistory) ? row.weightHistory : [],
+    weightHistory: Array.isArray(row.weightHistory) ? row.weightHistory : (Array.isArray(row.weight_history) ? row.weight_history : []),
     requiredVaccines: Array.isArray(row.requiredVaccines || row.required_vaccines) ? (row.requiredVaccines || row.required_vaccines) : []
   };
 }

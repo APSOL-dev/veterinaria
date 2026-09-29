@@ -186,4 +186,34 @@ export function formatPatientOptionLabel(patient: Patient, variant: 'full' | 'sh
   return `${patient.name} (${patient.species}${patient.breed ? ` - ${patient.breed}` : ''} | Tutor: ${patient.ownerName})`;
 }
 
+export function getRecentOrFilteredPatients(
+  patients: Patient[],
+  searchQuery: string,
+  activePatientId?: string,
+  limit: number = 15
+): Patient[] {
+  const query = (searchQuery || '').toLowerCase().trim();
+
+  if (!query) {
+    const top = patients.slice(0, limit);
+    if (activePatientId && !top.some(p => p.id === activePatientId)) {
+      const activeP = patients.find(p => p.id === activePatientId);
+      if (activeP) {
+        return [activeP, ...top.slice(0, limit - 1)];
+      }
+    }
+    return top;
+  }
+
+  return patients.filter((patient) => {
+    return (
+      patient.name.toLowerCase().includes(query) ||
+      patient.ownerName.toLowerCase().includes(query) ||
+      patient.breed.toLowerCase().includes(query) ||
+      patient.species.toLowerCase().includes(query)
+    );
+  });
+}
+
+
 

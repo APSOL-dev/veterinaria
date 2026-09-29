@@ -40,7 +40,7 @@ describe('Pagination Component Structure', () => {
   });
 
   it('computes range bounds correctly for various slice calculations', () => {
-    const totalItems = 1564;
+    const totalItems: number = 1564;
     const pageSize = 20;
     
     // Page 1

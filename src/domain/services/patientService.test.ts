@@ -12,7 +12,8 @@ import {
   deleteClinicalNoteRecord,
   prepareConsultationPrescriptionText,
   toggleAlertItem,
-  formatPatientOptionLabel
+  formatPatientOptionLabel,
+  getRecentOrFilteredPatients
 } from './patientService';
 
 const mockPatients: Patient[] = [
@@ -246,4 +247,45 @@ describe('patientService', () => {
       expect(formatPatientOptionLabel(mockPat, 'agenda')).toBe('Prueba 2 (Canino - Dueño: Juan Perez)');
     });
   });
+
+  describe('getRecentOrFilteredPatients', () => {
+    const list: Patient[] = Array.from({ length: 30 }, (_, i) => ({
+      id: `pat-${i + 1}`,
+      ownerId: `own-${i + 1}`,
+      ownerName: `Tutor ${i + 1}`,
+      name: `Paciente ${i + 1}`,
+      species: i % 2 === 0 ? 'Canino' : 'Felino',
+      breed: 'Mestizo',
+      sex: 'Macho',
+      birthDate: '2020-01-01',
+      status: 'active'
+    }));
+
+    it('returns the first 15 patients when search query is empty', () => {
+      const result = getRecentOrFilteredPatients(list, '', undefined, 15);
+      expect(result).toHaveLength(15);
+      expect(result[0].id).toBe('pat-1');
+      expect(result[14].id).toBe('pat-15');
+    });
+
+    it('includes the active patient at top if not in top 15 and query is empty', () => {
+      const result = getRecentOrFilteredPatients(list, '', 'pat-25', 15);
+      expect(result).toHaveLength(15);
+      expect(result[0].id).toBe('pat-25');
+      expect(result.some(p => p.id === 'pat-25')).toBe(true);
+    });
+
+    it('filters across all patients when query is provided', () => {
+      const result = getRecentOrFilteredPatients(list, 'Paciente 28');
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('Paciente 28');
+    });
+
+    it('searches by owner name across all patients', () => {
+      const result = getRecentOrFilteredPatients(list, 'Tutor 29');
+      expect(result).toHaveLength(1);
+      expect(result[0].ownerName).toBe('Tutor 29');
+    });
+  });
 });
+

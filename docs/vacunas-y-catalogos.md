@@ -9,6 +9,7 @@ Hola (Nombre tutor), te recordamos que la vacuna (Nombre vacuna) para (Nombre pa
 ```
 
 **Escenarios cubiertos:**
+- **Cálculo de Próximo Refuerzo / Vencimiento en Vacunas Requeridas:** Cuando una vacuna requerida se marca como `aplicada`, la tarjeta del paciente en su perfil y en el control de vacunas muestra la fecha de aplicación (`Aplicada: DD/MM/AAAA`) y calcula de forma automática la fecha del **Próximo refuerzo** (`Próximo refuerzo: DD/MM/AAAA`). Esta fecha se obtiene a partir de la dosis registrada en el historial del paciente (`expirationDate`) o calculando `appliedDate + frequencyDays` (según catálogo o 365 días por defecto).
 - **Cobertura Actual según Vacunas Necesarias:** Se calcula dividiendo la cantidad de vacunas necesarias en estado `aplicada` sobre el total de vacunas necesarias asignadas al paciente (`aplicadas / necesarias`).
 - **Eliminación en Cascada del Historial:** Al desmarcar o remover una vacuna aplicada del esquema del paciente, el registro de la dosis correspondiente se elimina de forma inmediata del Historial de Vacunación y de la base de datos Supabase (`vetsoft_dosis_vacunas`).
 - **Profesional por Defecto:** El campo "Profesional / Veterinario" en los formularios de consulta, vacunación y agenda toma por defecto el nombre del usuario activo con sesión iniciada (`userSession.name`).
@@ -22,3 +23,4 @@ Hola (Nombre tutor), te recordamos que la vacuna (Nombre vacuna) para (Nombre pa
 - **Catálogo de Vacunas (`public.vetsoft_vacunas_catalogo`):** Permite **Agregar**, **Editar** y **Eliminar** ítems del catálogo general, sincronizando en tiempo real con Supabase.
 - **Dosis Aplicadas (`public.vetsoft_dosis_vacunas`):** Inserta (`insertVaccineDosisToSupabase`) y elimina (`deleteVaccineDosisFromSupabase` / `deleteVaccineDosesByPatientAndVaccineFromSupabase`) las dosis aplicadas del historial y la base de datos.
 - **Búsqueda con Fallback e Identificación del Paciente:** El registro de dosis acepta tanto el ID del ítem en catálogo como el nombre de la vacuna (`vaccineId` o `vaccineName`), garantizando la creación de la dosis sin fallar aunque la vacuna no existiese previamente en la lista en memoria. Sincroniza automáticamente el estado de la vacuna del paciente a `aplicada`.
+

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Patient } from '../../domain/types';
-import { filterPatients, formatPatientOptionLabel } from '../../domain/services/patientService';
+import { filterPatients, formatPatientOptionLabel, getRecentOrFilteredPatients } from '../../domain/services/patientService';
 
 interface SearchablePatientSelectProps {
   patients: Patient[];
@@ -36,8 +36,8 @@ export const SearchablePatientSelect: React.FC<SearchablePatientSelectProps> = (
   );
 
   const filteredPatients = useMemo(
-    () => filterPatients(patients, searchQuery, 'Todos'),
-    [patients, searchQuery]
+    () => getRecentOrFilteredPatients(patients, searchQuery, selectedPatientId, 15),
+    [patients, searchQuery, selectedPatientId]
   );
 
   // Close dropdown on click outside
@@ -106,6 +106,13 @@ export const SearchablePatientSelect: React.FC<SearchablePatientSelectProps> = (
               </button>
             )}
           </div>
+
+          {!searchQuery.trim() && patients.length > 15 && (
+            <div className="px-3 py-1.5 text-[10px] text-slate-500 font-medium bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+              <span>Últimos 15 pacientes</span>
+              <span className="text-purple-700 font-semibold">Total: {patients.length}</span>
+            </div>
+          )}
 
           <div className="max-h-60 overflow-y-auto p-1 text-xs">
             {filteredPatients.length === 0 ? (

@@ -1,4 +1,4 @@
-import { VaccineCatalogItem, VaccineDosis } from '../types';
+import { PatientRequiredVaccine, VaccineCatalogItem, VaccineDosis } from '../types';
 
 export function calculateExpirationDate(applicationDate: string, frequencyDays: number): string {
   const date = new Date(applicationDate + 'T00:00:00');
@@ -74,3 +74,32 @@ export function getEstadoLabel(status: string): 'Aplicada' | 'Pendiente' {
   }
   return 'Aplicada';
 }
+
+export function getEffectiveVaccineNextDueDate(
+  patientId: string,
+  vac: PatientRequiredVaccine,
+  vaccineDoses: VaccineDosis[] = [],
+  vaccineCatalog: VaccineCatalogItem[] = []
+): string {
+  if (vac.status === 'pendiente') {
+    return vac.suggestedDate;
+  }
+
+  // Si está aplicada, buscar dosis en el historial de este paciente
+  const matchingDosis = vaccineDoses.find(
+    d => d.patientId === patientId && d.vaccineName.toLowerCase() === vac.vaccineName.toLowerCase()
+  );
+
+  if (matchingDosis?.expirationDate) {
+    return matchingDosis.expirationDate;
+  }
+
+  const catItem = vaccineCatalog.find(
+    c => c.name.toLowerCase() === vac.vaccineName.toLowerCase()
+  );
+  const frequencyDays = catItem?.frequencyDays || 365;
+  const baseDate = vac.appliedDate || vac.suggestedDate || new Date().toISOString().split('T')[0];
+
+  return calculateExpirationDate(baseDate, frequencyDays);
+}
+

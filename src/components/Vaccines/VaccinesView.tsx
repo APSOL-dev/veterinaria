@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Patient, VaccineCatalogItem, VaccineDosis } from '../../domain/types';
-import { formatVaccineReminderMessage } from '../../domain/services/vaccineService';
+import { formatVaccineReminderMessage, getEffectiveVaccineNextDueDate } from '../../domain/services/vaccineService';
+import { getRecentOrFilteredPatients } from '../../domain/services/patientService';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
 import { formatDate } from '../../utils/dateUtils';
 
@@ -106,11 +107,9 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   const dueOrExpiredDosis = patientDoses.find(d => d.status === 'expired' || d.status === 'due_soon');
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const filteredPatients = (patients || []).filter(p => 
-    p.name.toLowerCase().includes(patientSearch.toLowerCase()) ||
-    p.species.toLowerCase().includes(patientSearch.toLowerCase()) ||
-    p.ownerName.toLowerCase().includes(patientSearch.toLowerCase())
-  );
+  const filteredPatients = useMemo(() => {
+    return getRecentOrFilteredPatients(patients || [], patientSearch, activePatient?.id, 15);
+  }, [patients, patientSearch, activePatient?.id]);
 
   const handleCatalogAddOrEdit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -328,30 +327,57 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
     <div className="flex flex-col md:flex-row gap-md w-full flex-1 font-body-md text-slate-800 fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full lg:overflow-hidden">
       {/* Left Column: All Patients Master List */}
       {patients && patients.length > 0 && (
-        <aside className="flex flex-col w-full md:w-64 xl:w-72 gap-xs shrink-0 overflow-hidden">
-          <div className="flex items-center justify-between px-xs">
-            <h2 className="font-label-md text-xs text-slate-700 font-semibold">
-              Pacientes vacunatorio ({filteredPatients.length})
+        <aside className="flex flex-col w-full md:w-64 xl:w-72 gap-xs shrink-0 overflow-hidden h-full min-h-0">
+          <div className="flex items-center justify-between px-xs shrink-0">
+            <h2 className="font-label-md text-xs text-slate-700 font-semibold truncate">
+              {!patientSearch.trim()
+                ? `Últimos gestionados (${filteredPatients.length})`
+                : `Resultados (${filteredPatients.length})`}
             </h2>
+            <span className="text-[10px] text-slate-500 font-medium shrink-0">
+              Total: {patients.length}
+            </span>
           </div>
 
           {/* Quick Search */}
-          <div className="bg-white rounded-xl shadow-sm p-xs flex items-center relative border border-slate-300">
-            <span className="material-symbols-outlined text-slate-400 ml-sm mr-xs text-[18px]">
+          <div className="bg-white rounded-xl shadow-sm p-xs flex items-center relative border border-slate-300 shrink-0">
+            <span className="material-symbols-outlined text-slate-400 ml-sm mr-xs text-[18px] shrink-0">
               search
             </span>
             <input
               type="text"
               value={patientSearch}
               onChange={(e) => setPatientSearch(e.target.value)}
-              placeholder="Buscar paciente o dueño..."
+              placeholder="Buscar entre todos los pacientes..."
               className="w-full bg-transparent outline-none p-xs font-body-md text-xs text-slate-800 placeholder:text-slate-400 font-medium"
             />
+            {patientSearch && (
+              <button
+                type="button"
+                onClick={() => setPatientSearch('')}
+                className="text-slate-400 hover:text-slate-600 mr-1 p-0.5 cursor-pointer shrink-0"
+                title="Limpiar búsqueda"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+              </button>
+            )}
           </div>
 
+          {!patientSearch.trim() && patients.length > 15 && (
+            <div className="text-[10px] text-slate-500 font-medium px-1 flex items-center justify-between shrink-0">
+              <span>Mostrando los 15 más recientes</span>
+              <span className="text-purple-700 font-semibold">Buscá para ver los {patients.length}</span>
+            </div>
+          )}
+
           {/* Patient List */}
-          <div className="flex flex-col gap-xs lg:overflow-y-auto lg:flex-1 pr-1 mt-xs">
-            {filteredPatients.map((p) => {
+          <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto pr-1 mt-xs">
+            {filteredPatients.length === 0 ? (
+              <div className="p-4 text-center text-slate-500 text-xs font-medium bg-white rounded-xl border border-slate-200 shrink-0">
+                No se encontraron pacientes para "{patientSearch}"
+              </div>
+            ) : (
+              filteredPatients.map((p) => {
               const isSelected = p.id === activePatient.id;
               const pDoses = vaccineDoses.filter(d => d.patientId === p.id);
               const hasExpired = pDoses.some(d => d.status === 'expired');
@@ -360,13 +386,13 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 <button
                   key={p.id}
                   onClick={() => onSelectPatient && onSelectPatient(p)}
-                  className={`p-xs px-sm rounded-xl shadow-sm flex items-center gap-sm text-left transition-all relative overflow-hidden group cursor-pointer border ${
+                  className={`p-2.5 px-3 rounded-xl shadow-xs flex items-center gap-3 text-left transition-all relative overflow-hidden group cursor-pointer border shrink-0 min-h-[62px] ${
                     isSelected
                       ? 'bg-white text-slate-900 border-l-4 border-l-[#9A7DB8] border-purple-300 shadow-md ring-1 ring-[#9A7DB8]/30'
                       : 'bg-white text-slate-800 hover:bg-purple-50/50 border-slate-200'
                   }`}
                 >
-                  <div className={`relative w-10 h-10 rounded-full overflow-hidden shadow-sm shrink-0 flex items-center justify-center ${
+                  <div className={`relative w-10 h-10 rounded-full overflow-hidden shadow-xs shrink-0 flex items-center justify-center ${
                     isSelected ? 'bg-purple-50 border border-[#9A7DB8]/40' : 'bg-slate-100'
                   }`}>
                     {p.photoUrl ? (
@@ -379,26 +405,26 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                   </div>
 
                   <div className="flex flex-col flex-1 min-w-0 z-10">
-                    <div className="flex items-center justify-between">
-                      <span className={`font-headline-sm text-xs font-semibold truncate ${isSelected ? 'text-slate-900' : 'text-slate-800'}`}>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className={`font-headline-sm text-xs font-bold truncate ${isSelected ? 'text-slate-900' : 'text-slate-800'}`}>
                         {p.name}
                       </span>
                       {hasExpired ? (
-                        <span className="bg-red-50 text-red-700 border border-red-200 text-[9px] font-semibold px-1.5 py-0.2 rounded-full">Vencida</span>
+                        <span className="bg-red-50 text-red-700 border border-red-200 text-[9px] font-semibold px-1.5 py-0.2 rounded-full shrink-0">Vencida</span>
                       ) : (
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-semibold px-1.5 py-0.2 rounded-full">Al día</span>
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-semibold px-1.5 py-0.2 rounded-full shrink-0">Al día</span>
                       )}
                     </div>
-                    <span className={`font-body-md text-[11px] truncate ${isSelected ? 'text-slate-600 font-medium' : 'text-slate-500'}`}>
+                    <span className={`font-body-md text-[11px] truncate mt-0.5 ${isSelected ? 'text-slate-600 font-medium' : 'text-slate-500'}`}>
                       {p.species} • {p.breed}
                     </span>
-                    <span className={`font-label-sm text-[10px] truncate ${isSelected ? 'text-slate-700 font-semibold' : 'text-slate-500'}`}>
-                      Dueño: {p.ownerName}
+                    <span className={`font-label-sm text-[10px] truncate mt-0.5 ${isSelected ? 'text-slate-700 font-semibold' : 'text-slate-500'}`}>
+                      Dueño: <strong className="font-medium text-slate-700">{p.ownerName}</strong>
                     </span>
                   </div>
                 </button>
               );
-            })}
+            }))}
           </div>
         </aside>
       )}
@@ -476,8 +502,16 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                           <span className={`text-[11px] font-medium ${
                             vac.status === 'aplicada' ? 'text-emerald-800' : isExpired ? 'text-red-800' : 'text-amber-800'
                           }`}>
-                            Sugerida: <strong>{formatDate(vac.suggestedDate)}</strong>
-                            {vac.appliedDate && ` • Aplicada: ${formatDate(vac.appliedDate)}`}
+                            {vac.status === 'aplicada' ? (
+                              <>
+                                {vac.appliedDate && <>Aplicada: <strong>{formatDate(vac.appliedDate)}</strong> • </>}
+                                Próximo refuerzo: <strong>{formatDate(getEffectiveVaccineNextDueDate(activePatient.id, vac, vaccineDoses, vaccineCatalog))}</strong>
+                              </>
+                            ) : (
+                              <>
+                                Sugerida: <strong>{formatDate(vac.suggestedDate)}</strong>
+                              </>
+                            )}
                           </span>
                           {vac.notes && (
                             <span className={`text-[11px] italic truncate ${

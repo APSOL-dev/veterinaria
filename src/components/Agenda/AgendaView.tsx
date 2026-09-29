@@ -140,6 +140,14 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   // New Grooming Appointment state
   const [selectedGroomServiceId, setSelectedGroomServiceId] = useState(groomingServices[0]?.id || '');
 
+  useEffect(() => {
+    if (groomingServices.length > 0) {
+      if (!selectedGroomServiceId || !groomingServices.some(s => s.id === selectedGroomServiceId)) {
+        setSelectedGroomServiceId(groomingServices[0].id);
+      }
+    }
+  }, [groomingServices, selectedGroomServiceId]);
+
   const handleSlotClick = (dateStr: string, slotTime: string) => {
     setAppDate(dateStr);
     setAppTime(slotTime);

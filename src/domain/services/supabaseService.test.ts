@@ -29,6 +29,7 @@ describe('supabaseService row mappers', () => {
       status: 'active',
       weightKg: 25.5,
       alerts: ['Alergia a penicilina'],
+      weight_history: [{ date: '2026-01-10', weightKg: 24.0 }],
       requiredVaccines: [{ id: 'req-1', vaccineName: 'Antirrábica', suggestedDate: '2026-10-15', status: 'pendiente' }]
     };
 
@@ -39,6 +40,8 @@ describe('supabaseService row mappers', () => {
     expect(patient.species).toBe('Canino');
     expect(patient.weightKg).toBe(25.5);
     expect(patient.alerts).toContain('Alergia a penicilina');
+    expect(patient.weightHistory).toHaveLength(1);
+    expect(patient.weightHistory![0].weightKg).toBe(24.0);
     expect(patient.requiredVaccines).toHaveLength(1);
     expect(patient.requiredVaccines![0].vaccineName).toBe('Antirrábica');
   });
@@ -75,7 +78,9 @@ describe('supabaseService row mappers', () => {
       currentStock: 15,
       minStock: 5,
       price: 1500,
-      barcode: '7791234567890'
+      barcode: '7791234567890',
+      price_last_updated: '2026-09-01',
+      update_frequency_days: 60
     };
 
     const product = mapRowToProduct(rawRow);
@@ -84,6 +89,8 @@ describe('supabaseService row mappers', () => {
     expect(product.sku).toBe('SKU-001');
     expect(product.price).toBe(1500);
     expect(product.currentStock).toBe(15);
+    expect(product.priceLastUpdated).toBe('2026-09-01');
+    expect(product.updateFrequencyDays).toBe(60);
   });
 
   it('should map DB row to SupplierBill domain model', () => {

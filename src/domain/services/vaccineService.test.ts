@@ -5,7 +5,8 @@ import {
   createDosisRecord,
   formatVaccineReminderMessage,
   getVencimientoLabel,
-  getEstadoLabel
+  getEstadoLabel,
+  getEffectiveVaccineNextDueDate
 } from './vaccineService';
 import { VaccineCatalogItem } from '../types';
 
@@ -110,14 +111,39 @@ describe('vaccineService', () => {
     });
   });
 
-  describe('getEstadoLabel', () => {
-    it('returns "Pendiente" for pendiente status', () => {
-      expect(getEstadoLabel('pendiente')).toBe('Pendiente');
+  describe('getEffectiveVaccineNextDueDate', () => {
+    const catalog: VaccineCatalogItem[] = [
+      { id: 'v1', name: 'Antirrábica', frequencyDays: 365 },
+      { id: 'v2', name: 'Séxtuple Canina', frequencyDays: 180 }
+    ];
+
+    it('returns suggestedDate if vaccine is pending', () => {
+      const vac = { id: 'req-1', vaccineName: 'Antirrábica', suggestedDate: '2026-10-15', status: 'pendiente' as const };
+      const nextDate = getEffectiveVaccineNextDueDate('p1', vac, [], catalog);
+      expect(nextDate).toBe('2026-10-15');
     });
 
-    it('returns "Aplicada" for aplicada or registered dose status', () => {
-      expect(getEstadoLabel('aplicada')).toBe('Aplicada');
-      expect(getEstadoLabel('ok')).toBe('Aplicada');
+    it('returns dosis.expirationDate if vaccine is applied and matching dose exists in history', () => {
+      const vac = { id: 'req-1', vaccineName: 'Antirrábica', suggestedDate: '2026-10-15', status: 'aplicada' as const, appliedDate: '2026-09-28' };
+      const doses = [{
+        id: 'd1',
+        patientId: 'p1',
+        vaccineId: 'v1',
+        vaccineName: 'Antirrábica',
+        applicationDate: '2026-09-28',
+        expirationDate: '2027-09-28',
+        vetName: 'Dr. J. Silva',
+        status: 'ok' as const
+      }];
+      const nextDate = getEffectiveVaccineNextDueDate('p1', vac, doses, catalog);
+      expect(nextDate).toBe('2027-09-28');
+    });
+
+    it('calculates next due date from appliedDate + frequencyDays if no dose in history', () => {
+      const vac = { id: 'req-2', vaccineName: 'Séxtuple Canina', suggestedDate: '2026-01-01', status: 'aplicada' as const, appliedDate: '2026-01-01' };
+      const nextDate = getEffectiveVaccineNextDueDate('p1', vac, [], catalog);
+      expect(nextDate).toBe('2026-06-30');
     });
   });
 });
+

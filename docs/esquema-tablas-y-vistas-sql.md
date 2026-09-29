@@ -105,7 +105,9 @@ CREATE TABLE public.vetsoft_pacientes (
     status TEXT DEFAULT 'active',
     weight_kg NUMERIC(6,2),
     alerts TEXT[],
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    weight_history JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE public.vetsoft_historial_peso_pacientes (
@@ -180,7 +182,10 @@ CREATE TABLE public.vetsoft_productos (
     min_stock INT NOT NULL DEFAULT 0,
     price NUMERIC(12,2) NOT NULL DEFAULT 0,
     barcode TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    price_last_updated DATE DEFAULT CURRENT_DATE,
+    update_frequency_days INT DEFAULT 30,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE public.vetsoft_catalogo_servicios (

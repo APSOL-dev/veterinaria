@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import html2pdf from 'html2pdf.js';
 import { Patient, ClinicalNote, VaccineDosis, Species, Sex, PatientRequiredVaccine, VaccineCatalogItem, MedicalAppointment, GroomingAppointment } from '../../domain/types';
 import { filterPatients, calculateWeightTrend, updatePatientRecord, toggleAlertItem } from '../../domain/services/patientService';
+import { getEffectiveVaccineNextDueDate } from '../../domain/services/vaccineService';
 import { NewPatientModal } from './NewPatientModal';
 import { PrescriptionModal } from './PrescriptionModal';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
@@ -802,8 +803,16 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                         <span className={`text-[11px] font-medium ${
                           vac.status === 'aplicada' ? 'text-emerald-800' : isExpired ? 'text-red-800' : 'text-amber-800'
                         }`}>
-                          Fecha sugerida: <strong>{formatDate(vac.suggestedDate)}</strong>
-                          {vac.appliedDate && ` • Aplicada el: ${formatDate(vac.appliedDate)}`}
+                          {vac.status === 'aplicada' ? (
+                            <>
+                              {vac.appliedDate && <>Aplicada el: <strong>{formatDate(vac.appliedDate)}</strong> • </>}
+                              Próximo refuerzo: <strong>{formatDate(getEffectiveVaccineNextDueDate(selectedPatient.id, vac, vaccineDoses, vaccineCatalog))}</strong>
+                            </>
+                          ) : (
+                            <>
+                              Fecha sugerida: <strong>{formatDate(vac.suggestedDate)}</strong>
+                            </>
+                          )}
                         </span>
                         {vac.notes && (
                           <span className={`text-[11px] italic ${

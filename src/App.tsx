@@ -40,6 +40,7 @@ import {
   VaccineCatalogItem, 
   VaccineDosis, 
   MedicalAppointment, 
+  GroomingService,
   GroomingAppointment, 
   Product, 
   BillReceipt, 
@@ -163,13 +164,37 @@ export const App: React.FC = () => {
   const [clinicalNotes, setClinicalNotes] = useState<ClinicalNote[]>(initialClinicalNotes);
   const [vaccineCatalog, setVaccineCatalog] = useState<VaccineCatalogItem[]>(initialVaccineCatalog);
   const [vaccineDoses, setVaccineDoses] = useState<VaccineDosis[]>(initialVaccineDoses);
-  
   const [medicalAppointments, setMedicalAppointments] = useState<MedicalAppointment[]>(initialMedicalAppointments);
-  const [groomingServices] = useState(initialGroomingServices);
   const [groomingAppointments, setGroomingAppointments] = useState<GroomingAppointment[]>(initialGroomingAppointments);
   
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [servicesCatalog, setServicesCatalog] = useState<ServiceCatalogItem[]>(initialServicesCatalog);
+
+  const effectiveGroomingServices: GroomingService[] = useMemo(() => {
+    const fromCatalog = servicesCatalog
+      .filter(s => s.category.toLowerCase().includes('peluquer') || s.category.toLowerCase().includes('estetic') || s.category.toLowerCase().includes('bano') || s.category.toLowerCase().includes('baño'))
+      .filter(s => s.isActive !== false)
+      .map(s => ({
+        id: s.id,
+        name: s.name,
+        durationMinutes: 45,
+        price: s.price,
+        description: s.description
+      }));
+
+    if (fromCatalog.length > 0) {
+      return fromCatalog;
+    }
+    if (initialGroomingServices.length > 0) {
+      return initialGroomingServices;
+    }
+    return [
+      { id: 'srv-groom-1', name: 'Baño y Secado Completo', durationMinutes: 45, price: 12000, description: 'Baño con shampoo medicado/neutro y secado' },
+      { id: 'srv-groom-2', name: 'Corte y Peinado Canino/Felino', durationMinutes: 60, price: 15000, description: 'Corte de raza o a máquina con tijera' },
+      { id: 'srv-groom-3', name: 'Corte Higiénico + Baño', durationMinutes: 30, price: 10000, description: 'Despeje de zonas y almohadillas' },
+      { id: 'srv-groom-4', name: 'Deslanado y Cepillado Profundo', durationMinutes: 40, price: 8500, description: 'Eliminación de pelo muerto' }
+    ];
+  }, [servicesCatalog]);
   const [supplierBills, setSupplierBills] = useState<SupplierBill[]>(initialSupplierBills);
   const [supplierQuotes, setSupplierQuotes] = useState<SupplierQuote[]>(initialSupplierQuotes);
   const [monthlyBudgets, setMonthlyBudgets] = useState<Record<string, number>>(initialMonthlyBudgets);
@@ -1015,7 +1040,7 @@ export const App: React.FC = () => {
                     onUpdateMedicalAppointment={handleUpdateMedicalAppointment}
                     onDeleteMedicalAppointment={handleDeleteMedicalAppointment}
                     groomingAppointments={groomingAppointments}
-                    groomingServices={groomingServices}
+                    groomingServices={effectiveGroomingServices}
                     onAddGroomingAppointment={handleAddGroomingAppointment}
                     onUpdateGroomingAppointment={handleUpdateGroomingAppointment}
                     onDeleteGroomingAppointment={handleDeleteGroomingAppointment}
@@ -1039,7 +1064,7 @@ export const App: React.FC = () => {
                 onUpdateMedicalAppointment={handleUpdateMedicalAppointment}
                 onDeleteMedicalAppointment={handleDeleteMedicalAppointment}
                 groomingAppointments={groomingAppointments}
-                groomingServices={groomingServices}
+                groomingServices={effectiveGroomingServices}
                 onAddGroomingAppointment={handleAddGroomingAppointment}
                 onUpdateGroomingAppointment={handleUpdateGroomingAppointment}
                 onDeleteGroomingAppointment={handleDeleteGroomingAppointment}
