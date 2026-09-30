@@ -72,6 +72,26 @@ describe('authService', () => {
 
 
 
+  it('authenticateUser should prioritize user_metadata.role = "Administrador" even if email contains "veterinaria"', async () => {
+    vi.spyOn(supabase.auth, 'signInWithPassword').mockResolvedValueOnce({
+      data: {
+        user: {
+          id: 'user-jesica',
+          email: 'arlekyn.veterinaria@gmail.com',
+          user_metadata: { full_name: 'Jesica', role: 'Administrador', roleLabel: 'Administrador General' }
+        } as any,
+        session: {} as any
+      },
+      error: null
+    });
+
+    const user = await authenticateUser('arlekyn.veterinaria@gmail.com', 'Arlekyn2026!');
+    expect(user).not.toBeNull();
+    expect(user?.role).toBe('Administrador');
+    expect(user?.name).toBe('Jesica');
+    expect(user?.roleLabel).toBe('Administrador General');
+  });
+
   it('getDemoCredentials should return the 3 specified role credentials', () => {
     const demo = getDemoCredentials();
     expect(demo.length).toBe(3);

@@ -61,11 +61,20 @@ export async function authenticateUser(email: string, pass: string): Promise<Use
     const userPrefix = cleanEmail.split('@')[0].toLowerCase();
 
     let role: 'Administrador' | 'Veterinario' | 'Peluquero' = 'Administrador';
-    if (rawRole.includes('vet') || (userPrefix !== 'admin' && (userPrefix.includes('vet') || userPrefix.includes('veterinario')))) {
+
+    if (rawRole.includes('admin') || rawRole === 'administrador') {
+      role = 'Administrador';
+    } else if (rawRole.includes('vet') || rawRole === 'veterinario') {
       role = 'Veterinario';
-    } else if (rawRole.includes('pelu') || userPrefix.includes('pelu') || userPrefix.includes('peluquero')) {
+    } else if (rawRole.includes('pelu') || rawRole === 'peluquero') {
       role = 'Peluquero';
-    } else if (rawRole.includes('admin') || userPrefix.includes('admin')) {
+    } else if (userPrefix.startsWith('admin') || userPrefix === 'admin') {
+      role = 'Administrador';
+    } else if (userPrefix.startsWith('vet') || userPrefix === 'veterinario') {
+      role = 'Veterinario';
+    } else if (userPrefix.startsWith('pelu') || userPrefix === 'peluquero') {
+      role = 'Peluquero';
+    } else {
       role = 'Administrador';
     }
 
