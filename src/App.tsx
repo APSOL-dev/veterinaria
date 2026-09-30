@@ -293,6 +293,27 @@ export const App: React.FC = () => {
         return;
       }
 
+      if (authSession?.user) {
+        const meta = authSession.user.user_metadata || {};
+        const rawRole = (meta.role || '').toLowerCase();
+        let role: 'Administrador' | 'Veterinario' | 'Peluquero' = 'Administrador';
+        if (rawRole.includes('admin') || rawRole === 'administrador') {
+          role = 'Administrador';
+        } else if (rawRole.includes('vet') || rawRole === 'veterinario') {
+          role = 'Veterinario';
+        } else if (rawRole.includes('pelu') || rawRole === 'peluquero') {
+          role = 'Peluquero';
+        }
+        const updatedSession: UserSession = {
+          username: authSession.user.email || '',
+          name: meta.full_name || meta.nombre || authSession.user.email || '',
+          role,
+          roleLabel: meta.roleLabel || (role === 'Administrador' ? 'Administrador General' : role === 'Veterinario' ? 'Médico Veterinario' : 'Peluquería & Estética')
+        };
+        setUserSession(updatedSession);
+        saveUserSession(updatedSession);
+      }
+
       async function loadDataFromSupabase() {
         const [
           dbPatients, 
