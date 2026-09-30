@@ -130,7 +130,35 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   const [editWeightKg, setEditWeightKg] = useState(0);
   const [editAlerts, setEditAlerts] = useState<string[]>([]);
   const [customAlertInput, setCustomAlertInput] = useState('');
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [newQuickWeight, setNewQuickWeight] = useState<string>('');
   const [notifModal, setNotifModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+
+  const handleAddQuickWeight = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = parseFloat(newQuickWeight);
+    if (isNaN(parsed) || parsed <= 0) return;
+
+    const updatedList = updatePatientRecord(patients, selectedPatient.id, {
+      weightKg: parsed
+    });
+
+    if (onUpdatePatients) {
+      onUpdatePatients(updatedList);
+    }
+
+    const updatedPet = updatedList.find(p => p.id === selectedPatient.id);
+    if (updatedPet) {
+      onSelectPatient(updatedPet);
+    }
+
+    setNewQuickWeight('');
+    setShowWeightModal(false);
+    setNotifModal({
+      isOpen: true,
+      message: `¡Peso de ${parsed} kg registrado y guardado en el historial!`
+    });
+  };
 
   const handleOpenEditPetModal = () => {
     setEditName(selectedPatient.name);
@@ -423,6 +451,23 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 <span>{selectedPatient.sex}</span>
                 <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                 <span>Nacimiento: {selectedPatient.birthDate}</span>
+                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                <button
+                  type="button"
+                  onClick={() => setShowWeightModal(true)}
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#FAF5FF] hover:bg-[#F3E8FF] text-[#5C3C7B] border border-purple-200 shadow-2xs font-semibold text-[11px] cursor-pointer transition-all"
+                  title="Clic para ver historial y evolución de peso"
+                >
+                  <span className="material-symbols-outlined text-[14px]">scale</span>
+                  <span>Peso: <strong>{selectedPatient.weightKg && selectedPatient.weightKg > 0 ? `${selectedPatient.weightKg} kg` : 'Sin registrar'}</strong></span>
+                  {weightTrend && weightTrend.direction !== 'neutral' && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                      weightTrend.direction === 'up' ? 'bg-amber-200 text-amber-900' : 'bg-blue-200 text-blue-900'
+                    }`} title={`Variación respecto al peso inicial: ${weightTrend.formatted}`}>
+                      {weightTrend.formatted}
+                    </span>
+                  )}
+                </button>
               </p>
             </div>
           </div>
@@ -1478,7 +1523,101 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowClinicalHistoryModal(false)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-semibold text-xs font-semibold transition-all cursor-pointer"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-semibold text-xs transition-all cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Weight History and Evolution Modal */}
+      {showWeightModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-md shadow-2xl flex flex-col gap-md border border-slate-200">
+            <div className="flex justify-between items-center border-b border-slate-200 pb-xs">
+              <h3 className="font-headline-sm text-slate-900 text-sm font-semibold flex items-center gap-xs">
+                <span className="material-symbols-outlined text-[#9A7DB8] text-[20px]">scale</span>
+                Historial y Evolución de Peso ({selectedPatient.name})
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowWeightModal(false)}
+                className="text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Current Weight & Trend Card */}
+            <div className="grid grid-cols-2 gap-2 bg-[#FAF5FF] border border-purple-100 p-3 rounded-xl text-center">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-[#5C3C7B] font-medium">Peso actual</span>
+                <span className="text-base font-bold text-slate-900">
+                  {selectedPatient.weightKg && selectedPatient.weightKg > 0 ? `${selectedPatient.weightKg} kg` : 'Sin registrar'}
+                </span>
+              </div>
+              <div className="flex flex-col border-l border-purple-200 pl-2">
+                <span className="text-[10px] text-[#5C3C7B] font-medium">Variación histórica</span>
+                <span className={`text-base font-bold ${
+                  weightTrend.direction === 'up' ? 'text-amber-700' : weightTrend.direction === 'down' ? 'text-blue-700' : 'text-slate-700'
+                }`}>
+                  {weightTrend.formatted}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Record New Weight */}
+            <form onSubmit={handleAddQuickWeight} className="flex gap-2 items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <div className="flex-1">
+                <input
+                  type="number"
+                  step="0.05"
+                  min="0.1"
+                  max="200"
+                  value={newQuickWeight}
+                  onChange={(e) => setNewQuickWeight(e.target.value)}
+                  placeholder="Nuevo peso (ej. 10.5)"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                />
+              </div>
+              <button
+                type="submit"
+                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1 cursor-pointer transition-all"
+              >
+                <span className="material-symbols-outlined text-[15px]">add</span>
+                <span>Registrar</span>
+              </button>
+            </form>
+
+            {/* Historical Entries Table */}
+            <div className="flex flex-col gap-1 max-h-56 overflow-y-auto pr-1">
+              <span className="text-[11px] font-semibold text-slate-700">Registros anteriores</span>
+              {(!selectedPatient.weightHistory || selectedPatient.weightHistory.length === 0) ? (
+                <div className="text-center py-4 text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  Aún no hay variaciones de peso registradas.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {selectedPatient.weightHistory.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-2 px-3 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[15px] text-slate-400">calendar_today</span>
+                        <span className="font-medium text-slate-700">{item.date}</span>
+                      </div>
+                      <span className="font-bold text-slate-900">{item.weightKg} kg</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowWeightModal(false)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer"
               >
                 Cerrar
               </button>

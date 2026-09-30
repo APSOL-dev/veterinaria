@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Product, ProductCategory, ServiceCatalogItem, SupplierBill } from '../../domain/types';
 
-import { updateServicePrice, toggleServiceStatus, getPriceUpdateStatusInfo } from '../../domain/services/serviceCatalogService';
+import { updateServicePrice, toggleServiceStatus, getPriceUpdateStatusInfo, applyBulkInflationToServices } from '../../domain/services/serviceCatalogService';
 import { applyBulkInflationToProducts } from '../../domain/services/inventoryService';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
 import { AutoResizeTextarea } from '../Common/AutoResizeTextarea';
@@ -68,11 +68,17 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
   // Bulk inflation update state
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [showInflationModal, setShowInflationModal] = useState(false);
   const [inflationScope, setInflationScope] = useState<'selected' | 'category' | 'all'>('all');
   const [inflationCategory, setInflationCategory] = useState<string>('Medicamentos');
   const [inflationPercentage, setInflationPercentage] = useState<number>(10);
   const [inflationSuccessMsg, setInflationSuccessMsg] = useState<string | null>(null);
+
+  const serviceCategories = useMemo(() => {
+    const unique = Array.from(new Set(servicesCatalog.map(s => (s.category || '').trim()).filter(Boolean)));
+    return ['Todos', ...unique];
+  }, [servicesCatalog]);
 
   // Service form state
   const [serviceFormName, setServiceFormName] = useState('');
@@ -224,6 +230,27 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
     return servicesCatalog.slice(start, start + servicePageSize);
   }, [servicesCatalog, servicePage, servicePageSize]);
 
+  const isAllServicesOnPageSelected = useMemo(() => {
+    if (paginatedServices.length === 0) return false;
+    return paginatedServices.every(s => selectedServiceIds.includes(s.id));
+  }, [paginatedServices, selectedServiceIds]);
+
+  const handleToggleSelectAllServices = () => {
+    if (isAllServicesOnPageSelected) {
+      const pageIds = new Set(paginatedServices.map(s => s.id));
+      setSelectedServiceIds(prev => prev.filter(id => !pageIds.has(id)));
+    } else {
+      const newIds = new Set([...selectedServiceIds, ...paginatedServices.map(s => s.id)]);
+      setSelectedServiceIds(Array.from(newIds));
+    }
+  };
+
+  const handleToggleServiceSelect = (id: string) => {
+    setSelectedServiceIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
 
   const handleOpenEntryModal = () => {
     setEntryProductId(entryProductId || products[0]?.id || '');
@@ -284,6 +311,28 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
     e.preventDefault();
     const pct = Number(inflationPercentage);
     if (isNaN(pct) || pct === 0) return;
+
+    if (activeSubmodule === 'servicios-catalogo') {
+      let filter: { serviceIds?: string[]; category?: string } | undefined;
+      if (inflationScope === 'selected') {
+        if (selectedServiceIds.length === 0) return;
+        filter = { serviceIds: selectedServiceIds };
+      } else if (inflationScope === 'category') {
+        filter = { category: inflationCategory };
+      }
+
+      const result = applyBulkInflationToServices(servicesCatalog, pct, filter);
+      if (result.updatedCount > 0) {
+        onUpdateServicesCatalog(result.updatedServices);
+        setInflationSuccessMsg(`¡Precios actualizados exitosamente en ${result.updatedCount} servicio(s) (${pct > 0 ? '+' : ''}${pct}%)!`);
+        setSelectedServiceIds([]);
+        setTimeout(() => {
+          setShowInflationModal(false);
+          setInflationSuccessMsg(null);
+        }, 1500);
+      }
+      return;
+    }
 
     let filter: { productIds?: string[]; category?: string } | undefined;
     if (inflationScope === 'selected') {
@@ -371,13 +420,33 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
             </button>
           </div>
         ) : (
-          <button
-            onClick={handleOpenNewService}
-            className="bg-primary text-on-primary hover:bg-primary-container transition-all px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[16px]">add</span>
-            <span>Nuevo servicio / prestación</span>
-          </button>
+          <div className="flex items-center flex-wrap gap-sm">
+            <button
+              onClick={() => {
+                if (selectedServiceIds.length > 0) {
+                  setInflationScope('selected');
+                } else if (selectedCategory !== 'Todos') {
+                  setInflationScope('category');
+                  setInflationCategory(selectedCategory);
+                } else {
+                  setInflationScope('all');
+                }
+                setShowInflationModal(true);
+              }}
+              className="bg-[#27AE60] hover:bg-[#219653] text-white border border-[#219653] transition-colors px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
+              title="Aumentar o ajustar precios de servicios por inflación masivamente"
+            >
+              <span className="material-symbols-outlined text-[16px]">trending_up</span>
+              <span>Actualizar por inflación {selectedServiceIds.length > 0 ? `(${selectedServiceIds.length})` : ''}</span>
+            </button>
+            <button
+              onClick={handleOpenNewService}
+              className="bg-primary text-on-primary hover:bg-primary-container transition-all px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-sm font-semibold cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]">add</span>
+              <span>Nuevo servicio / prestación</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -612,11 +681,49 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         ) : (
           /* Services Catalog Table */
           <div className="flex flex-col gap-md">
-            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            {/* Selection Banner for Services */}
+            {selectedServiceIds.length > 0 && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 px-4 flex items-center justify-between gap-3 text-xs animate-fade-in shadow-xs">
+                <div className="flex items-center gap-2 text-emerald-950 font-semibold">
+                  <span className="material-symbols-outlined text-[18px] text-emerald-700">check_box</span>
+                  <span>{selectedServiceIds.length} servicio{selectedServiceIds.length > 1 ? 's' : ''} seleccionado{selectedServiceIds.length > 1 ? 's' : ''} para actualizar</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInflationScope('selected');
+                      setShowInflationModal(true);
+                    }}
+                    className="bg-[#27AE60] hover:bg-[#219653] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-xs cursor-pointer transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">trending_up</span>
+                    Actualizar precios por inflación
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedServiceIds([])}
+                    className="bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                  >
+                    Deseleccionar
+                  </button>
+                </div>
+              </div>
+            )}
 
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
               <table className="w-full text-left border-collapse font-body-md text-xs">
                 <thead>
                   <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
+                    <th className="p-sm px-md w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isAllServicesOnPageSelected}
+                        onChange={handleToggleSelectAllServices}
+                        className="rounded border-slate-300 text-[#5C3C7B] focus:ring-[#5C3C7B] cursor-pointer"
+                        title="Seleccionar todos los servicios de la página"
+                      />
+                    </th>
                     <th className="p-sm px-md">Categoría</th>
                     <th className="p-sm px-md">Servicio</th>
                     <th className="p-sm px-md">Descripción</th>
@@ -632,8 +739,19 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 <tbody className="text-on-surface">
                   {paginatedServices.map((srv) => {
                     const statusInfo = getPriceUpdateStatusInfo(srv.priceLastUpdated, srv.updateFrequencyDays || 30);
+                    const isSelected = selectedServiceIds.includes(srv.id);
                     return (
-                      <tr key={srv.id} className="bg-surface-container-lowest hover:bg-surface-container transition-colors group border-b border-surface-container-low">
+                      <tr key={srv.id} className={`transition-colors group border-b border-surface-container-low ${
+                        isSelected ? 'bg-purple-50/70' : 'bg-surface-container-lowest hover:bg-surface-container'
+                      }`}>
+                        <td className="p-sm px-md text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleServiceSelect(srv.id)}
+                            className="rounded border-slate-300 text-[#5C3C7B] focus:ring-[#5C3C7B] cursor-pointer"
+                          />
+                        </td>
                         <td className="p-sm px-md font-medium text-primary capitalize">{srv.category}</td>
                         <td className="p-sm px-md font-semibold text-on-surface">{srv.name}</td>
                         <td className="p-sm px-md text-on-surface-variant max-w-xs truncate">{srv.description}</td>
@@ -1097,10 +1215,12 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 </div>
                 <div>
                   <h3 className="font-display-lg text-base text-slate-900 font-semibold">
-                    Actualización de precios por inflación
+                    {activeSubmodule === 'servicios-catalogo' ? 'Actualización de precios de servicios por inflación' : 'Actualización de precios por inflación'}
                   </h3>
                   <p className="font-body-md text-xs text-slate-600">
-                    Aplica un ajuste porcentual masivo sobre el catálogo de productos
+                    {activeSubmodule === 'servicios-catalogo'
+                      ? 'Aplica un ajuste porcentual masivo sobre el catálogo de prestaciones y servicios'
+                      : 'Aplica un ajuste porcentual masivo sobre el catálogo de productos'}
                   </p>
                 </div>
               </div>
@@ -1122,23 +1242,25 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 {/* Scope Selection */}
                 <div>
                   <label className="font-semibold text-xs text-slate-800 block mb-1.5">
-                    ¿A qué productos desea aplicar el ajuste?
+                    {activeSubmodule === 'servicios-catalogo' ? '¿A qué servicios desea aplicar el ajuste?' : '¿A qué productos desea aplicar el ajuste?'}
                   </label>
                   <div className="grid grid-cols-3 gap-1.5">
                     <button
                       type="button"
-                      disabled={selectedProductIds.length === 0}
+                      disabled={activeSubmodule === 'servicios-catalogo' ? selectedServiceIds.length === 0 : selectedProductIds.length === 0}
                       onClick={() => setInflationScope('selected')}
                       className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${
                         inflationScope === 'selected'
                           ? 'bg-[#5C3C7B] text-white border-[#5C3C7B] shadow-xs'
-                          : selectedProductIds.length === 0
+                          : (activeSubmodule === 'servicios-catalogo' ? selectedServiceIds.length === 0 : selectedProductIds.length === 0)
                           ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
                       <span className="text-[11px] font-bold">Seleccionados</span>
-                      <span className="text-[10px] opacity-80 font-medium">({selectedProductIds.length} items)</span>
+                      <span className="text-[10px] opacity-80 font-medium">
+                        ({activeSubmodule === 'servicios-catalogo' ? selectedServiceIds.length : selectedProductIds.length} items)
+                      </span>
                     </button>
 
                     <button
@@ -1151,7 +1273,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                       }`}
                     >
                       <span className="text-[11px] font-bold">Por categoría</span>
-                      <span className="text-[10px] opacity-80 font-medium">({inflationCategory})</span>
+                      <span className="text-[10px] opacity-80 font-medium truncate max-w-[100px]">({inflationCategory})</span>
                     </button>
 
                     <button
@@ -1164,7 +1286,9 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                       }`}
                     >
                       <span className="text-[11px] font-bold">Todos</span>
-                      <span className="text-[10px] opacity-80 font-medium">({products.length} productos)</span>
+                      <span className="text-[10px] opacity-80 font-medium">
+                        ({activeSubmodule === 'servicios-catalogo' ? servicesCatalog.length + ' servicios' : products.length + ' productos'})
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -1180,11 +1304,18 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                       onChange={(e) => setInflationCategory(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 font-semibold outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 cursor-pointer"
                     >
-                      {categories.filter(c => c !== 'Todos').map(c => (
-                        <option key={c} value={c}>
-                          {c} ({products.filter(p => p.category === c).length} productos)
-                        </option>
-                      ))}
+                      {activeSubmodule === 'servicios-catalogo'
+                        ? serviceCategories.filter(c => c !== 'Todos').map(c => (
+                            <option key={c} value={c}>
+                              {c} ({servicesCatalog.filter(s => s.category.toLowerCase() === c.toLowerCase()).length} servicios)
+                            </option>
+                          ))
+                        : categories.filter(c => c !== 'Todos').map(c => (
+                            <option key={c} value={c}>
+                              {c} ({products.filter(p => p.category === c).length} productos)
+                            </option>
+                          ))
+                      }
                     </select>
                   </div>
                 )}
@@ -1246,10 +1377,46 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 {/* Live Preview List */}
                 <div>
                   <label className="font-semibold text-xs text-slate-800 block mb-1">
-                    Vista previa de cálculo (Primeros productos afectados):
+                    Vista previa de cálculo ({activeSubmodule === 'servicios-catalogo' ? 'Primeros servicios afectados' : 'Primeros productos afectados'}):
                   </label>
                   <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50/70 p-1.5 flex flex-col gap-1">
                     {(() => {
+                      if (activeSubmodule === 'servicios-catalogo') {
+                        const targets = servicesCatalog.filter(s => {
+                          if (inflationScope === 'selected') return selectedServiceIds.includes(s.id);
+                          if (inflationScope === 'category') return s.category.toLowerCase() === inflationCategory.toLowerCase();
+                          return true;
+                        });
+
+                        if (targets.length === 0) {
+                          return (
+                            <div className="text-center py-3 text-slate-400 text-xs">
+                              No hay servicios que coincidan con la selección.
+                            </div>
+                          );
+                        }
+
+                        return targets.slice(0, 5).map(s => {
+                          const newPrice = Math.round(s.price * (1 + inflationPercentage / 100) * 100) / 100;
+                          const diff = newPrice - s.price;
+                          return (
+                            <div key={s.id} className="flex items-center justify-between text-[11px] bg-white p-1.5 px-2 rounded-lg border border-slate-200">
+                              <span className="font-semibold text-slate-800 truncate max-w-[160px]">{s.name}</span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-slate-500 line-through">${s.price.toLocaleString('es-AR')}</span>
+                                <span className="material-symbols-outlined text-[12px] text-slate-400">arrow_forward</span>
+                                <span className="font-bold text-[#5C3C7B]">${newPrice.toLocaleString('es-AR')}</span>
+                                <span className={`text-[10px] font-semibold px-1 rounded ${
+                                  diff >= 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'
+                                }`}>
+                                  {diff >= 0 ? `+$${diff.toLocaleString('es-AR')}` : `-$${Math.abs(diff).toLocaleString('es-AR')}`}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        });
+                      }
+
                       const targets = products.filter(p => {
                         if (inflationScope === 'selected') return selectedProductIds.includes(p.id);
                         if (inflationScope === 'category') return p.category === inflationCategory;

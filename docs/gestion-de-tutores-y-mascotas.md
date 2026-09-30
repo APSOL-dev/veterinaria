@@ -15,6 +15,8 @@ Gestión centralizada del padrón de tutores (propietarios) y sus mascotas asoci
   - Modificación individual de Nombre, Especie, Raza, Sexo, Fecha de Nacimiento y Peso (kg) para cada mascota del tutor.
 - **Alta Directa de Nueva Mascota:**
   - Sección en el modal para vincular una nueva mascota al tutor actual sin necesidad de salir del módulo.
+- **Rendimiento y Carga Optimizada:**
+  - En lugar de renderizar cientos de tutores simultáneamente en el DOM y calcular cuentas corrientes pesadas en cada render, la vista despliega los primeros 20 tutores más recientes de forma instantánea y calcula la deuda en memoria únicamente para los elementos visibles, permitiendo búsqueda fluida y sin demoras en todo el padrón al tipear en la barra.
 
 - **Cuenta Corriente (CC) del Tutor:**
   - Los cobros/comprobantes generados a un tutor solo se registran en los movimientos de su Cuenta Corriente (`Debe` y cálculo de `Saldo`) cuando el medio de pago seleccionado es **Cuenta Corriente** (`paymentMethod: 'cuenta-corriente'`).

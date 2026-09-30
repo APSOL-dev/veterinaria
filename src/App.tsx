@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Header } from './components/Navigation/Header';
 import { getSubmodulesForModule } from './components/Navigation/submodulesConfig';
 import { ActiveModule, Sidebar } from './components/Navigation/Sidebar';
@@ -285,6 +285,8 @@ export const App: React.FC = () => {
     setIsSidebarCollapsed(prev => !prev);
   }, []);
 
+  const hasLoadedDataRef = useRef(false);
+
   React.useEffect(() => {
     async function checkSessionAndLoadData() {
       // Confirmar sesión con supabase.auth.getSession() antes de hacer fetches
@@ -310,9 +312,17 @@ export const App: React.FC = () => {
           role,
           roleLabel: meta.roleLabel || (role === 'Administrador' ? 'Administrador General' : role === 'Veterinario' ? 'Médico Veterinario' : 'Peluquería & Estética')
         };
-        setUserSession(updatedSession);
-        saveUserSession(updatedSession);
+        
+        if (!userSession || userSession.username !== updatedSession.username || userSession.role !== updatedSession.role) {
+          setUserSession(updatedSession);
+          saveUserSession(updatedSession);
+        }
       }
+
+      if (hasLoadedDataRef.current) {
+        return;
+      }
+      hasLoadedDataRef.current = true;
 
       async function loadDataFromSupabase() {
         const [
@@ -361,8 +371,6 @@ export const App: React.FC = () => {
         }
         if (dbProducts && dbProducts.length > 0) {
           setProducts(dbProducts);
-        } else {
-          initialProducts.forEach(p => upsertProductToSupabase(p));
         }
         if (dbPayments && dbPayments.length > 0) {
           setPayments(dbPayments);
@@ -975,6 +983,7 @@ export const App: React.FC = () => {
         onLogout={() => {
           clearUserSession();
           setUserSession(null);
+          hasLoadedDataRef.current = false;
         }}
       />
 

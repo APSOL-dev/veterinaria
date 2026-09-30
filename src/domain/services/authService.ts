@@ -118,6 +118,7 @@ export function loadSavedUserSession(): UserSession | null {
 export function clearUserSession(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    supabase.auth.signOut().catch(() => {});
   } catch (err) {
     console.warn('Error borrando la sesión guardada:', err);
   }

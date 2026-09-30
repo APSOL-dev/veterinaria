@@ -5,7 +5,8 @@ import {
   toggleServiceStatus, 
   recordServiceSale,
   isPriceUpdateExpired,
-  getPriceUpdateStatusInfo
+  getPriceUpdateStatusInfo,
+  applyBulkInflationToServices
 } from './serviceCatalogService';
 
 const mockService: ServiceCatalogItem = {
@@ -59,6 +60,45 @@ describe('serviceCatalogService', () => {
       const status = getPriceUpdateStatusInfo('2026-09-01', 30, '2026-09-09');
       expect(status.isExpired).toBe(false);
       expect(status.statusLabel).toBe('Vigente');
+    });
+  });
+
+  describe('applyBulkInflationToServices', () => {
+    const mockServices: ServiceCatalogItem[] = [
+      { id: 's1', category: 'clinica', name: 'Consulta General', description: '', quantity: 1, isActive: true, price: 10000, priceLastUpdated: '2026-01-01' },
+      { id: 's2', category: 'peluqueria', name: 'Baño y Corte', description: '', quantity: 1, isActive: true, price: 15000, priceLastUpdated: '2026-01-01' },
+      { id: 's3', category: 'clinica', name: 'Cirugía Menor', description: '', quantity: 1, isActive: true, price: 50000, priceLastUpdated: '2026-01-01' }
+    ];
+
+    it('should increase all services prices by percentage', () => {
+      const { updatedServices, updatedCount } = applyBulkInflationToServices(mockServices, 10);
+      expect(updatedCount).toBe(3);
+      expect(updatedServices[0].price).toBe(11000);
+      expect(updatedServices[1].price).toBe(16500);
+      expect(updatedServices[2].price).toBe(55000);
+      expect(updatedServices[0].priceLastUpdated).toBe(new Date().toISOString().substring(0, 10));
+    });
+
+    it('should filter by category when specified', () => {
+      const { updatedServices, updatedCount } = applyBulkInflationToServices(mockServices, 20, { category: 'peluqueria' });
+      expect(updatedCount).toBe(1);
+      expect(updatedServices[0].price).toBe(10000); // unchanged
+      expect(updatedServices[1].price).toBe(18000); // 15000 + 20%
+      expect(updatedServices[2].price).toBe(50000); // unchanged
+    });
+
+    it('should filter by specific serviceIds when specified', () => {
+      const { updatedServices, updatedCount } = applyBulkInflationToServices(mockServices, 50, { serviceIds: ['s1', 's3'] });
+      expect(updatedCount).toBe(2);
+      expect(updatedServices[0].price).toBe(15000);
+      expect(updatedServices[1].price).toBe(15000); // unchanged
+      expect(updatedServices[2].price).toBe(75000);
+    });
+
+    it('should do nothing if percentage is 0 or NaN', () => {
+      const { updatedServices, updatedCount } = applyBulkInflationToServices(mockServices, 0);
+      expect(updatedCount).toBe(0);
+      expect(updatedServices).toEqual(mockServices);
     });
   });
 });

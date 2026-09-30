@@ -41,11 +41,12 @@ Permite administrar tanto el inventario de productos físicos (medicamentos, ali
 - **Catálogo de Servicios:**
   - Clasificación de servicios por categoría (`Clínica`, `Cirugía`, `Peluquería`, `Laboratorio`, `Ecografía / Rayos`).
   - Control de estado del servicio (`Activo` / `Inactivo`).
+  - **Actualización Masiva de Precios por Inflación en Servicios:** Botón verde en cabecera y banner de selección para aplicar aumentos o ajustes porcentuales a servicios seleccionados, por categoría de prestación o al catálogo completo de servicios, sincronizando con Supabase.
   - Actualización de precio con actualización automática de la fecha de cambio (`priceLastUpdated`).
   - **Frecuencia de Actualización de Precios:** Configuración del plazo de vencimiento o actualización en días (campo numérico directo, ej: 30 días).
   - **Indicador de Vencimiento de Precio:** Cálculo en tiempo real (`si hoy > última actualización + frecuencia` = Badge **Vencido** en rojo; caso contrario = Badge **Vigente** en verde).
   - Seguimiento de fecha de última venta (`lastSoldAt`).
-  - **Paginación integrada:** Soporta navegación paginada con selector de elementos por página.
+  - **Paginación integrada y Selección múltiple:** Soporta navegación paginada con selector de elementos por página y selección con checkboxes individuales o por página.
 
 **Casos borde conocidos:**
 - Pagos que superan el saldo: El saldo restante no toma valores negativos (`Math.max(0, importe - pagado)`).

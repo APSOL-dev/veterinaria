@@ -50,24 +50,32 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
     return tutores.find(t => t.ownerName.toLowerCase() === selectedTutorName.toLowerCase()) || tutores[0];
   }, [tutores, selectedTutorName]);
 
-  const filteredTutores = useMemo(() => {
+  const displayedTutores = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      const top = tutores.slice(0, 20);
+      if (activeTutor && !top.some(t => t.ownerName.toLowerCase() === activeTutor.ownerName.toLowerCase())) {
+        return [activeTutor, ...top.slice(0, 19)];
+      }
+      return top;
+    }
     return tutores.filter(t => 
-      t.ownerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.ownerPhone.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.pets.some(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      t.ownerName.toLowerCase().includes(q) ||
+      t.ownerPhone.toLowerCase().includes(q) ||
+      t.pets.some(p => p.name.toLowerCase().includes(q))
     );
-  }, [tutores, searchQuery]);
+  }, [tutores, searchQuery, activeTutor]);
 
-  // Precomputed debt & balance aging for all tutores
+  // Precomputed debt & balance aging for displayed tutores only
   const tutorsDebtMap = useMemo(() => {
     const map = new Map<string, TutorDebtAgingInfo>();
-    tutores.forEach(t => {
+    displayedTutores.forEach(t => {
       const petIds = t.pets.map(p => p.id);
       const movs = calculateTutorAccountMovements(t.ownerName, receipts, tutorPayments, petIds);
       map.set(t.ownerName.toLowerCase(), calculateTutorDebtAging(movs));
     });
     return map;
-  }, [tutores, receipts, tutorPayments]);
+  }, [displayedTutores, receipts, tutorPayments]);
 
   // Account movements for active tutor
   const accountMovements = useMemo(() => {
@@ -246,7 +254,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
       <aside className="flex flex-col w-full md:w-64 xl:w-72 gap-xs shrink-0 overflow-hidden">
         <div className="flex items-center justify-between px-xs">
           <h2 className="font-label-md text-xs text-on-surface-variant font-semibold truncate">
-            Padrón de tutores ({filteredTutores.length})
+            Padrón de tutores ({searchQuery.trim() ? displayedTutores.length : tutores.length})
           </h2>
         </div>
 
@@ -266,7 +274,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
 
         {/* Scrollable Tutor Items */}
         <div className="lg:flex-1 lg:overflow-y-auto pr-1 flex flex-col gap-xs lg:min-h-0">
-          {filteredTutores.map((tutor) => {
+          {displayedTutores.map((tutor) => {
             const isSelected = tutor.ownerName.toLowerCase() === activeTutor.ownerName.toLowerCase();
             return (
               <div

@@ -3,20 +3,22 @@
 **Qué hace:** 
 Este documento define el flujo de visualización y edición directa de los datos clínicos de la mascota desde el módulo **Ficha de Pacientes**.
 
-**Edición de Datos de Mascota:**
-1. **Acceso al Formulario:**
-   - En la tarjeta principal del paciente (Pet Hero Card) de la **Ficha Médica**, se incluye el botón **"Editar Mascota"**.
+**Edición de Datos de Mascota y Evolución de Peso:**
+1. **Acceso al Formulario y Botón de Peso:**
+   - En la tarjeta principal del paciente (Pet Hero Card) de la **Ficha Médica**, se muestra la pastilla interactiva **"Peso: X.X kg"** con indicador de tendencia histórica (+X.X kg / -X.X kg / Estable).
+   - Al hacer clic sobre la pastilla de peso se abre el modal de **Historial y Evolución de Peso**, permitiendo registrar un nuevo pesaje rápido o consultar la tabla con todas las fechas y variaciones previas.
+   - Botón **"Editar datos del paciente"** para modificar todos los datos clínicos de forma integral.
 2. **Campos Editables:**
    - Nombre de la mascota
    - Especie (Canino, Felino, Ave, Roedor, Reptil, Otro)
    - Raza
    - Sexo (Macho, Hembra, Indeterminado)
    - Fecha de Nacimiento
-   - Peso actual en kg (actualiza automáticamente el historial de evolución ponderal si cambia)
+   - Peso actual en kg (actualiza automáticamente el historial de evolución ponderal `weight_history` si cambia)
    - Alertas médicas y alergias conocidas
 3. **Persistencia y Actualización:**
    - La función `updatePatientRecord` en `patientService.ts` procesa la modificación y refresca la lista global de pacientes.
-   - La función `updatePatientInSupabase` en `supabaseService.ts` persiste automáticamente en la tabla `vetsoft_pacientes` y `vetsoft_tutores` todos los cambios de datos personales, peso, historial ponderal y alertas clínicas.
+   - La función `updatePatientInSupabase` en `supabaseService.ts` persiste automáticamente en la tabla `vetsoft_pacientes` y `vetsoft_tutores` todos los cambios de datos personales, peso (`weight_kg`), historial ponderal (`weight_history` JSONB) y alertas clínicas.
 
 **Listado y Búsqueda de Pacientes (Últimos 15 gestionados):**
 - **Vista por defecto:** Tanto en la barra lateral del Vacunatorio (`VaccinesView`) como en el selector desplegable (`SearchablePatientSelect`), se muestran de forma predeterminada los **últimos 15 pacientes gestionados/recientes** para evitar listas kilométricas y optimizar el rendimiento.
