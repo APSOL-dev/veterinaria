@@ -6,6 +6,8 @@ Conecta la app VETSOFT con el flujo n8n en el servidor externo vía HTTP POST co
 **URL del Webhook Configurada:**
 `https://bots.apsol-consultora.com.ar/webhook/0ca257f9-31f1-4639-ba17-b096d1c95a66`
 
+**Despliegue (Easypanel / Docker):** `VITE_WEBHOOK_URL` y `VITE_WEBHOOK_SECRET` se leen al compilar. El `.dockerignore` excluye `.env*`, así que hay que cargarlas como **build args** del servicio en Easypanel y volver a desplegar. Si falta el secreto, la app no envía el header `Authorization` y n8n responde `HTTP 403: Authorization data is wrong!`. Atención: al ser variables `VITE_`, el valor queda visible en el JavaScript público; para protegerlo de verdad conviene un proxy en el servidor.
+
 **Diagnóstico y Configuración requerida en n8n:**
 1. **Autenticación:** El endpoint de n8n requiere autenticación de tipo Bearer token con `VITE_WEBHOOK_SECRET`.
 2. **Respuesta del Webhook (Nodo "Respond to Webhook"):**

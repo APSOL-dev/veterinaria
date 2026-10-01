@@ -105,6 +105,7 @@ CREATE TABLE public.vetsoft_pacientes (
     status TEXT DEFAULT 'active',
     weight_kg NUMERIC(6,2),
     alerts TEXT[],
+    coat TEXT, -- descripción física (pelaje, color, señas); no es una alerta clínica
     weight_history JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP

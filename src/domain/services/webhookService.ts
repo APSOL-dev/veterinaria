@@ -107,9 +107,12 @@ export async function sendInvoiceWebhook(input: SendInvoiceWebhookInput): Promis
         };
       }
 
+      const authHint = response.status === 401 || response.status === 403
+        ? ' (el servicio de lectura de facturas rechazó la autorización: revisar el secreto del webhook)'
+        : '';
       return {
         success: false,
-        error: `HTTP Error ${response.status}: ${text || response.statusText}`
+        error: `HTTP Error ${response.status}: ${text || response.statusText}${authHint}`
       };
     }
 

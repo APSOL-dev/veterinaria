@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { Patient } from '../types';
 import { 
+  splitPatientAlerts,
+  mergePatientAlerts,
+  normalizePatientCoat,
   filterPatients, 
   createNewPatientRecord, 
   calculateWeightTrend,
@@ -289,3 +292,38 @@ describe('patientService', () => {
   });
 });
 
+describe('patient coat description (not a clinical alert)', () => {
+  it('splitPatientAlerts moves "Pelaje: X" out of the alerts', () => {
+    const res = splitPatientAlerts(['Esterilizado', 'Pelaje: NEGRO Y CANELA']);
+    expect(res.alerts).toEqual(['Esterilizado']);
+    expect(res.coat).toBe('NEGRO Y CANELA');
+  });
+
+  it('splitPatientAlerts is case/space tolerant and handles missing input', () => {
+    expect(splitPatientAlerts(['  pelaje :  Blanco ']).coat).toBe('Blanco');
+    expect(splitPatientAlerts(undefined)).toEqual({ alerts: [], coat: '' });
+    expect(splitPatientAlerts(['Pelaje:   ']).alerts).toEqual([]);
+  });
+
+  it('mergePatientAlerts rebuilds the stored format and never duplicates the coat', () => {
+    expect(mergePatientAlerts(['Agresivo'], 'Negro')).toEqual(['Agresivo', 'Pelaje: Negro']);
+    expect(mergePatientAlerts(['Agresivo', 'Pelaje: Viejo'], 'Nuevo')).toEqual(['Agresivo', 'Pelaje: Nuevo']);
+    expect(mergePatientAlerts(['Agresivo'], '  ')).toEqual(['Agresivo']);
+  });
+
+  it('normalizePatientCoat leaves only real alerts and sets coat', () => {
+    const p = { id: '1', alerts: ['Pelaje: NEGRO', 'Alérgico'] } as unknown as Patient;
+    const n = normalizePatientCoat(p);
+    expect(n.alerts).toEqual(['Alérgico']);
+    expect(n.coat).toBe('NEGRO');
+  });
+
+  it('createNewPatientRecord stores the coat description separately', () => {
+    const p = createNewPatientRecord({
+      name: 'Rex', species: 'Canino', breed: 'Mestizo', sex: 'Macho', birthDate: '2020-01-01',
+      ownerName: 'Ana', coat: ' Atigrado '
+    });
+    expect(p.coat).toBe('Atigrado');
+    expect(p.alerts).toEqual([]);
+  });
+});

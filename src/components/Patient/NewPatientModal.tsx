@@ -32,6 +32,7 @@ interface NewPatientModalProps {
     ownerPhone?: string;
     weightKg?: number;
     alerts?: string[];
+    coat?: string;
   }) => void;
 }
 
@@ -57,6 +58,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
   const [ownerName, setOwnerName] = useState(existingTutores[0]?.ownerName || '');
   const [ownerPhone, setOwnerPhone] = useState(existingTutores[0]?.ownerPhone || '');
   const [weightKg, setWeightKg] = useState(10);
+  const [coat, setCoat] = useState('');
 
   // Selectable Alerts Chips
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>([]);
@@ -109,7 +111,8 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
       ownerName: finalOwnerName.trim(),
       ownerPhone: ownerPhone.trim() || undefined,
       weightKg: Number(weightKg) || undefined,
-      alerts: selectedAlerts.length > 0 ? selectedAlerts : undefined
+      alerts: selectedAlerts.length > 0 ? selectedAlerts : undefined,
+      coat: coat.trim() || undefined
     });
 
     onClose();
@@ -215,6 +218,17 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                 onChange={(e) => setWeightKg(Number(e.target.value))}
                 min={0}
                 step={0.1}
+                className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="font-semibold text-xs text-slate-700 block mb-1">Descripción (pelaje, color, señas)</label>
+              <input
+                type="text"
+                value={coat}
+                onChange={(e) => setCoat(e.target.value)}
+                maxLength={120}
+                placeholder="Ej: Negro y canela"
                 className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs"
               />
             </div>

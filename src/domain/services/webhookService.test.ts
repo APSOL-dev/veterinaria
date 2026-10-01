@@ -200,3 +200,24 @@ describe('webhookService', () => {
   });
 });
 
+describe('sendInvoiceWebhook authorization errors', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('adds a hint when n8n rejects the authorization (403)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+      headers: { get: () => null },
+      text: async () => 'Authorization data is wrong!'
+    }));
+    const result = await sendInvoiceWebhook({
+      bill: { supplierName: 'X', invoiceNumber: '1', date: '2026-10-01', paymentDate: '2026-10-01', amount: 1, itemsCount: 1, status: 'pending' } as any
+    });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('HTTP Error 403: Authorization data is wrong!');
+    expect(result.error).toContain('revisar el secreto del webhook');
+  });
+});

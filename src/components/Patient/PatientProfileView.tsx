@@ -131,6 +131,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   const [editBirthDate, setEditBirthDate] = useState('');
   const [editWeightKg, setEditWeightKg] = useState(0);
   const [editAlerts, setEditAlerts] = useState<string[]>([]);
+  const [editCoat, setEditCoat] = useState('');
   const [customAlertInput, setCustomAlertInput] = useState('');
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [newQuickWeight, setNewQuickWeight] = useState<string>('');
@@ -175,6 +176,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
     setEditBirthDate(selectedPatient.birthDate);
     setEditWeightKg(selectedPatient.weightKg || 0);
     setEditAlerts([...(selectedPatient.alerts || [])]);
+    setEditCoat(selectedPatient.coat || '');
     setCustomAlertInput('');
     setShowEditPetModal(true);
   };
@@ -208,7 +210,8 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
       sex: editSex,
       birthDate: editBirthDate,
       weightKg: Number(editWeightKg),
-      alerts: editAlerts
+      alerts: editAlerts,
+      coat: editCoat.trim() || undefined
     });
 
     if (onUpdatePatients) {
@@ -468,6 +471,12 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 <span>{selectedPatient.sex}</span>
                 <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                 <span>Nacimiento: {selectedPatient.birthDate}</span>
+                {selectedPatient.coat && (
+                  <>
+                    <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                    <span>Pelaje: {selectedPatient.coat}</span>
+                  </>
+                )}
                 <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                 <button
                   type="button"
@@ -1074,6 +1083,18 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 </div>
               </div>
 
+              <div>
+                <label className="font-medium text-slate-700 block mb-1">Descripción del paciente (pelaje, color, señas)</label>
+                <input
+                  type="text"
+                  value={editCoat}
+                  onChange={(e) => setEditCoat(e.target.value)}
+                  maxLength={120}
+                  placeholder="Ej: Negro y canela"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-medium outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                />
+              </div>
+
               <div className="flex flex-col gap-2">
                 <label className="font-medium text-slate-700 block text-xs">
                   Alertas médicas y conductuales
@@ -1463,6 +1484,9 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                   <span className="font-bold text-base text-slate-900">{selectedPatient.name}</span>
                   <span className="text-slate-700 font-medium">{selectedPatient.species} • {selectedPatient.breed} ({selectedPatient.sex})</span>
                   <span className="text-slate-700 font-medium">Nacimiento: {formatDate(selectedPatient.birthDate)}</span>
+                  {selectedPatient.coat && (
+                    <span className="text-slate-700 font-medium">Pelaje: {selectedPatient.coat}</span>
+                  )}
                   <span className="text-slate-700 font-medium">Peso actual: <strong>{selectedPatient.weightKg || '--'} kg</strong></span>
                   {selectedPatient.alerts && selectedPatient.alerts.length > 0 && (
                     <span className="text-red-700 font-semibold mt-1">

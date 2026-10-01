@@ -7,8 +7,15 @@ WORKDIR /app
 ARG VITE_SUPABASE_URL=https://cjqziapqtyjsxqxumgbx.supabase.co
 ARG VITE_SUPABASE_ANON_KEY=sb_publishable_Iaft7FBP4BW0vbXlYzaP-g_jtyFue87
 
+# Webhook de facturas (n8n). Sin valor por defecto: se cargan como build args en Easypanel, nunca en el repo.
+# .dockerignore excluye .env*, por eso estas variables no llegan al build si no se pasan acá.
+ARG VITE_WEBHOOK_URL=
+ARG VITE_WEBHOOK_SECRET=
+
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+ENV VITE_WEBHOOK_URL=$VITE_WEBHOOK_URL
+ENV VITE_WEBHOOK_SECRET=$VITE_WEBHOOK_SECRET
 
 # Copy dependency manifests
 COPY package*.json ./

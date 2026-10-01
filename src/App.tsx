@@ -58,7 +58,7 @@ import {
 import { createDosisRecord } from './domain/services/vaccineService';
 import { getLowStockAlerts, recordStockEntry, recordStockAdjustment, processStockReceiptFromBill } from './domain/services/inventoryService';
 import { processCheckout, determineAppointmentsToComplete } from './domain/services/billingService';
-import { createNewPatientRecord, updateClinicalNoteRecord, deleteClinicalNoteRecord } from './domain/services/patientService';
+import { createNewPatientRecord, normalizePatientCoat, updateClinicalNoteRecord, deleteClinicalNoteRecord } from './domain/services/patientService';
 import { createSupplierBillRecord, createSupplierQuoteRecord, saveSupplierCreditTerm, filterPaymentsByDeletedBill, formatInvoiceFullNumber } from './domain/services/supplierService';
 import { createExpenseRecord } from './domain/services/expenseService';
 import { createPaymentRecord, getTotalPaidForBill } from './domain/services/paymentService';
@@ -158,8 +158,8 @@ export const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Domain state
-  const [patients, setPatients] = useState<Patient[]>(initialPatients);
-  const [selectedPatient, setSelectedPatient] = useState<Patient>(initialPatients[0]);
+  const [patients, setPatients] = useState<Patient[]>(() => initialPatients.map(normalizePatientCoat));
+  const [selectedPatient, setSelectedPatient] = useState<Patient>(() => normalizePatientCoat(initialPatients[0]));
 
   const [clinicalNotes, setClinicalNotes] = useState<ClinicalNote[]>(initialClinicalNotes);
   const [vaccineCatalog, setVaccineCatalog] = useState<VaccineCatalogItem[]>(initialVaccineCatalog);
@@ -781,6 +781,7 @@ export const App: React.FC = () => {
     ownerPhone?: string;
     weightKg?: number;
     alerts?: string[];
+    coat?: string;
   }) => {
     const newPat = createNewPatientRecord(patientData);
     const res = await insertPatientToSupabase(newPat);

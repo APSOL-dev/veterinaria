@@ -39,6 +39,7 @@ export interface Patient {
   status: PatientStatus;
   weightKg?: number;
   alerts?: string[];
+  coat?: string; // Descripción física del paciente (pelaje, color, señas); no es una alerta clínica
   weightHistory?: WeightRecord[];
   requiredVaccines?: PatientRequiredVaccine[];
 }

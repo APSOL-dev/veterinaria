@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { splitPatientAlerts, mergePatientAlerts } from './patientService';
 import { 
   Patient, 
   ClinicalNote, 
@@ -79,7 +80,7 @@ export function mapRowToPatient(row: any): Patient {
     photoUrl: row.photoUrl || row.photo_url || undefined,
     status: row.status || 'active',
     weightKg: Number(row.weightKg ?? row.weight_kg ?? 0),
-    alerts: Array.isArray(row.alerts) ? row.alerts : [],
+    ...(() => { const { alerts, coat } = splitPatientAlerts(row.alerts); return { alerts, coat: String(row.coat || '').trim() || coat || undefined }; })(),
     weightHistory: Array.isArray(row.weightHistory) ? row.weightHistory : (Array.isArray(row.weight_history) ? row.weight_history : []),
     requiredVaccines: Array.isArray(row.requiredVaccines || row.required_vaccines) ? (row.requiredVaccines || row.required_vaccines) : []
   };
@@ -464,7 +465,9 @@ export async function insertPatientToSupabase(patient: Patient): Promise<SyncRes
       photo_url: patient.photoUrl || null,
       status: patient.status,
       weight_kg: patient.weightKg || null,
-      alerts: patient.alerts || [],
+      // Se guarda en la columna `coat` y también como "Pelaje: X" en alerts (compatibilidad hasta que la vista exponga `coat`)
+      coat: patient.coat?.trim() || null,
+      alerts: mergePatientAlerts(patient.alerts, patient.coat),
       required_vaccines: patient.requiredVaccines || []
     });
 
@@ -496,7 +499,9 @@ export async function updatePatientInSupabase(patient: Patient): Promise<SyncRes
       photo_url: patient.photoUrl || null,
       status: patient.status,
       weight_kg: patient.weightKg || null,
-      alerts: patient.alerts || [],
+      // Se guarda en la columna `coat` y también como "Pelaje: X" en alerts (compatibilidad hasta que la vista exponga `coat`)
+      coat: patient.coat?.trim() || null,
+      alerts: mergePatientAlerts(patient.alerts, patient.coat),
       weight_history: patient.weightHistory || [],
       required_vaccines: patient.requiredVaccines || [],
       updated_at: new Date().toISOString()

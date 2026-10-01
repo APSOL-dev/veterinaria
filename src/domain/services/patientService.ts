@@ -1,5 +1,42 @@
 import { Patient, Species } from '../types';
 
+const COAT_ALERT_PREFIX = /^\s*pelaje\s*:\s*/i;
+
+/**
+ * Splits raw stored alerts into real clinical alerts and the coat description.
+ * The database keeps the coat inside the alerts array as "Pelaje: X"; the app treats it as a description.
+ */
+export function splitPatientAlerts(rawAlerts?: string[] | null): { alerts: string[]; coat: string } {
+  const alerts: string[] = [];
+  let coat = '';
+  for (const entry of Array.isArray(rawAlerts) ? rawAlerts : []) {
+    if (typeof entry === 'string' && COAT_ALERT_PREFIX.test(entry)) {
+      const value = entry.replace(COAT_ALERT_PREFIX, '').trim();
+      if (value && !coat) coat = value;
+    } else {
+      alerts.push(entry);
+    }
+  }
+  return { alerts, coat };
+}
+
+/**
+ * Rebuilds the stored alerts array (with "Pelaje: X" when a coat description exists) for persistence.
+ */
+export function mergePatientAlerts(alerts?: string[] | null, coat?: string | null): string[] {
+  const clean = (Array.isArray(alerts) ? alerts : []).filter(a => !COAT_ALERT_PREFIX.test(a));
+  const trimmedCoat = (coat || '').trim();
+  return trimmedCoat ? [...clean, `Pelaje: ${trimmedCoat}`] : clean;
+}
+
+/**
+ * Returns the patient with the coat moved out of the alerts array into `coat`.
+ */
+export function normalizePatientCoat(patient: Patient): Patient {
+  const { alerts, coat } = splitPatientAlerts(patient.alerts);
+  return { ...patient, alerts, coat: patient.coat || coat || undefined };
+}
+
 export function filterPatients(
   patients: Patient[],
   searchQuery: string,
@@ -38,6 +75,7 @@ export function createNewPatientRecord(input: {
   ownerPhone?: string;
   weightKg?: number;
   alerts?: string[];
+  coat?: string;
   photoUrl?: string;
 }): Patient {
   const currentDateLabel = new Date().toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
@@ -56,6 +94,7 @@ export function createNewPatientRecord(input: {
     status: 'active',
     weightKg: initialWeight,
     alerts: input.alerts || [],
+    coat: input.coat?.trim() || undefined,
     photoUrl: input.photoUrl,
     weightHistory: initialWeight > 0 ? [{ date: currentDateLabel, weightKg: initialWeight }] : []
   };
