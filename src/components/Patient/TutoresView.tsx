@@ -15,6 +15,7 @@ import { updateTutorInSupabase, insertPatientToSupabase, updatePatientInSupabase
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 import { ComprobanteDetailModal } from '../Billing/ComprobanteDetailModal';
 import { formatDate } from '../../utils/dateUtils';
+import { getEffectiveAppointmentStatus } from '../../domain/services/agendaService';
 
 interface TutoresViewProps {
   patients: Patient[];
@@ -22,6 +23,7 @@ interface TutoresViewProps {
   receipts?: BillReceipt[];
   medicalAppointments?: MedicalAppointment[];
   groomingAppointments?: GroomingAppointment[];
+  onSelectPatient?: (patient: Patient) => void;
 }
 
 export const TutoresView: React.FC<TutoresViewProps> = ({
@@ -29,12 +31,14 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
   onUpdatePatients,
   receipts = [],
   medicalAppointments = [],
-  groomingAppointments = []
+  groomingAppointments = [],
+  onSelectPatient
 }) => {
   const tutores = useMemo(() => getUniqueTutores(patients), [patients]);
   const [selectedTutorName, setSelectedTutorName] = useState<string>(tutores[0]?.ownerName || '');
   const [searchQuery, setSearchQuery] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
 
   // Tutor Payments state
   const [tutorPayments, setTutorPayments] = useState<TutorPaymentRecord[]>([
@@ -249,9 +253,9 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
   }
 
   return (
-    <div className="flex flex-col md:flex-row gap-md w-full flex-1 font-body-md text-on-surface fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full lg:overflow-hidden">
+    <div className="flex flex-col md:flex-row gap-md w-full flex-1 font-body-md text-on-surface h-full overflow-y-auto p-md lg:p-0 lg:overflow-hidden">
       {/* Left Column: Tutores Master List */}
-      <aside className="flex flex-col w-full md:w-64 xl:w-72 gap-xs shrink-0 overflow-hidden">
+      <aside className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-64 xl:w-72 gap-xs shrink-0 overflow-hidden`}>
         <div className="flex items-center justify-between px-xs">
           <h2 className="font-label-md text-xs text-on-surface-variant font-semibold truncate">
             Padrón de tutores ({searchQuery.trim() ? displayedTutores.length : tutores.length})
@@ -260,7 +264,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
 
         {/* Quick Search */}
         <div className="bg-surface-container-lowest rounded-xl shadow-sm p-xs flex items-center relative border border-outline-variant/30">
-          <span className="material-symbols-outlined text-on-surface-variant ml-sm mr-xs text-[18px]">
+          <span className="material-symbols-outlined text-on-surface-variant ml-sm mr-xs text-[18px]" aria-hidden="true">
             search
           </span>
           <input
@@ -279,39 +283,52 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
             return (
               <div
                 key={tutor.ownerName}
-                onClick={() => setSelectedTutorName(tutor.ownerName)}
+                onClick={() => {
+                  setSelectedTutorName(tutor.ownerName);
+                  setMobileView('detail');
+                }}
                 className={`p-md rounded-2xl cursor-pointer transition-all border flex flex-col gap-xs ${
                   isSelected
-                    ? 'bg-[#5C3C7B] text-white border-[#5C3C7B] shadow-md scale-[0.99]'
+                    ? 'bg-surface-container-lowest md:bg-[#5C3C7B] text-on-surface md:text-white border-outline-variant/30 md:border-[#5C3C7B] shadow-xs md:shadow-md md:scale-[0.99]'
                     : 'bg-surface-container-lowest hover:bg-surface-container text-on-surface border-outline-variant/30 shadow-xs'
                 }`}
               >
                 <div className="flex justify-between items-start">
-                  <h3 className={`font-headline-sm text-sm font-semibold truncate ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                  <h3 className={`font-headline-sm text-sm font-semibold truncate text-slate-900 ${isSelected ? 'md:text-white' : ''}`}>
                     {tutor.ownerName}
                   </h3>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                    isSelected ? 'bg-white/20 text-white' : 'bg-surface-container-high text-primary'
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface-container-high text-primary ${
+                    isSelected ? 'md:bg-white/20 md:text-white' : ''
                   }`}>
                     {tutor.pets.length} {tutor.pets.length === 1 ? 'mascota' : 'mascotas'}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-xs text-xs font-medium">
-                  <span className="material-symbols-outlined text-[14px]">call</span>
+                  <span className="material-symbols-outlined text-[14px]" aria-hidden="true">call</span>
                   <span>{tutor.ownerPhone}</span>
                 </div>
 
                 <div className="flex flex-wrap gap-1 mt-xs">
                   {tutor.pets.map(p => (
-                    <span
+                    <button
                       key={p.id}
-                      className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${
-                        isSelected ? 'bg-white/20 text-white' : 'bg-surface-container text-on-surface-variant'
+                      type="button"
+                      onClick={(e) => {
+                        if (onSelectPatient) {
+                          e.stopPropagation();
+                          onSelectPatient(p);
+                        }
+                      }}
+                      className={`text-[10px] px-2 py-0.5 rounded-md font-semibold transition-all bg-surface-container text-on-surface-variant hover:bg-purple-100 hover:text-purple-900 ${
+                        isSelected 
+                          ? 'md:bg-white/20 md:text-white md:hover:bg-white/30' 
+                          : ''
                       }`}
+                      title={onSelectPatient ? `Ver ficha médica de ${p.name}` : undefined}
                     >
                       {p.name}
-                    </span>
+                    </button>
                   ))}
                 </div>
 
@@ -321,14 +338,14 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                   if (!debt) return null;
                   if (debt.currentSaldo > 0) {
                     return (
-                      <div className={`mt-xs pt-1 border-t flex flex-col gap-0.5 ${isSelected ? 'border-white/20' : 'border-outline-variant/30'}`}>
+                      <div className={`mt-xs pt-1 border-t flex flex-col gap-0.5 border-outline-variant/30 ${isSelected ? 'md:border-white/20' : ''}`}>
                         <div className="flex items-center justify-between gap-1 text-[11px] font-semibold">
-                          <span className={isSelected ? 'text-red-200' : 'text-red-700'}>
+                          <span className={`text-red-700 ${isSelected ? 'md:text-red-200' : ''}`}>
                             Deuda: ${debt.currentSaldo.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                           </span>
                         </div>
-                        <div className={`text-[10px] flex items-center gap-1 font-medium ${isSelected ? 'text-purple-200' : 'text-slate-500'}`}>
-                          <span className="material-symbols-outlined text-[12px] opacity-80">history_toggle_off</span>
+                        <div className={`text-[10px] flex items-center gap-1 font-medium text-slate-500 ${isSelected ? 'md:text-purple-200' : ''}`}>
+                          <span className="material-symbols-outlined text-[12px] opacity-80" aria-hidden="true">history_toggle_off</span>
                           <span className="truncate">{debt.message}</span>
                         </div>
                       </div>
@@ -336,14 +353,14 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                   }
                   if (debt.currentSaldo < 0) {
                     return (
-                      <div className={`mt-xs pt-1 border-t flex items-center justify-between gap-1 text-[10px] font-semibold ${isSelected ? 'border-white/20 text-emerald-200' : 'border-outline-variant/30 text-emerald-700'}`}>
+                      <div className={`mt-xs pt-1 border-t flex items-center justify-between gap-1 text-[10px] font-semibold border-outline-variant/30 text-emerald-700 ${isSelected ? 'md:border-white/20 md:text-emerald-200' : ''}`}>
                         <span>A favor: ${Math.abs(debt.currentSaldo).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                         <span className="text-[9px] font-normal">Crédito</span>
                       </div>
                     );
                   }
                   return (
-                    <div className={`mt-xs pt-1 border-t flex items-center justify-between text-[10px] font-medium ${isSelected ? 'border-white/20 text-purple-200' : 'border-outline-variant/30 text-slate-400'}`}>
+                    <div className={`mt-xs pt-1 border-t flex items-center justify-between text-[10px] font-medium border-outline-variant/30 text-slate-400 ${isSelected ? 'md:border-white/20 md:text-purple-200' : ''}`}>
                       <span>Saldo: $0,00</span>
                       <span className="text-[9px]">Al día</span>
                     </div>
@@ -356,7 +373,19 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
       </aside>
 
       {/* Right Main Panel: Tutor Info & Account Ledger */}
-      <main className="flex flex-col gap-md min-w-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
+      <main className={`${mobileView === 'detail' ? 'flex' : 'hidden'} md:flex flex-col gap-md min-w-0 lg:flex-1 lg:overflow-y-auto lg:pr-1`}>
+        {/* Mobile Back Button */}
+        <div className="md:hidden flex items-center justify-between pb-1">
+          <button
+            type="button"
+            onClick={() => setMobileView('list')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-100/80 hover:bg-purple-200 text-[#5C3C7B] font-semibold text-xs transition-colors cursor-pointer border border-purple-200 shadow-2xs"
+          >
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_back</span>
+            <span>Volver al padrón de tutores</span>
+          </button>
+        </div>
+
         {/* Tutor Profile Header Card */}
         <div className="bg-surface-container-lowest rounded-2xl p-lg shadow-md border border-outline-variant/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-md">
           <div className="flex items-center gap-md">
@@ -547,24 +576,22 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-sm">
               {tutorAppointments.map((app: TutorAppointmentSummary) => {
-                const isPending = app.status === 'pending' || app.status === 'confirmed';
+                const effStatus = getEffectiveAppointmentStatus(app.date, app.time, app.status);
                 return (
                   <div key={app.id} className={`p-sm rounded-xl border flex flex-col justify-between text-xs gap-xs ${
-                    isPending ? 'bg-emerald-50/80 border-emerald-200' : 'bg-surface-container-low border-outline-variant/20'
+                    effStatus.status === 'completed'
+                      ? 'bg-emerald-50/50 border-emerald-200'
+                      : effStatus.isExpired
+                      ? 'bg-amber-50/50 border-amber-200'
+                      : 'bg-surface-container-low border-outline-variant/20'
                   }`}>
                     <div className="flex justify-between items-start">
                       <div>
                         <span className="font-bold text-slate-900">{app.patientName}</span>
                         <span className="text-slate-500 text-[11px] ml-1.5">({app.type})</span>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        app.status === 'completed'
-                          ? 'bg-emerald-200 text-emerald-950'
-                          : isPending
-                          ? 'bg-emerald-200 text-emerald-950'
-                          : 'bg-slate-200 text-slate-700'
-                      }`}>
-                        {app.status === 'completed' ? '✓ Cobrado / Completado' : isPending ? 'Pendiente' : app.status}
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${effStatus.badgeClass}`}>
+                        {effStatus.status === 'completed' ? '✓ Cobrado / Completado' : effStatus.label}
                       </span>
                     </div>
                     <div className="flex items-center gap-md text-[#5C3C7B] font-medium text-[11px]">
@@ -618,9 +645,21 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
 
                 <div className="border-t border-surface-container pt-xs flex justify-between items-center text-xs text-on-surface-variant">
                   <span>ID: {pet.id}</span>
-                  <span className="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-medium text-primary">
-                    Paciente Activo
-                  </span>
+                  {onSelectPatient ? (
+                    <button
+                      type="button"
+                      onClick={() => onSelectPatient(pet)}
+                      className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                      title={`Ver ficha médica completa de ${pet.name}`}
+                    >
+                      <span className="material-symbols-outlined text-[14px]" aria-hidden="true">visibility</span>
+                      <span>Ver ficha</span>
+                    </button>
+                  ) : (
+                    <span className="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-medium text-primary">
+                      Paciente Activo
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -630,8 +669,8 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
 
       {/* Modal Registrar Pago / Abono a Tutor */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200 my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#5C3C7B] text-[22px]">payments</span>
@@ -672,6 +711,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                 <label className="font-semibold text-xs text-slate-700 block mb-1">Importe a abonar ($) *</label>
                 <input
                   type="number"
+                  inputMode="decimal"
                   min="1"
                   step="0.01"
                   value={payAmount}
@@ -716,8 +756,8 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
 
       {/* Edit Tutor & Pets Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-surface-container-lowest rounded-2xl max-w-2xl w-full p-lg shadow-xl flex flex-col gap-md max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-2xl w-full p-lg shadow-xl flex flex-col gap-md max-h-[90vh] overflow-y-auto my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary font-semibold text-base flex items-center gap-xs">
                 <span className="material-symbols-outlined text-[20px]">edit_note</span>
@@ -749,7 +789,9 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                   <div>
                     <label className="font-label-md text-on-surface-variant block mb-1">Teléfono / WhatsApp</label>
                     <input
-                      type="text"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
                       value={editOwnerPhone}
                       onChange={(e) => setEditOwnerPhone(e.target.value)}
                       placeholder=""
@@ -870,6 +912,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                             <label className="text-[10px] text-slate-500 font-semibold block mb-0.5">Peso (kg)</label>
                             <input
                               type="number"
+                              inputMode="decimal"
                               step="0.1"
                               value={petState.weightKg}
                               onChange={(e) => setEditPetFields(prev => ({
@@ -964,6 +1007,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                       <label className="text-[10px] text-slate-700 font-semibold block mb-0.5">Peso (kg)</label>
                       <input
                         type="number"
+                        inputMode="decimal"
                         step="0.1"
                         value={newPetWeightKg}
                         onChange={(e) => setNewPetWeightKg(e.target.value === '' ? '' : Number(e.target.value))}

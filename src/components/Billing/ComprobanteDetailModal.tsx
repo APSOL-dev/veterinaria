@@ -45,9 +45,9 @@ export const ComprobanteDetailModal: React.FC<ComprobanteDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/25 backdrop-blur-xs animate-fade-in">
+    <div className="fixed inset-0 z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 bg-black/40 backdrop-blur-xs animate-fade-in overflow-y-auto">
       <div 
-        className="bg-surface-container-lowest rounded-3xl shadow-2xl border border-outline-variant/40 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden text-on-surface"
+        className="bg-surface-container-lowest rounded-3xl shadow-2xl border border-outline-variant/40 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden text-on-surface my-4 sm:my-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

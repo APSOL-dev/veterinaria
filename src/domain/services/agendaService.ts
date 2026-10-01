@@ -395,6 +395,63 @@ export function ensureTimeInSlots(slots: string[], targetTime?: string): string[
   return updated;
 }
 
+export interface EffectiveAppointmentStatus {
+  status: 'completed' | 'cancelled' | 'pending' | 'confirmed' | 'expired';
+  label: 'Completado' | 'Cancelado' | 'Pendiente' | 'Confirmado' | 'Vencido';
+  isExpired: boolean;
+  badgeClass: string;
+}
+
+export function getEffectiveAppointmentStatus(
+  date: string,
+  time?: string,
+  currentStatus: string = 'pending',
+  referenceDateTime?: string
+): EffectiveAppointmentStatus {
+  if (currentStatus === 'completed') {
+    return {
+      status: 'completed',
+      label: 'Completado',
+      isExpired: false,
+      badgeClass: 'bg-emerald-100 text-emerald-950 border-emerald-300'
+    };
+  }
+
+  if (currentStatus === 'cancelled') {
+    return {
+      status: 'cancelled',
+      label: 'Cancelado',
+      isExpired: false,
+      badgeClass: 'bg-rose-100 text-rose-800 border-rose-200'
+    };
+  }
+
+  const now = referenceDateTime ? new Date(referenceDateTime) : new Date();
+  const todayStr = formatDateToISO(now);
+  const currentHourMins = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  const appTime = time || '00:00';
+  const isPastDate = date < todayStr;
+  const isPastTimeToday = date === todayStr && appTime < currentHourMins;
+
+  if (isPastDate || isPastTimeToday) {
+    return {
+      status: 'expired',
+      label: 'Vencido',
+      isExpired: true,
+      badgeClass: 'bg-amber-100 text-amber-900 border-amber-300'
+    };
+  }
+
+  const isConfirmed = currentStatus === 'confirmed';
+  return {
+    status: isConfirmed ? 'confirmed' : 'pending',
+    label: isConfirmed ? 'Confirmado' : 'Pendiente',
+    isExpired: false,
+    badgeClass: 'bg-purple-100 text-[#5C3C7B] border-purple-200'
+  };
+}
+
 
 
 

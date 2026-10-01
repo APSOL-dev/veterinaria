@@ -175,7 +175,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full flex-1 gap-md fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full lg:overflow-hidden">
+    <div className="flex flex-col w-full flex-1 gap-md h-full overflow-y-auto p-md lg:p-0 lg:overflow-hidden">
       {/* Top Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md mb-md">
         <div>

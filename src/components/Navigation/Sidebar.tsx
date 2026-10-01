@@ -84,6 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         {!isMobile && onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
+            aria-label={collapsed ? "Expandir barra lateral" : "Colapsar barra lateral"}
             className="absolute -right-3.5 top-1/2 -translate-y-1/2 z-50 bg-surface-container-lowest border border-outline-variant shadow-md text-primary rounded-full p-1.5 hover:bg-primary hover:text-white transition-all cursor-pointer flex items-center justify-center"
             title={collapsed ? "Expandir barra lateral" : "Colapsar barra lateral"}
           >
@@ -105,19 +106,19 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         {isMobile && (
           <button
             onClick={onCloseMobile}
-            className="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-lg p-1 transition-colors cursor-pointer"
+            className="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center p-2 transition-colors cursor-pointer"
             title="Cerrar menú"
             aria-label="Cerrar menú de módulos"
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
           </button>
         )}
       </div>
 
       {/* Navigation Buttons */}
-      <nav className="flex-1 py-sm overflow-y-auto flex flex-col gap-xs px-xs">
+      <nav className="flex-1 py-sm overflow-y-auto flex flex-col gap-1 px-2">
         {!collapsed && (
-          <div className="px-md mb-xs text-on-surface-variant font-label-sm text-[10px] font-medium">
+          <div className="px-md mb-xs text-on-surface-variant font-label-sm text-[11px] font-medium">
             Navegación principal
           </div>
         )}
@@ -128,8 +129,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
             <button
               key={mod.id}
               onClick={() => setActiveModule(mod.id)}
-              title={collapsed ? mod.label : undefined}
-              className={`w-full flex items-center ${
+              aria-label={mod.label}
+              title={mod.label}
+              className={`w-full flex items-center min-h-[44px] ${
                 collapsed ? 'justify-center p-2.5' : 'gap-md px-md py-2.5'
               } rounded-xl text-left transition-all font-body-md text-sm ${
                 isActive
@@ -137,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
                   : 'text-on-surface hover:bg-surface-container-high font-medium'
               }`}
             >
-              <span className={`material-symbols-outlined text-[20px] ${isActive ? 'text-on-primary' : 'text-primary'}`}>
+              <span className={`material-symbols-outlined text-[20px] ${isActive ? 'text-on-primary' : 'text-primary'}`} aria-hidden="true">
                 {mod.icon}
               </span>
               {!collapsed && <span className="truncate">{mod.label}</span>}
@@ -156,10 +158,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
             </div>
 
             {/* User Card */}
-            <div className="bg-surface-container-low p-xs px-sm rounded-xl flex items-center justify-between border border-outline-variant/40">
+            <div className="bg-surface-container-low p-xs px-sm rounded-xl flex items-center justify-between border border-outline-variant/40 min-h-[44px]">
               <div className="flex items-center gap-xs min-w-0">
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary shrink-0 shadow-sm">
-                  <span className="material-symbols-outlined text-[18px]">person</span>
+                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">person</span>
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="font-label-md text-on-surface font-semibold truncate text-xs">{userName}</span>
@@ -169,24 +171,26 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
 
               <button
                 onClick={handleLogoutClick}
+                aria-label="Cerrar sesión"
                 title="Cerrar sesión"
-                className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error-container/30 rounded-lg transition-colors shrink-0 flex items-center justify-center"
+                className="p-2.5 text-on-surface-variant hover:text-error hover:bg-error-container/30 rounded-xl transition-colors shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px]">logout</span>
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">logout</span>
               </button>
             </div>
           </>
         ) : (
           <div className="flex flex-col items-center gap-xs py-1">
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary shrink-0 shadow-sm" title={userName}>
-              <span className="material-symbols-outlined text-[18px]">person</span>
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">person</span>
             </div>
             <button
               onClick={handleLogoutClick}
+              aria-label="Cerrar sesión"
               title="Cerrar sesión"
-              className="p-1 text-on-surface-variant hover:text-error hover:bg-error-container/30 rounded-lg transition-colors flex items-center justify-center"
+              className="p-2.5 text-on-surface-variant hover:text-error hover:bg-error-container/30 rounded-xl transition-colors flex items-center justify-center min-h-[44px] min-w-[44px] cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[18px]">logout</span>
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">logout</span>
             </button>
           </div>
         )}

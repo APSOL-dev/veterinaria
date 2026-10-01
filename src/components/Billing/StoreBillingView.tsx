@@ -305,11 +305,13 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                         <td className="p-sm px-md text-center">
                           <input
                             type="number"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             value={item.discountPercent}
                             onChange={(e) => handleUpdateDiscount(item.id, Number(e.target.value))}
                             min={0}
                             max={100}
-                            className="w-10 text-center bg-surface-container border-none rounded py-0.5 text-on-surface focus:ring-2 focus:ring-primary outline-none transition-all text-xs font-medium"
+                            className="w-10 text-center bg-surface-container border-none rounded py-1 text-on-surface focus:ring-2 focus:ring-primary outline-none transition-all text-xs font-medium"
                           />
                         </td>
                         <td className="p-sm px-md text-right font-semibold text-primary">
@@ -318,7 +320,9 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                         <td className="p-sm px-md text-center">
                           <button
                             onClick={() => handleRemoveItem(item.id)}
-                            className="text-outline hover:text-error transition-colors p-0.5 rounded-full hover:bg-error-container cursor-pointer"
+                            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-outline hover:text-error transition-colors p-2 rounded-xl hover:bg-error-container cursor-pointer"
+                            title="Eliminar concepto"
+                            aria-label={`Eliminar ${item.description}`}
                           >
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
@@ -426,8 +430,8 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
 
       {/* Add Item Modal */}
       {showAddItemModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Agregar ítem al carrito</h3>
               <button onClick={() => setShowAddItemModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
@@ -494,6 +498,8 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
               <label className="font-semibold text-xs text-slate-700 block mt-2">Cantidad</label>
               <input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={addQty}
                 onChange={(e) => setAddQty(Number(e.target.value))}
                 onFocus={(e) => e.target.select()}

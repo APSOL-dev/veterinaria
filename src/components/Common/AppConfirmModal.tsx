@@ -24,8 +24,8 @@ export const AppConfirmModal: React.FC<AppConfirmModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-[99990] flex items-center justify-center p-md animate-fade-in">
-      <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[99990] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200 my-4 sm:my-auto">
         <div className="flex items-start gap-md">
           <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-xs ${
             isDanger ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-purple-50 text-[#5C3C7B] border border-purple-200'

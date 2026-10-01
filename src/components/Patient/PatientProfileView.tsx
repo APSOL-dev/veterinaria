@@ -3,6 +3,7 @@ import html2pdf from 'html2pdf.js';
 import { Patient, ClinicalNote, VaccineDosis, Species, Sex, PatientRequiredVaccine, VaccineCatalogItem, MedicalAppointment, GroomingAppointment } from '../../domain/types';
 import { filterPatients, calculateWeightTrend, updatePatientRecord, toggleAlertItem } from '../../domain/services/patientService';
 import { getEffectiveVaccineNextDueDate } from '../../domain/services/vaccineService';
+import { getEffectiveAppointmentStatus } from '../../domain/services/agendaService';
 import { NewPatientModal } from './NewPatientModal';
 import { PrescriptionModal } from './PrescriptionModal';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
@@ -380,7 +381,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-md w-full flex-1 font-body-md text-slate-800 fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full lg:pr-1">
+    <div className="flex flex-col gap-md w-full flex-1 font-body-md text-slate-800 h-full overflow-y-auto p-md lg:p-0 lg:pr-1">
       {/* Top Header Bar con Selector de Pacientes a Ancho Completo */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md shrink-0 bg-white p-md rounded-2xl border border-slate-200 shadow-xs">
         <div>
@@ -482,27 +483,27 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {selectedPatient.ownerPhone && (
                 <a
                   href={`https://wa.me/${cleanPhone(selectedPatient.ownerPhone)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="bg-[#25D366] text-white hover:brightness-105 px-3 py-1.5 rounded-xl font-label-sm text-xs flex items-center gap-1 shadow-sm font-semibold transition-all"
+                  className="bg-[#25D366] text-white hover:brightness-105 px-3.5 py-2 min-h-[40px] rounded-xl font-label-sm text-xs flex items-center gap-1.5 shadow-sm font-semibold transition-all"
                   title="Enviar WhatsApp al dueño"
                 >
-                  <span className="material-symbols-outlined text-[15px]">chat</span>
-                  WhatsApp
+                  <span className="material-symbols-outlined text-[16px]" aria-hidden="true">chat</span>
+                  <span>WhatsApp</span>
                 </a>
               )}
 
               <button
                 onClick={handleOpenEditPetModal}
-                className="bg-white hover:bg-slate-100 text-[#5C3C7B] border border-slate-300 px-3 py-1.5 rounded-xl font-label-sm text-xs font-semibold flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
+                className="bg-white hover:bg-slate-100 text-[#5C3C7B] border border-slate-300 px-3.5 py-2 min-h-[40px] rounded-xl font-label-sm text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
                 title="Editar datos clínicos del paciente"
               >
-                <span className="material-symbols-outlined text-[15px]">edit</span>
-                Editar datos del paciente
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">edit</span>
+                <span>Editar datos del paciente</span>
               </button>
             </div>
           </div>
@@ -527,31 +528,50 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
           {/* Turnos Pendientes / Programados de este paciente */}
           {patientAppointments.length > 0 && (
-            <div className="bg-emerald-50/80 border border-emerald-200 p-2.5 px-3 rounded-xl flex flex-col gap-1.5 text-xs">
+            <div className="bg-slate-50 border border-slate-200 p-2.5 px-3 rounded-xl flex flex-col gap-1.5 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-emerald-950 flex items-center gap-1.5 text-[11px]">
-                  <span className="material-symbols-outlined text-[16px] text-emerald-700">calendar_month</span>
-                  Turnos programados ({patientAppointments.length}):
+                <span className="font-semibold text-slate-900 flex items-center gap-1.5 text-[11px]">
+                  <span className="material-symbols-outlined text-[16px] text-[#5C3C7B]">calendar_month</span>
+                  Turnos del paciente ({patientAppointments.length}):
                 </span>
-                {pendingAppointments.length > 0 && (
-                  <span className="bg-emerald-200 text-emerald-950 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    {pendingAppointments.length} {pendingAppointments.length === 1 ? 'pendiente' : 'pendientes'}
-                  </span>
-                )}
+                {(() => {
+                  const expiredCount = patientAppointments.filter(app => getEffectiveAppointmentStatus(app.date, app.time, app.status).isExpired).length;
+                  const activePendingCount = patientAppointments.filter(app => {
+                    const eff = getEffectiveAppointmentStatus(app.date, app.time, app.status);
+                    return !eff.isExpired && (eff.status === 'pending' || eff.status === 'confirmed');
+                  }).length;
+
+                  return (
+                    <div className="flex items-center gap-1.5">
+                      {activePendingCount > 0 && (
+                        <span className="bg-emerald-100 text-emerald-950 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                          {activePendingCount} {activePendingCount === 1 ? 'programado' : 'programados'}
+                        </span>
+                      )}
+                      {expiredCount > 0 && (
+                        <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-300">
+                          {expiredCount} {expiredCount === 1 ? 'vencido' : 'vencidos'}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex flex-wrap gap-2">
                 {patientAppointments.map(app => {
-                  const isPending = app.status === 'pending' || app.status === 'confirmed';
+                  const effStatus = getEffectiveAppointmentStatus(app.date, app.time, app.status);
                   return (
                     <div key={app.id} className={`px-2.5 py-1 rounded-lg border text-[11px] flex items-center gap-2 ${
-                      isPending ? 'bg-emerald-100/90 border-emerald-300 font-semibold text-emerald-950' : 'bg-white border-slate-200 text-slate-700'
+                      effStatus.isExpired 
+                        ? 'bg-amber-50/90 border-amber-300 font-semibold text-amber-950' 
+                        : effStatus.status === 'completed'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                        : 'bg-white border-slate-200 text-slate-800'
                     }`}>
                       <span>{app.type} ({formatDate(app.date)} {app.time}hs)</span>
                       <span className="text-slate-600 font-normal">• {app.detail}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
-                        app.status === 'completed' ? 'bg-emerald-200 text-emerald-950' : isPending ? 'bg-emerald-200 text-emerald-950' : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {app.status === 'completed' ? '✓ Cobrado' : isPending ? 'Pendiente' : app.status}
+                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md border ${effStatus.badgeClass}`}>
+                        {effStatus.label}
                       </span>
                     </div>
                   );
@@ -562,33 +582,33 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
         </header>
 
         {/* Sub-Tab Navigation Bar */}
-      <div className="flex items-center gap-xs border-b border-slate-200 pb-1 shrink-0 overflow-x-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 border-b border-slate-200 pb-2 sm:pb-1 shrink-0">
         <button
           type="button"
           onClick={() => setActiveTab('ficha')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+          className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-start gap-2 cursor-pointer transition-all ${
             activeTab === 'ficha'
               ? 'bg-[#5C3C7B] text-white shadow-sm'
               : 'bg-white text-slate-700 hover:bg-purple-50 border border-slate-200 font-medium'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">clinical_notes</span>
+          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">clinical_notes</span>
           <span>1. Historia clínica & consultas</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('vacunas')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+          className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-start gap-2 cursor-pointer transition-all ${
             activeTab === 'vacunas'
               ? 'bg-[#5C3C7B] text-white shadow-sm'
               : 'bg-white text-slate-700 hover:bg-purple-50 border border-slate-200 font-medium'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">vaccines</span>
+          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">vaccines</span>
           <span>2. Vacunas requeridas & plan sanitario</span>
           {selectedPatient.requiredVaccines && selectedPatient.requiredVaccines.length > 0 && (
-            <span className="px-2 py-0.2 bg-emerald-100 text-emerald-950 rounded-full text-[10px] font-bold">
+            <span className="px-2 py-0.2 bg-emerald-100 text-emerald-950 rounded-full text-[10px] font-bold ml-auto sm:ml-0">
               {selectedPatient.requiredVaccines.length}
             </span>
           )}
@@ -596,10 +616,10 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
         <button
           onClick={() => setShowClinicalHistoryModal(true)}
-          className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 shadow-xs font-semibold transition-all ml-auto cursor-pointer"
+          className="w-full sm:w-auto sm:ml-auto bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center justify-start sm:justify-center gap-2 shadow-xs font-semibold transition-all cursor-pointer"
           title="Imprimir o guardar en PDF la historia clínica"
         >
-          <span className="material-symbols-outlined text-[16px]">print</span>
+          <span className="material-symbols-outlined text-[16px]" aria-hidden="true">print</span>
           <span>Exportar historia clínica (PDF)</span>
         </button>
       </div>
@@ -692,7 +712,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                       <div className="flex flex-wrap items-center justify-between gap-1">
                         <span className="font-headline-sm text-xs font-semibold text-slate-900">Consulta médica</span>
                         <div className="flex items-center gap-1.5">
-                          <span className="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full font-label-sm text-[9px] font-medium">
+                          <span className="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full font-label-sm text-[10px] font-medium">
                             Atención clínica
                           </span>
                           <button
@@ -702,25 +722,25 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                               setEditNoteText(note.notes);
                               setEditNotePrescription(note.prescription || '');
                             }}
-                            className="px-2 py-0.5 rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                            className="px-3 py-2 min-h-[44px] rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
                             title="Editar esta consulta"
                           >
-                            <span className="material-symbols-outlined text-[13px]">edit</span>
-                            Editar
+                            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">edit</span>
+                            <span>Editar</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => setDeletingNoteId(note.id)}
-                            className="px-2 py-0.5 rounded-md border border-red-200 bg-white text-red-600 hover:bg-red-50 text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                            className="px-3 py-2 min-h-[44px] rounded-lg border border-red-200 bg-red-50/50 text-red-600 hover:bg-red-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
                             title="Eliminar esta consulta"
                           >
-                            <span className="material-symbols-outlined text-[13px]">delete</span>
-                            Eliminar
+                            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">delete</span>
+                            <span>Eliminar</span>
                           </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 text-slate-700 text-[11px] mb-0.5">
-                        <span className="material-symbols-outlined text-[13px] text-[#9A7DB8]">stethoscope</span>
+                      <div className="flex items-center gap-1 text-slate-700 text-xs mb-0.5">
+                        <span className="material-symbols-outlined text-[15px] text-[#9A7DB8]" aria-hidden="true">stethoscope</span>
                         <span className="font-semibold">{note.vetName}</span>
                       </div>
                       <p className="font-body-md text-xs text-slate-800 leading-relaxed font-normal">
@@ -932,19 +952,20 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* Edit Pet Modal */}
       {showEditPetModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-md shadow-2xl flex flex-col gap-md border border-slate-200">
-            <div className="flex justify-between items-center border-b border-slate-200 pb-xs">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-md shadow-2xl flex flex-col gap-md border border-slate-200 my-4 sm:my-auto">
+            <div className="flex justify-between items-center border-b border-slate-200 pb-2">
               <h3 className="font-headline-sm text-slate-900 text-sm font-semibold flex items-center gap-xs">
-                <span className="material-symbols-outlined text-[#9A7DB8] text-[20px]">edit_note</span>
+                <span className="material-symbols-outlined text-[#9A7DB8] text-[20px]" aria-hidden="true">edit_note</span>
                 Editar Datos del Paciente ({selectedPatient.name})
               </h3>
               <button
                 type="button"
                 onClick={() => setShowEditPetModal(false)}
-                className="text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 transition-colors p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-slate-100 cursor-pointer"
+                aria-label="Cerrar modal"
               >
-                <span className="material-symbols-outlined text-[20px]">close</span>
+                <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
               </button>
             </div>
 
@@ -1018,6 +1039,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                     type="number"
                     step="0.1"
                     min="0"
+                    inputMode="decimal"
                     value={editWeightKg}
                     onChange={(e) => setEditWeightKg(Number(e.target.value))}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl py-1.5 px-md text-slate-900 font-medium outline-none focus:ring-2 focus:ring-[#9A7DB8]"
@@ -1139,8 +1161,8 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* Modal Carga Vacuna Requerida Manual */}
       {showAddVaccineModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-4 sm:p-lg shadow-2xl flex flex-col gap-md border border-slate-200 my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#9A7DB8] text-[22px]">vaccines</span>
@@ -1255,19 +1277,20 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* Modal: Editar Consulta */}
       {editingNote && (
-        <div className="fixed inset-0 bg-slate-900/25 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-start sm:items-center justify-center z-[70] p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-lg w-full shadow-2xl border border-slate-200 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150 my-4 sm:my-auto">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="font-headline-sm text-base font-semibold text-slate-900 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#9A7DB8]">edit_note</span>
+                <span className="material-symbols-outlined text-[#9A7DB8]" aria-hidden="true">edit_note</span>
                 Editar Consulta Médica
               </h3>
               <button
                 type="button"
                 onClick={() => setEditingNote(null)}
-                className="text-slate-400 hover:text-slate-600 rounded-lg p-1 transition-colors cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 rounded-xl p-2 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Cerrar modal"
               >
-                <span className="material-symbols-outlined text-xl">close</span>
+                <span className="material-symbols-outlined text-xl" aria-hidden="true">close</span>
               </button>
             </div>
 
@@ -1301,7 +1324,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               <button
                 type="button"
                 onClick={() => setEditingNote(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
+                className="px-4 py-2 min-h-[40px] rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
               >
                 Cancelar
               </button>
@@ -1316,9 +1339,9 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                   }
                   setEditingNote(null);
                 }}
-                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 min-h-[40px] rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
               >
-                <span className="material-symbols-outlined text-[16px]">save</span>
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">save</span>
                 <span>Guardar cambios</span>
               </button>
             </div>
@@ -1328,8 +1351,8 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* Modal: Confirmación Eliminar Consulta */}
       {deletingNoteId && (
-        <div className="fixed inset-0 bg-slate-900/25 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-start sm:items-center justify-center z-[70] p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150 my-4 sm:my-auto">
             <div className="flex items-center gap-3 text-red-600">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-2xl">warning</span>
@@ -1372,45 +1395,41 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* Modal Visor de Historia Clínica (Vista previa + Descargar PDF / Imprimir) */}
       {showClinicalHistoryModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in overflow-y-auto print:bg-white print:p-8 print:static print:block print:inset-auto print:backdrop-blur-none">
-          <div className="relative bg-white rounded-2xl max-w-4xl w-full p-8 shadow-2xl flex flex-col gap-6 border border-slate-200 my-auto text-slate-900 font-body-md print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:m-0">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto print:bg-white print:p-8 print:static print:block print:inset-auto print:backdrop-blur-none">
+          <div className="relative bg-white rounded-2xl max-w-4xl w-full p-4 sm:p-8 shadow-2xl flex flex-col gap-4 sm:gap-6 border border-slate-200 my-4 sm:my-auto text-slate-900 font-body-md print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:m-0">
             
             {/* Botón Cerrar (X) Arriba a la Derecha */}
             <button
               type="button"
               onClick={() => setShowClinicalHistoryModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1.5 rounded-full transition-colors cursor-pointer print:hidden"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full transition-colors cursor-pointer print:hidden"
               title="Cerrar ventana"
+              aria-label="Cerrar ventana"
             >
-              <span className="material-symbols-outlined text-[20px]">close</span>
+              <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
             </button>
 
             {/* Documento Imprimible de Historia Clínica */}
             <div id="clinical-history-printable-card" className="flex flex-col gap-6 bg-white p-2 rounded-xl">
               {/* Header */}
-              <div className="flex items-center justify-between border-b-2 border-purple-900/30 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[#1D1426] text-white flex items-center justify-center leading-none shadow-md shrink-0">
-                    <span className="material-symbols-outlined text-[28px] leading-none text-[#CBB5E2] block text-center">pets</span>
-                  </div>
-                  <div className="flex flex-col justify-center">
-                    <h1 className="font-display-lg text-2xl font-bold text-[#1D1426] leading-snug">
-                      Veterinaria Arlekyn
-                    </h1>
-                    <p className="text-xs text-slate-600 font-medium leading-none mt-0.5">
-                      Historia Clínica Oficial • Expediente de Salud Mascota
-                    </p>
-                  </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b-2 border-purple-900/30 pb-4">
+                <div className="flex flex-col justify-center">
+                  <h1 className="font-display-lg text-xl sm:text-2xl font-bold text-[#1D1426] leading-snug">
+                    Veterinaria Arlekyn
+                  </h1>
+                  <p className="text-xs text-slate-600 font-medium leading-none mt-0.5">
+                    Historia Clínica Oficial • Expediente de Salud Mascota
+                  </p>
                 </div>
                 <div className="flex items-center justify-end shrink-0">
-                  <span className="inline-flex items-center justify-center px-4 py-1.5 bg-purple-50 text-[#5C3C7B] border border-purple-200 rounded-full text-xs font-bold leading-none">
+                  <span className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 bg-purple-50 text-[#5C3C7B] border border-purple-200 rounded-full text-xs font-bold leading-none">
                     Fecha de emisión: {formatDate(new Date())}
                   </span>
                 </div>
               </div>
 
               {/* Patient & Owner Summary */}
-              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ficha de la Mascota</span>
                   <span className="font-bold text-base text-slate-900">{selectedPatient.name}</span>
@@ -1424,7 +1443,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                   )}
                 </div>
 
-                <div className="flex flex-col gap-1 text-right">
+                <div className="flex flex-col gap-1 text-left sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Datos del Tutor / Dueño</span>
                   <span className="font-bold text-sm text-slate-900">{selectedPatient.ownerName}</span>
                   <span className="text-slate-700 font-medium">Contacto: {selectedPatient.ownerPhone || 'Sin teléfono'}</span>
@@ -1435,7 +1454,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               {/* Clinical Consultations List */}
               <div className="flex flex-col gap-4">
                 <h2 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-1 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-base text-[#5C3C7B]">medical_services</span>
+                  <span className="material-symbols-outlined text-base text-[#5C3C7B]" aria-hidden="true">medical_services</span>
                   Historial de Consultas Médicas ({patientNotes.length})
                 </h2>
 
@@ -1471,10 +1490,10 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               {selectedPatient.requiredVaccines && selectedPatient.requiredVaccines.length > 0 && (
                 <div className="flex flex-col gap-3 break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
                   <h2 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-1 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base text-emerald-700">vaccines</span>
+                    <span className="material-symbols-outlined text-base text-emerald-700" aria-hidden="true">vaccines</span>
                     Plan Sanitario y Vacunación
                   </h2>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     {selectedPatient.requiredVaccines.map((v, i) => (
                       <div key={i} className="p-2.5 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between">
                         <span className="font-semibold text-slate-900">{v.vaccineName}</span>
@@ -1488,42 +1507,46 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               )}
 
               {/* Report Footer */}
-              <div className="flex items-end justify-between pt-6 border-t-2 border-slate-300 mt-4 text-xs break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-                <div className="text-slate-500 font-medium">
+              <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6 pt-8 border-t-2 border-slate-300 mt-6 text-xs break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                <div className="text-slate-500 font-medium text-[11px] leading-relaxed">
                   <p>Documento oficial emitido por Veterinaria Arlekyn.</p>
                   <p>Válido como resumen de historia clínica.</p>
                 </div>
-                <div className="flex flex-col items-center min-w-[200px] border-t border-slate-400 pt-1 text-center">
-                  <span className="font-semibold text-slate-900">{currentVetName}</span>
-                  <span className="text-[10px] text-slate-500 font-medium">Firma y Sello Veterinario</span>
+                
+                {/* Espacio para firma y sello del veterinario a la derecha con espacio arriba para firmar */}
+                <div className="flex flex-col items-center ml-auto min-w-[220px] sm:min-w-[260px] text-center pt-16">
+                  <div className="w-full border-t border-slate-700 pt-1.5 flex flex-col items-center">
+                    <span className="font-bold text-slate-900 text-xs">{currentVetName}</span>
+                    <span className="text-[10px] text-slate-500 font-medium">Firma y Sello Veterinario</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Acciones del Modal (Ocultas en Impresión) */}
-            <div className="flex items-center justify-end gap-3 pt-2 print:hidden border-t border-slate-100">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-2 print:hidden border-t border-slate-100">
               <button
                 type="button"
                 onClick={handleDownloadClinicalHistoryPDF}
-                className="bg-[#9A7DB8] hover:bg-[#8666A6] text-white px-5 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                className="bg-[#9A7DB8] hover:bg-[#8666A6] text-white px-5 py-2.5 min-h-[44px] rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px]">download</span>
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">download</span>
                 <span>Descargar PDF</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="bg-slate-700 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                className="bg-slate-700 hover:bg-slate-800 text-white px-5 py-2.5 min-h-[44px] rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px]">print</span>
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">print</span>
                 <span>Imprimir</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setShowClinicalHistoryModal(false)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-semibold text-xs transition-all cursor-pointer"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 min-h-[44px] rounded-xl font-semibold text-xs transition-all cursor-pointer flex items-center justify-center"
               >
                 Cerrar
               </button>
@@ -1534,19 +1557,20 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       {/* Weight History and Evolution Modal */}
       {showWeightModal && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-md shadow-2xl flex flex-col gap-md border border-slate-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-4 sm:p-md shadow-2xl flex flex-col gap-md border border-slate-200 my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b border-slate-200 pb-xs">
               <h3 className="font-headline-sm text-slate-900 text-sm font-semibold flex items-center gap-xs">
-                <span className="material-symbols-outlined text-[#9A7DB8] text-[20px]">scale</span>
+                <span className="material-symbols-outlined text-[#9A7DB8] text-[20px]" aria-hidden="true">scale</span>
                 Historial y Evolución de Peso ({selectedPatient.name})
               </h3>
               <button
                 type="button"
                 onClick={() => setShowWeightModal(false)}
-                className="text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 rounded-xl p-2 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Cerrar modal"
               >
-                <span className="material-symbols-outlined text-[20px]">close</span>
+                <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
               </button>
             </div>
 
@@ -1576,15 +1600,16 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                   step="0.05"
                   min="0.1"
                   max="200"
+                  inputMode="decimal"
                   value={newQuickWeight}
                   onChange={(e) => setNewQuickWeight(e.target.value)}
                   placeholder="Nuevo peso (ej. 10.5)"
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-[#9A7DB8]"
                 />
               </div>
               <button
                 type="submit"
-                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1 cursor-pointer transition-all"
+                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-3.5 py-2 min-h-[44px] rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1 cursor-pointer transition-all"
               >
                 <span className="material-symbols-outlined text-[15px]">add</span>
                 <span>Registrar</span>

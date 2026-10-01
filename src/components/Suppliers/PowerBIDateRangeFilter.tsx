@@ -66,7 +66,7 @@ export const PowerBIDateRangeFilter: React.FC<PowerBIDateRangeFilterProps> = ({
   const isFiltered = startDate !== minDate || endDate !== maxDate;
 
   return (
-    <div className="bg-surface-container-lowest px-3 py-1.5 rounded-xl border border-outline-variant/40 shadow-xs flex items-center gap-2 font-body-md text-xs">
+    <div className="bg-surface-container-lowest px-3 py-2 rounded-xl border border-outline-variant/40 shadow-xs flex flex-col gap-1.5 font-body-md text-xs w-full sm:w-auto min-w-[270px]">
       {/* Invisible Native Input Thumbs to Avoid Duplication with Custom Circles */}
       <style>{`
         .powerbi-range-input::-webkit-slider-thumb {
@@ -93,53 +93,67 @@ export const PowerBIDateRangeFilter: React.FC<PowerBIDateRangeFilterProps> = ({
         }
       `}</style>
 
-      <span className="material-symbols-outlined text-[16px] text-primary" title="Filtro de fecha de proyección">filter_alt</span>
-      
-      {/* Date Pickers */}
-      <div className="flex items-center gap-1">
-        <input
-          type="date"
-          value={startDate}
-          min={minDate}
-          max={maxDate}
-          onChange={handleStartInputChange}
-          className="text-[11px] font-mono font-medium text-slate-800 bg-surface-container-low border border-outline-variant/40 rounded-lg px-1.5 py-1 outline-none hover:border-primary transition-all cursor-pointer"
-        />
-        <span className="text-slate-400 font-bold text-[10px]">-</span>
-        <input
-          type="date"
-          value={endDate}
-          min={startDate || minDate}
-          max={maxDate}
-          onChange={handleEndInputChange}
-          className="text-[11px] font-mono font-medium text-slate-800 bg-surface-container-low border border-outline-variant/40 rounded-lg px-1.5 py-1 outline-none hover:border-primary transition-all cursor-pointer"
-        />
+      {/* Top Row: Filter Icon, Date Inputs, Reset Button */}
+      <div className="flex items-center justify-between gap-1.5 w-full">
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          <span className="material-symbols-outlined text-[16px] text-primary shrink-0" aria-hidden="true" title="Filtro de fecha de proyección">filter_alt</span>
+          
+          <input
+            type="date"
+            value={startDate}
+            min={minDate}
+            max={maxDate}
+            onChange={handleStartInputChange}
+            className="text-[12px] font-mono font-medium text-slate-800 bg-surface-container-low border border-outline-variant/40 rounded-lg px-2 py-1 outline-none hover:border-primary transition-all cursor-pointer flex-1 min-w-0 shadow-2xs"
+          />
+          <span className="text-slate-400 font-bold text-[11px] shrink-0">-</span>
+          <input
+            type="date"
+            value={endDate}
+            min={startDate || minDate}
+            max={maxDate}
+            onChange={handleEndInputChange}
+            className="text-[12px] font-mono font-medium text-slate-800 bg-surface-container-low border border-outline-variant/40 rounded-lg px-2 py-1 outline-none hover:border-primary transition-all cursor-pointer flex-1 min-w-0 shadow-2xs"
+          />
+        </div>
+
+        {/* Reset Filter Button */}
+        {isFiltered && (
+          <button
+            type="button"
+            onClick={onReset}
+            className="p-1 text-slate-400 hover:text-primary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer flex items-center shrink-0 min-h-[26px] min-w-[26px] justify-center"
+            title="Limpiar filtro de fechas"
+          >
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">restart_alt</span>
+          </button>
+        )}
       </div>
 
-      {/* Dual Range Slider (Único círculo visual en cada punta) */}
-      <div className="relative w-32 sm:w-40 h-6 flex items-center select-none px-1">
+      {/* Bottom Row: Full-width Dual Range Slider */}
+      <div className="relative w-full h-5 flex items-center select-none px-1">
         {/* Background Track Line */}
-        <div className="absolute left-0 w-full h-1.5 bg-slate-300 rounded-full"></div>
+        <div className="absolute left-1 right-1 h-1.5 bg-slate-300 rounded-full"></div>
 
         {/* Active Progress Highlight Line */}
         <div
           className="absolute h-1.5 bg-[#8362A5] rounded-full"
           style={{
-            left: `${leftPercentage}%`,
-            width: `${Math.max(0, rightPercentage - leftPercentage)}%`
+            left: `calc(4px + ${leftPercentage * 0.95}%)`,
+            width: `${Math.max(0, rightPercentage - leftPercentage) * 0.95}%`
           }}
         ></div>
 
         {/* Unique Left White Circular Handle */}
         <div
           className="absolute w-4 h-4 rounded-full bg-white border-2 border-[#8362A5] shadow-md z-10 transform -translate-x-1/2 pointer-events-none"
-          style={{ left: `${leftPercentage}%` }}
+          style={{ left: `calc(4px + ${leftPercentage * 0.95}%)` }}
         ></div>
 
         {/* Unique Right White Circular Handle */}
         <div
           className="absolute w-4 h-4 rounded-full bg-white border-2 border-[#8362A5] shadow-md z-10 transform -translate-x-1/2 pointer-events-none"
-          style={{ left: `${rightPercentage}%` }}
+          style={{ left: `calc(4px + ${rightPercentage * 0.95}%)` }}
         ></div>
 
         {/* Interactive Dual Range Slider Inputs */}
@@ -160,18 +174,6 @@ export const PowerBIDateRangeFilter: React.FC<PowerBIDateRangeFilterProps> = ({
           className="powerbi-range-input absolute left-0 w-full h-full appearance-none bg-transparent pointer-events-none cursor-pointer z-30"
         />
       </div>
-
-      {/* Reset Filter Button */}
-      {isFiltered && (
-        <button
-          type="button"
-          onClick={onReset}
-          className="p-1 text-slate-400 hover:text-primary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer flex items-center"
-          title="Limpiar filtro de fechas"
-        >
-          <span className="material-symbols-outlined text-[16px]">restart_alt</span>
-        </button>
-      )}
     </div>
   );
 };

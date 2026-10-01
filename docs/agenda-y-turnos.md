@@ -21,11 +21,23 @@ En la vista **Agenda & Turnos** (tanto en el calendario de Área Médica como de
 - **Duración Dinámica de Turnos:**
   - Selector rápido con píldoras de duración predeterminadas (`15 min`, `30 min`, `45 min`, `60 min`, `90 min`, `120 min`) en el modal de nuevo turno, detalle y reprogramación.
   - Al seleccionar una duración o cambiar la hora de inicio, el sistema calcula y ajusta automáticamente la hora de finalización (`appEndTime`).
-  - Las tarjetas en la grilla y los modales muestran la insignia con el rango horario y la duración en minutos (ej. `10:00 - 10:45 (45 min)`).
+  - Las tarjetas en la grilla del calendario muestran únicamente los datos esenciales: el **nombre completo del paciente**, la **duración del turno** (ej. `30 min`), la insignia de estado (ej. `Vencido` o `Completado`), el detalle del servicio o consulta, y los botones de acción rápida (`Completar` y `Cobrar`), omitiendo el rango horario redundante ya indicado por la fila del calendario.
   - Al hacer clic en un slot vacío del calendario, se abre automáticamente el modal con la fecha y hora seleccionadas.
 
 - **Formato Uniforme de Fechas (`DD/MM/YYYY`):**
   - Toda la interfaz de usuario en la aplicación (agenda, cobros, facturas de proveedores, cuenta corriente, perfiles de pacientes, vacunas, recetas y modales) presenta las fechas en formato estándar `DD/MM/YYYY`.
+
+- **Detección y Visualización de Estado "Vencido" en Turnos Pasados:**
+  - El sistema evalúa el estado efectivo de cada turno mediante `getEffectiveAppointmentStatus(date, time, status)`.
+  - Si un turno permanece en estado `pending` o `confirmed` pero su fecha/hora ya transcurrió con respecto al momento actual (`date < today` o `date == today && time < currentHour`), la interfaz lo clasifica y exhibe automáticamente como **`Vencido`** con distintivo ámbar (`bg-amber-100 text-amber-800`), en lugar de "Pendiente" o "Confirmado".
+  - Los turnos en estado `completed` ("Completado") o `cancelled` ("Cancelado") preservan su estado correspondiente independientemente de la fecha.
+  - En la **Ficha del Paciente**, la sección de turnos separa el contador de turnos activos programados del de turnos vencidos/históricos y muestra el distintivo correspondiente.
+  - En la **Agenda Semanal (Médica y Peluquería)** y en la **Ficha del Tutor**, las tarjetas y modales reflejan el estado "Vencido" pero conservan las acciones rápidas de **`Completar`** o **`Cobrar`** para permitir regularizar o cerrar turnos pasados sin fricción.
+
+- **Vista Responsive para Dispositivos Móviles (360px - 768px):**
+  - En pantallas móviles (`< md`), la grilla de 7 columnas se reemplaza por un selector de días semanal horizontal tipo píldoras (`Lun 28`, `Mar 29`, etc.) con contador de turnos por día y badge de día actual.
+  - La vista muestra los turnos del día seleccionado en tarjetas legibles a ancho completo con el nombre destacado del paciente, duración, servicio/motivo, estado e interacción táctil cómoda (`min-h-[38px]`) para **`Completar`** y **`Cobrar`**.
+  - En tablets y escritorios (`>= 768px`), se mantiene la matriz horaria completa de 6 columnas (Lun a Sáb).
 
 **Flujo de Acciones de Turno (Completar sin cobrar / Cobrar):**
 1. **Completar turno (sin necesidad de cobrar):** En las tarjetas de turnos de la grilla y en el modal de detalle del turno, se incluye el botón **`Completar`** (o *Marcar completado (sin cobrar)*). Al accionarlo, el turno cambia inmediatamente su estado a `completed` sin requerir la emisión de un cobro. En la agenda se muestra la insignia de **`Completado`**.
@@ -35,3 +47,4 @@ En la vista **Agenda & Turnos** (tanto en el calendario de Área Médica como de
 **Restricciones o supuestos:**
 - Las horas se manejan en formato 24hs (`HH:MM`).
 - Si la hora de inicio o la hora de finalización es omitida, la duración se calcula por defecto en 30 minutos.
+- Un turno vencido no bloquea la agenda y puede ser completado o cobrado retrospectivamente en cualquier momento.

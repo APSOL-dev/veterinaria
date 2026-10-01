@@ -207,7 +207,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
 
   if (activeSubmodule === 'historial-cobros') {
     return (
-      <div className="flex flex-col w-full gap-md font-body-md text-slate-800 fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0">
+      <div className="flex flex-col w-full flex-1 gap-md font-body-md text-slate-800 h-full overflow-y-auto p-md lg:p-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 font-semibold leading-tight">
@@ -237,8 +237,12 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
               <tbody className="text-slate-800">
                 {receipts.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-lg text-center text-slate-500 text-xs font-medium">
-                      No hay cobros registrados en el historial.
+                    <td colSpan={7} className="p-xl text-center text-slate-500 text-xs font-medium">
+                      <div className="flex flex-col items-center justify-center gap-2 py-6">
+                        <span className="material-symbols-outlined text-slate-400 text-[32px]">receipt_long</span>
+                        <span className="font-semibold text-slate-700">No hay cobros registrados en el historial.</span>
+                        <span className="text-slate-500 text-[11px]">Los comprobantes emitidos desde "Nueva facturación" aparecerán listados aquí.</span>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -299,7 +303,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
   }
 
   return (
-    <div className="flex flex-col w-full flex-1 gap-md font-body-md text-slate-800 fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full lg:overflow-hidden">
+    <div className="flex flex-col w-full flex-1 gap-md font-body-md text-slate-800 h-full overflow-y-auto p-md lg:p-0 lg:overflow-hidden">
       {/* Top Header Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-sm shrink-0 mb-md">
         <div>
@@ -408,24 +412,27 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                               <span className="text-slate-400 font-semibold text-xs">$</span>
                               <input
                                 type="number"
+                                inputMode="decimal"
                                 min={0}
                                 step={100}
                                 value={item.unitPrice}
                                 onChange={(e) => handleUpdatePrice(item.id, e.target.value)}
                                 onFocus={(e) => e.target.select()}
-                                className="w-24 text-right bg-white border border-slate-300 rounded py-0.5 px-1.5 text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-[#9A7DB8] outline-none shadow-xs"
+                                className="w-24 text-right bg-white border border-slate-300 rounded py-1 px-2 text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-[#9A7DB8] outline-none shadow-xs"
                               />
                             </div>
                           </td>
                           <td className="p-sm px-md text-center">
                             <input
                               type="number"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
                               min={0}
                               max={100}
                               value={item.discountPercent}
                               onChange={(e) => handleUpdateDiscount(item.id, e.target.value)}
                               onFocus={(e) => e.target.select()}
-                              className="w-12 text-center bg-white border border-slate-300 rounded py-0.5 text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-[#9A7DB8] outline-none"
+                              className="w-12 text-center bg-white border border-slate-300 rounded py-1 text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-[#9A7DB8] outline-none"
                             />
                           </td>
                           <td className="p-sm px-md text-right font-semibold text-slate-900 text-xs">
@@ -434,8 +441,9 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                           <td className="p-sm px-md text-center">
                             <button
                               onClick={() => handleDeleteItem(item.id)}
-                              className="text-slate-400 hover:text-red-600 transition-colors p-1 rounded-full hover:bg-red-50 cursor-pointer"
+                              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-red-600 transition-colors p-2 rounded-xl hover:bg-red-50 cursor-pointer"
                               title="Eliminar concepto"
+                              aria-label={`Eliminar ${item.description}`}
                             >
                               <span className="material-symbols-outlined text-[18px]">delete</span>
                             </button>
@@ -522,6 +530,8 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                   </label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={posNumber}
                     onChange={(e) => setPosNumber(e.target.value)}
                     placeholder=""
@@ -535,6 +545,8 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                   </label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={customInvoiceNumber}
                     onChange={(e) => setCustomInvoiceNumber(e.target.value)}
                     placeholder=""
@@ -680,6 +692,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                       <span className="text-[10px] text-[#5C3C7B] font-bold">% IVA:</span>
                       <input
                         type="number"
+                        inputMode="decimal"
                         min={0}
                         max={100}
                         step={0.5}
@@ -727,8 +740,8 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
 
       {/* Modal Add Item */}
       {showAddItemModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200 my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
               <h3 className="font-headline-sm text-slate-900 font-semibold text-base">Agregar concepto a factura</h3>
               <button onClick={() => setShowAddItemModal(false)} className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer">
@@ -840,6 +853,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                 </label>
                 <input
                   type="number"
+                  inputMode="decimal"
                   value={formatPriceInputDisplay(newItemPrice)}
                   onChange={(e) => setNewItemPrice(parsePriceInput(e.target.value))}
                   onFocus={(e) => e.target.select()}

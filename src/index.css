@@ -16,7 +16,23 @@
   }
 }
 
+/* Evitar zoom automático en Safari iOS en campos de texto en dispositivos móviles */
+@media screen and (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
 
+/* Utilidad para scroll horizontal suave en móviles sin mostrar barra de desplazamiento */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 ::-webkit-scrollbar {
   display: none;

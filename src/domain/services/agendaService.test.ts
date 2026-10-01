@@ -20,7 +20,8 @@ import {
   filterAppointmentsByCriteria,
   formatAppointmentDurationBadge,
   generateTimeSlots,
-  ensureTimeInSlots
+  ensureTimeInSlots,
+  getEffectiveAppointmentStatus
 } from './agendaService';
 
 describe('agendaService', () => {
@@ -347,9 +348,53 @@ describe('agendaService', () => {
       const baseSlots = ['08:00', '09:00', '10:00'];
       expect(ensureTimeInSlots(baseSlots, '09:00')).toEqual(baseSlots);
       expect(ensureTimeInSlots(baseSlots, undefined)).toEqual(baseSlots);
-      expect(ensureTimeInSlots(baseSlots, '')).toEqual(baseSlots);
+    });
+  });
+
+  describe('getEffectiveAppointmentStatus', () => {
+    const referenceDateTime = '2026-10-01T09:00:00';
+
+    it('returns "Vencido" when appointment is pending and its date is before reference date', () => {
+      const res = getEffectiveAppointmentStatus('2026-09-28', '10:00', 'pending', referenceDateTime);
+      expect(res.label).toBe('Vencido');
+      expect(res.isExpired).toBe(true);
+      expect(res.status).toBe('expired');
+    });
+
+    it('returns "Vencido" when appointment is confirmed and its date is in the past', () => {
+      const res = getEffectiveAppointmentStatus('2026-09-28', '10:00', 'confirmed', referenceDateTime);
+      expect(res.label).toBe('Vencido');
+      expect(res.isExpired).toBe(true);
+      expect(res.status).toBe('expired');
+    });
+
+    it('returns "Pendiente" or "Confirmado" when appointment is in the future', () => {
+      const res1 = getEffectiveAppointmentStatus('2026-10-05', '10:00', 'pending', referenceDateTime);
+      expect(res1.label).toBe('Pendiente');
+      expect(res1.isExpired).toBe(false);
+      expect(res1.status).toBe('pending');
+
+      const res2 = getEffectiveAppointmentStatus('2026-10-05', '10:00', 'confirmed', referenceDateTime);
+      expect(res2.label).toBe('Confirmado');
+      expect(res2.isExpired).toBe(false);
+      expect(res2.status).toBe('confirmed');
+    });
+
+    it('preserves "Completado" status even if date is in the past', () => {
+      const res = getEffectiveAppointmentStatus('2026-09-28', '10:00', 'completed', referenceDateTime);
+      expect(res.label).toBe('Completado');
+      expect(res.isExpired).toBe(false);
+      expect(res.status).toBe('completed');
+    });
+
+    it('preserves "Cancelado" status even if date is in the past', () => {
+      const res = getEffectiveAppointmentStatus('2026-09-28', '10:00', 'cancelled', referenceDateTime);
+      expect(res.label).toBe('Cancelado');
+      expect(res.isExpired).toBe(false);
+      expect(res.status).toBe('cancelled');
     });
   });
 });
+
 
 

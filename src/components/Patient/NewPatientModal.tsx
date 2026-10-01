@@ -116,16 +116,20 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200 my-auto">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-lg shadow-2xl flex flex-col gap-md border border-slate-200 my-4 sm:my-auto">
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
-          <div className="flex items-center gap-xs">
-            <span className="material-symbols-outlined text-[#9A7DB8] text-[24px]">pets</span>
+        <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#9A7DB8] text-[24px]" aria-hidden="true">pets</span>
             <h3 className="font-headline-sm text-base text-slate-900 font-semibold">Alta de nuevo paciente</h3>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer">
-            <span className="material-symbols-outlined text-[20px]">close</span>
+          <button 
+            onClick={onClose} 
+            className="text-slate-400 hover:text-slate-700 transition-colors p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-slate-100 cursor-pointer"
+            aria-label="Cerrar modal"
+          >
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
           </button>
         </div>
 
@@ -133,7 +137,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
         <form onSubmit={handleSubmit} className="flex flex-col gap-md text-xs">
           {errorMessage && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-2.5 px-3 rounded-xl text-xs font-semibold flex items-center gap-xs">
-              <span className="material-symbols-outlined text-[16px]">warning</span>
+              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">warning</span>
               {errorMessage}
             </div>
           )}
@@ -206,6 +210,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
               <label className="font-semibold text-xs text-slate-700 block mb-1">Peso inicial (kg)</label>
               <input
                 type="number"
+                inputMode="decimal"
                 value={weightKg}
                 onChange={(e) => setWeightKg(Number(e.target.value))}
                 min={0}
@@ -223,14 +228,14 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
               <label className="font-semibold text-xs text-slate-900 block">
                 Dueño / tutor responsable *
               </label>
-              <div className="flex items-center gap-2 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+              <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => {
                     setTutorMode('existing');
                     if (existingTutores[0]) handleSelectExistingTutor(existingTutores[0].ownerName);
                   }}
-                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                  className={`px-3.5 py-2 min-h-[44px] rounded-lg transition-all cursor-pointer flex items-center justify-center ${
                     tutorMode === 'existing'
                       ? 'bg-white text-slate-900 shadow-2xs font-semibold'
                       : 'text-slate-500 hover:text-slate-800'
@@ -245,7 +250,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                     setOwnerName('');
                     setOwnerPhone('');
                   }}
-                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                  className={`px-3.5 py-2 min-h-[44px] rounded-lg transition-all cursor-pointer flex items-center justify-center ${
                     tutorMode === 'new'
                       ? 'bg-[#9A7DB8] text-white shadow-2xs font-semibold'
                       : 'text-slate-500 hover:text-slate-800'
@@ -271,7 +276,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                 </select>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-md bg-purple-50/40 p-md rounded-xl border border-purple-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-md bg-purple-50/40 p-md rounded-xl border border-purple-100">
                 <div>
                   <label className="font-semibold text-xs text-slate-700 block mb-1">Nombre completo *</label>
                   <input
@@ -286,7 +291,9 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                 <div>
                   <label className="font-semibold text-xs text-slate-700 block mb-1">Teléfono / WhatsApp</label>
                   <input
-                    type="text"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
                     value={ownerPhone}
                     onChange={(e) => setOwnerPhone(e.target.value)}
                     placeholder=""

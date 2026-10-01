@@ -69,8 +69,8 @@ export const ExpenseCategoryModal: React.FC<ExpenseCategoryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-      <div className="bg-surface-container-lowest text-on-surface rounded-3xl p-lg max-w-xl w-full shadow-2xl border border-outline-variant/30 flex flex-col max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+      <div className="bg-surface-container-lowest text-on-surface rounded-3xl p-lg max-w-xl w-full shadow-2xl border border-outline-variant/30 flex flex-col max-h-[90vh] overflow-hidden my-4 sm:my-auto">
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-md border-b border-outline-variant/30 mb-md">
           <div className="flex items-center gap-2">

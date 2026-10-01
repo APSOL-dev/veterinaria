@@ -302,16 +302,16 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
                     </td>
 
                     {/* Columna 2: Saldo */}
-                    <td className="py-3.5 px-md text-right">
+                    <td className="py-3.5 px-md text-right whitespace-nowrap">
                       <div className="flex flex-col items-end gap-1">
-                        <span className={`text-sm font-bold ${
+                        <span className={`text-sm font-bold whitespace-nowrap ${
                           supp.saldo > 0 ? 'text-red-700' : supp.saldo < 0 ? 'text-emerald-700' : 'text-slate-600'
                         }`}>
                           {supp.saldo < 0 
                             ? `- $ ${Math.abs(supp.saldo).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
                             : `$ ${supp.saldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </span>
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${
                           supp.saldo > 0 
                             ? 'bg-red-50 text-red-700 border border-red-200/60' 
                             : supp.saldo < 0 
@@ -332,8 +332,8 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
 
       {/* Modal / Drawer de Detalle del Proveedor Seleccionado */}
       {selectedSupplierDetail && selectedSupplierSummary && (
-        <div className="fixed inset-0 bg-black/25 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-surface-container-lowest text-slate-800 rounded-2xl max-w-3xl w-full shadow-2xl border border-outline-variant/30 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-surface-container-lowest text-slate-800 rounded-2xl max-w-3xl w-full shadow-2xl border border-outline-variant/30 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-4 sm:my-auto">
             {/* Header del Modal */}
             <div className="bg-[#5C3C7B] text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -459,11 +459,11 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
                               </span>
                             )}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-semibold">
+                          <td className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">
                             {m.type === 'bill' ? (
-                              <span className="text-slate-900">$ {m.debe.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="text-slate-900 whitespace-nowrap">$ {m.debe.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             ) : (
-                              <span className="text-emerald-700">$ {m.haber.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="text-emerald-700 whitespace-nowrap">$ {m.haber.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             )}
                           </td>
                           <td className="py-2.5 px-3 text-center">
@@ -525,8 +525,8 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
 
       {/* Modal Edit Supplier Credit Term (Estilo Claro) */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-surface-container-lowest text-slate-800 rounded-2xl max-w-md w-full shadow-2xl border border-outline-variant/30 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-surface-container-lowest text-slate-800 rounded-2xl max-w-md w-full shadow-2xl border border-outline-variant/30 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-4 sm:my-auto">
             {/* Header del Modal */}
             <div className="bg-[#5C3C7B] text-white p-4 flex items-center justify-between">
               <div>

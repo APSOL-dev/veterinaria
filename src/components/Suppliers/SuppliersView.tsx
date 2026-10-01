@@ -453,7 +453,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full flex-1 gap-md font-body-md text-on-surface fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full">
+    <div className="flex flex-col w-full flex-1 gap-md font-body-md text-on-surface h-full overflow-y-auto p-md lg:p-0 lg:overflow-hidden">
       {activeSubModule === 'cuentas' ? (
         <SupplierCurrentAccountView
           bills={bills}
@@ -641,16 +641,16 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                   </span>
                                 </button>
                               </td>
-                              <td className="p-sm px-md text-right font-semibold text-[#C0392B]">
+                              <td className="p-sm px-md text-right font-semibold text-[#C0392B] whitespace-nowrap">
                                 $ {yearGroup.totalAdeudado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
-                              <td className="p-sm px-md text-right font-semibold text-[#27AE60]">
+                              <td className="p-sm px-md text-right font-semibold text-[#27AE60] whitespace-nowrap">
                                 $ {yearGroup.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
-                              <td className="p-sm px-md text-right font-semibold text-slate-900">
+                              <td className="p-sm px-md text-right font-semibold text-slate-900 whitespace-nowrap">
                                 $ {yearGroup.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
-                              <td className="p-sm px-md text-right font-semibold text-slate-700">
+                              <td className="p-sm px-md text-right font-semibold text-slate-700 whitespace-nowrap">
                                 $ {yearGroup.presupuestoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                               <td className="p-sm px-md text-center text-slate-400">
@@ -686,30 +686,30 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                         )}
                                       </button>
                                     </td>
-                                    <td className="p-sm px-md text-right">
+                                    <td className="p-sm px-md text-right whitespace-nowrap">
                                       {proj.totalAdeudado > 0 ? (
-                                        <span className="inline-flex items-center gap-1 font-semibold text-[#C0392B]">
+                                        <span className="font-semibold text-[#C0392B] whitespace-nowrap">
                                           $ {proj.totalAdeudado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                       ) : (
-                                        <span className="text-on-surface-variant/60">0.00</span>
+                                        <span className="text-on-surface-variant/60 whitespace-nowrap">0.00</span>
                                       )}
                                     </td>
-                                    <td className="p-sm px-md text-right">
+                                    <td className="p-sm px-md text-right whitespace-nowrap">
                                       {proj.totalPagado > 0 ? (
-                                        <span className="inline-flex items-center gap-1 font-semibold text-[#27AE60]">
+                                        <span className="font-semibold text-[#27AE60] whitespace-nowrap">
                                           $ {proj.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                       ) : (
-                                        <span className="text-on-surface-variant/60">0.00</span>
+                                        <span className="text-on-surface-variant/60 whitespace-nowrap">0.00</span>
                                       )}
                                     </td>
-                                    <td className="p-sm px-md text-right font-medium text-on-surface">
+                                    <td className="p-sm px-md text-right font-medium text-on-surface whitespace-nowrap">
                                       {proj.total > 0
                                         ? `$ ${proj.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                         : '0.00'}
                                     </td>
-                                    <td className="p-sm px-md text-right">
+                                    <td className="p-sm px-md text-right whitespace-nowrap">
                                       {editingBudgetMonth === proj.monthKey ? (
                                         <div className="flex items-center justify-end gap-1">
                                           <input
@@ -722,11 +722,11 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                           <button onClick={() => handleSaveBudget(proj.monthKey)} className="text-[#27AE60] font-semibold px-1">✓</button>
                                         </div>
                                       ) : (
-                                        <div className="group inline-flex items-center gap-1 cursor-pointer" onClick={() => {
+                                        <div className="group inline-flex items-center gap-1 cursor-pointer whitespace-nowrap" onClick={() => {
                                           setEditingBudgetMonth(proj.monthKey);
                                           setTempBudgetInput(proj.presupuestoTotal.toString());
                                         }}>
-                                          <span>{proj.presupuestoTotal > 0 ? `$ ${proj.presupuestoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '0.00'}</span>
+                                          <span className="whitespace-nowrap">{proj.presupuestoTotal > 0 ? `$ ${proj.presupuestoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '0.00'}</span>
                                           <span className="material-symbols-outlined text-[12px] text-primary">edit</span>
                                         </div>
                                       )}
@@ -763,13 +763,13 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                               <span className="material-symbols-outlined text-[15px] text-[#8362A5]">store</span>
                                               <span className="font-semibold text-[#5C3C7B]">{sb.supplierName}</span>
                                             </td>
-                                            <td className="p-2 px-md text-right font-medium text-[#C0392B]">
+                                            <td className="p-2 px-md text-right font-medium text-[#C0392B] whitespace-nowrap">
                                               {sb.totalAdeudado > 0 ? `$ ${sb.totalAdeudado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '0.00'}
                                             </td>
-                                            <td className="p-2 px-md text-right font-medium text-[#27AE60]">
+                                            <td className="p-2 px-md text-right font-medium text-[#27AE60] whitespace-nowrap">
                                               {sb.totalPagado > 0 ? `$ ${sb.totalPagado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '0.00'}
                                             </td>
-                                            <td className="p-2 px-md text-right font-semibold text-slate-900">
+                                            <td className="p-2 px-md text-right font-semibold text-slate-900 whitespace-nowrap">
                                               $ {sb.total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="p-2 px-md text-right text-slate-400">-</td>
@@ -784,10 +784,10 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                               <span className="font-semibold text-purple-900">Gastos del mes (Total)</span>
                                             </td>
                                             <td className="p-2 px-md text-right text-slate-400">-</td>
-                                            <td className="p-2 px-md text-right font-medium text-[#27AE60]">
+                                            <td className="p-2 px-md text-right font-medium text-[#27AE60] whitespace-nowrap">
                                               $ {proj.totalGastos.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
-                                            <td className="p-2 px-md text-right font-semibold text-purple-900">
+                                            <td className="p-2 px-md text-right font-semibold text-purple-900 whitespace-nowrap">
                                               $ {proj.totalGastos.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="p-2 px-md text-right text-slate-400">-</td>
@@ -1028,8 +1028,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             <td className="p-sm px-md font-medium text-slate-900">{bill.supplierName}</td>
                             <td className="p-sm px-md font-mono text-[11px]">{formatInvoiceFullNumber(bill)}</td>
                             <td className="p-sm px-md text-center">{bill.itemsCount}</td>
-                            <td className="p-sm px-md text-right font-semibold">${(bill.amount || 0).toLocaleString('es-AR')}</td>
-                            <td className="p-sm px-md text-right font-semibold text-error">
+                            <td className="p-sm px-md text-right font-semibold whitespace-nowrap">${(bill.amount || 0).toLocaleString('es-AR')}</td>
+                            <td className="p-sm px-md text-right font-semibold text-error whitespace-nowrap">
                               {remaining > 0 ? `$${remaining.toLocaleString('es-AR')}` : <span className="text-[#27AE60]">$0</span>}
                             </td>
                             <td className="p-sm px-md text-center">
@@ -1060,30 +1060,30 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                               )}
                             </td>
                             <td className="p-sm px-md text-center" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex items-center justify-center gap-1">
+                              <div className="flex items-center justify-center gap-1.5">
                                 <button
                                   type="button"
                                   title="Registrar pago"
                                   onClick={(e) => { e.stopPropagation(); handleOpenPaymentModal(bill); }}
-                                  className="p-1 text-slate-400 hover:text-[#27AE60] transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-emerald-700 transition-colors rounded-lg hover:bg-emerald-50 cursor-pointer"
                                 >
-                                  <span className="material-symbols-outlined text-[18px]">wallet</span>
+                                  <span className="material-symbols-outlined text-[20px]">wallet</span>
                                 </button>
                                 <button
                                   type="button"
                                   title="Editar factura"
                                   onClick={(e) => { e.stopPropagation(); handleOpenEditBill(bill); }}
-                                  className="p-1 text-slate-400 hover:text-primary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-primary transition-colors rounded-lg hover:bg-purple-50 cursor-pointer"
                                 >
-                                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                                  <span className="material-symbols-outlined text-[20px]">edit</span>
                                 </button>
                                 <button
                                   type="button"
                                   title="Eliminar factura"
                                   onClick={(e) => { e.stopPropagation(); handleDeleteBillClick(bill); }}
-                                  className="p-1 text-slate-400 hover:text-error transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50 cursor-pointer"
                                 >
-                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                  <span className="material-symbols-outlined text-[20px]">delete</span>
                                 </button>
                               </div>
                             </td>
@@ -1146,13 +1146,13 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             {pay.paymentMethod}
                           </span>
                         </td>
-                        <td className="p-sm px-md text-right font-medium text-slate-800">
+                        <td className="p-sm px-md text-right font-medium text-slate-800 whitespace-nowrap">
                           ${totalAmount.toLocaleString('es-AR')}
                         </td>
-                        <td className="p-sm px-md text-right font-semibold text-[#27AE60]">
+                        <td className="p-sm px-md text-right font-semibold text-[#27AE60] whitespace-nowrap">
                           ${pay.amount.toLocaleString('es-AR')}
                         </td>
-                        <td className="p-sm px-md text-right font-medium text-error">
+                        <td className="p-sm px-md text-right font-medium text-error whitespace-nowrap">
                           {remainingBalance > 0 ? `$${remainingBalance.toLocaleString('es-AR')}` : <span className="text-[#27AE60]">$0</span>}
                         </td>
                         <td className="p-sm px-md">
@@ -1314,7 +1314,18 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="text-on-surface">
-                  {filteredExpenses.map((exp) => (
+                  {filteredExpenses.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="p-xl text-center text-slate-500 text-xs font-medium">
+                        <div className="flex flex-col items-center justify-center gap-2 py-6">
+                          <span className="material-symbols-outlined text-slate-400 text-[32px]">receipt_long</span>
+                          <span className="font-semibold text-slate-700">No hay gastos registrados.</span>
+                          <span className="text-slate-500 text-[11px]">Utilice el botón "+ Registrar gasto" para añadir un nuevo egreso.</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredExpenses.map((exp) => (
                     <tr key={exp.id} className="border-b border-surface-container-low hover:bg-surface-container/60 transition-colors">
                       <td className="p-sm px-md font-mono text-[11px]">{formatDate(exp.date)}</td>
                       <td className="p-sm px-md font-semibold text-primary capitalize">{exp.responsible}</td>
@@ -1345,39 +1356,39 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                           <span className="text-[10px] text-slate-400 font-medium">—</span>
                         )}
                       </td>
-                      <td className="p-sm px-md text-right font-semibold text-on-surface">${exp.amount.toLocaleString('es-AR')}</td>
+                      <td className="p-sm px-md text-right font-semibold text-on-surface whitespace-nowrap">${exp.amount.toLocaleString('es-AR')}</td>
                       <td className="p-sm px-md text-center">
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
                             title="Editar gasto"
                             onClick={() => handleOpenEditExpenseModal(exp)}
-                            className="p-1 text-slate-400 hover:text-primary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-primary transition-colors rounded-lg hover:bg-purple-50 cursor-pointer"
                           >
-                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                            <span className="material-symbols-outlined text-[20px]">edit</span>
                           </button>
                             <button
                               type="button"
                               title="Copiar gasto"
                               onClick={() => handleOpenCopyExpenseModal(exp)}
-                              className="p-1 text-slate-400 hover:text-secondary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-secondary transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
                             >
-                              <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                              <span className="material-symbols-outlined text-[20px]">content_copy</span>
                             </button>
                           {onDeleteExpense && (
                             <button
                               type="button"
                               title="Eliminar gasto"
                               onClick={() => setDeleteConfirm({ isOpen: true, type: 'expense', id: exp.id, name: `Gasto de $${exp.amount.toLocaleString('es-AR')} (${exp.category})` })}
-                              className="p-1 text-slate-400 hover:text-error transition-colors rounded-lg hover:bg-surface-container-high cursor-pointer"
+                              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50 cursor-pointer"
                             >
-                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                              <span className="material-symbols-outlined text-[20px]">delete</span>
                             </button>
                           )}
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>
@@ -1403,8 +1414,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
       {/* Register / Edit Expense Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xs flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-surface-container-lowest text-on-surface rounded-2xl max-w-lg w-full p-lg shadow-2xl border border-outline-variant/30 flex flex-col gap-md">
+        <div className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-xs flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-surface-container-lowest text-on-surface rounded-2xl max-w-lg w-full p-lg shadow-2xl border border-outline-variant/30 flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex items-center justify-between border-b border-outline-variant/20 pb-sm">
               <h3 className="font-display-lg text-base font-semibold text-primary">
                 {editingExpenseId ? 'Editar gasto registrado' : 'Registrar nuevo gasto'}
@@ -1505,6 +1516,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     type="number"
                     step="0.01"
                     min="1"
+                    inputMode="decimal"
                     value={expAmount}
                     onChange={(e) => setExpAmount(Number(e.target.value))}
                     required

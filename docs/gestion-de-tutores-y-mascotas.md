@@ -18,6 +18,11 @@ Gestión centralizada del padrón de tutores (propietarios) y sus mascotas asoci
 - **Rendimiento y Carga Optimizada:**
   - En lugar de renderizar cientos de tutores simultáneamente en el DOM y calcular cuentas corrientes pesadas en cada render, la vista despliega los primeros 20 tutores más recientes de forma instantánea y calcula la deuda en memoria únicamente para los elementos visibles, permitiendo búsqueda fluida y sin demoras en todo el padrón al tipear en la barra.
 
+- **Navegación Móvil Master-Detail y Acceso a Ficha Médica:**
+  - En smartphones (`< md`), la vista se divide en dos estados fluidos: Lista de tutores y Detalle del tutor seleccionado.
+  - Al tocar cualquier tarjeta de tutor en el padrón, la pantalla transiciona de inmediato al detalle del tutor (saldo, cuenta corriente y mascotas asociadas) con un botón destacado de **`← Volver al padrón de tutores`** en la cabecera superior.
+  - Al tocar las etiquetas de mascotas o el botón **`Ver ficha`** dentro de las tarjetas de mascotas asociadas, el sistema navega directamente a la ficha médica completa del paciente seleccionado en el módulo de Pacientes.
+
 - **Cuenta Corriente (CC) del Tutor:**
   - Los cobros/comprobantes generados a un tutor solo se registran en los movimientos de su Cuenta Corriente (`Debe` y cálculo de `Saldo`) cuando el medio de pago seleccionado es **Cuenta Corriente** (`paymentMethod: 'cuenta-corriente'`).
   - Los cobros realizados en Efectivo, Tarjeta o Transferencia no impactan como deuda en la Cuenta Corriente del tutor.

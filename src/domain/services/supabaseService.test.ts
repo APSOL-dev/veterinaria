@@ -12,7 +12,8 @@ import {
   mapRowToServiceCatalogItem,
   mapRowToVaccineDosis,
   mapRowToSupplierQuote,
-  mapRowToBillReceipt
+  mapRowToBillReceipt,
+  formatUserFriendlyErrorMessage
 } from './supabaseService';
 
 describe('supabaseService row mappers', () => {
@@ -326,6 +327,32 @@ describe('supabaseService row mappers', () => {
     expect(receipt.discountTotal).toBe(1000);
     expect(receipt.taxAmount).toBe(2940);
     expect(receipt.totalAmount).toBe(16940);
+  });
+});
+
+describe('formatUserFriendlyErrorMessage', () => {
+  it('translates RLS policy violations into friendly message', () => {
+    const error = { message: 'new row violates row-level security policy for table "vetsoft_pacientes"' };
+    expect(formatUserFriendlyErrorMessage(error)).toBe('No se pudo completar la operación por permisos del sistema.');
+  });
+
+  it('translates 401 unauthorized errors into friendly message', () => {
+    const error = 'HTTP Error 401: Unauthorized';
+    expect(formatUserFriendlyErrorMessage(error)).toBe('La sesión no es válida o ha expirado. Por favor recargue la página o inicie sesión nuevamente.');
+  });
+
+  it('translates network or fetch failures into friendly message', () => {
+    const error = new Error('Failed to fetch');
+    expect(formatUserFriendlyErrorMessage(error)).toBe('Error de conexión con el servidor. Por favor verifique su acceso a internet.');
+  });
+
+  it('translates duplicate key errors into friendly message', () => {
+    const error = { message: 'duplicate key value violates unique constraint' };
+    expect(formatUserFriendlyErrorMessage(error)).toBe('Ya existe un registro con estos datos en el sistema.');
+  });
+
+  it('returns default fallback message for empty error', () => {
+    expect(formatUserFriendlyErrorMessage(null)).toBe('Error de conexión o datos inválidos.');
   });
 });
 

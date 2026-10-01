@@ -2,99 +2,99 @@ import { Owner, Patient, ClinicalNote, VaccineCatalogItem, VaccineDosis } from '
 
 export const importedVaccineCatalog: VaccineCatalogItem[] = [
   {
-    "id": "vac-1",
-    "name": "PARVOVIRUS",
-    "frequencyDays": 360
+    "id": "vac-sextuple",
+    "name": "SÉXTUPLE CANINA",
+    "frequencyDays": 365
   },
   {
-    "id": "vac-3",
-    "name": "MOQUILLO-SARAMPION",
-    "frequencyDays": 360
+    "id": "vac-antirrabica",
+    "name": "ANTIRRÁBICA",
+    "frequencyDays": 365
   },
   {
-    "id": "vac-4",
-    "name": "ANTIRRABICA",
-    "frequencyDays": 360
+    "id": "vac-quintuple",
+    "name": "QUÍNTUPLE CANINA",
+    "frequencyDays": 365
   },
   {
-    "id": "vac-5",
-    "name": "LEPTOSPIROSIS",
-    "frequencyDays": 360
+    "id": "vac-triple-felina",
+    "name": "TRIPLE FELINA",
+    "frequencyDays": 365
   },
   {
-    "id": "vac-6",
+    "id": "vac-kc",
+    "name": "TOS DE LAS PERRERAS / KC",
+    "frequencyDays": 365
+  },
+  {
+    "id": "vac-leucemia",
     "name": "LEUCEMIA FELINA",
-    "frequencyDays": 360
+    "frequencyDays": 365
   },
   {
-    "id": "vac-7",
-    "name": "ANTICONCEPTIVA",
-    "frequencyDays": 360
-  },
-  {
-    "id": "vac-8",
-    "name": "COMPLEJO RESPIRATORIO",
-    "frequencyDays": 360
-  },
-  {
-    "id": "vac-2",
-    "name": "MOQUILLO-HEPATITIS",
-    "frequencyDays": 360
-  },
-  {
-    "id": "vac-9",
-    "name": "CORONAVIRUS",
-    "frequencyDays": 360
-  },
-  {
-    "id": "vac-11",
-    "name": "MIXOMATOSIS",
-    "frequencyDays": 360
-  },
-  {
-    "id": "vac-12",
-    "name": "PANLEUCOPENIA",
-    "frequencyDays": 360
-  },
-  {
-    "id": "vac-13",
-    "name": "PRIMODOG",
-    "frequencyDays": 360
-  },
-  {
-    "id": "vac-14",
-    "name": "ANTITETANICA",
-    "frequencyDays": 360
-  },
-  {
-    "id": "vac-15",
-    "name": "PUPI D.P",
+    "id": "vac-puppy",
+    "name": "PUPPY DP / PRIMOVACUNACIÓN",
     "frequencyDays": 30
   },
   {
-    "id": "vac-16",
-    "name": "TRIPLE FELINA",
-    "frequencyDays": 360
+    "id": "vac-giardia",
+    "name": "GIARDIA CANINA",
+    "frequencyDays": 365
   },
   {
-    "id": "vac-17",
-    "name": "PARAINFLUENZA",
-    "frequencyDays": 360
-  },
-  {
-    "id": "vac-18",
-    "name": "QUINTUPLE",
-    "frequencyDays": 360
-  },
-  {
-    "id": "vac-19",
-    "name": "SEXTUPLE",
-    "frequencyDays": 360
-  },
-  {
-    "id": "vac-20",
-    "name": "ANTIPARASITARIOS",
+    "id": "vac-antiparasitaria-interna",
+    "name": "ANTIPARASITARIA INTERNA",
     "frequencyDays": 90
+  },
+  {
+    "id": "vac-antiparasitaria-externa",
+    "name": "ANTIPARASITARIA EXTERNA (Pipeta / Comprimido)",
+    "frequencyDays": 30
+  },
+  {
+    "id": "vac-coronavirus",
+    "name": "CORONAVIRUS CANINO",
+    "frequencyDays": 365
+  },
+  {
+    "id": "vac-leptospirosis",
+    "name": "LEPTOSPIROSIS REFUERZO",
+    "frequencyDays": 180
+  },
+  {
+    "id": "vac-moquillo-sarampion",
+    "name": "MOQUILLO-SARAMPION",
+    "frequencyDays": 365
+  },
+  {
+    "id": "vac-moquillo-hepatitis",
+    "name": "MOQUILLO-HEPATITIS",
+    "frequencyDays": 365
+  },
+  {
+    "id": "vac-parvovirus",
+    "name": "PARVOVIRUS",
+    "frequencyDays": 365
+  },
+  {
+    "id": "vac-panleucopenia",
+    "name": "PANLEUCOPENIA",
+    "frequencyDays": 365
+  },
+  {
+    "id": "vac-antitetanica",
+    "name": "ANTITETÁNICA",
+    "frequencyDays": 365
+  },
+  {
+    "id": "vac-anticonceptiva",
+    "name": "ANTICONCEPTIVA",
+    "frequencyDays": 150
+  },
+  {
+    "id": "vac-complejo-respiratorio",
+    "name": "COMPLEJO RESPIRATORIO",
+    "frequencyDays": 365
   }
 ];
 

@@ -605,13 +605,28 @@ export const App: React.FC = () => {
     upsertProductToSupabase(updatedProduct);
   };
 
-  const handleAddProduct = (newProduct: Omit<Product, 'id'>) => {
+  const handleAddProduct = async (newProduct: Omit<Product, 'id'>) => {
     const product: Product = {
       ...newProduct,
       id: 'prod-' + Date.now()
     };
-    setProducts([...products, product]);
-    insertProductToSupabase(product);
+    const res = await insertProductToSupabase(product);
+    if (res.success) {
+      setProducts(prev => [...prev, product]);
+      setNotifModal({
+        isOpen: true,
+        title: '¡Producto Creado!',
+        type: 'success',
+        message: `El producto "${product.name}" se guardó correctamente.`
+      });
+    } else {
+      setNotifModal({
+        isOpen: true,
+        title: 'Error al Guardar Producto',
+        type: 'warning',
+        message: res.error || `No se pudo guardar el producto "${product.name}" en el sistema. Por favor intente nuevamente.`
+      });
+    }
   };
 
   const handleUpdateProduct = (id: string, prodData: Partial<Product>) => {
@@ -624,15 +639,30 @@ export const App: React.FC = () => {
     deleteProductFromSupabase(id);
   };
 
-  const handleAddServiceToCatalog = (item: Omit<ServiceCatalogItem, 'id'>) => {
+  const handleAddServiceToCatalog = async (item: Omit<ServiceCatalogItem, 'id'>) => {
     const newItem: ServiceCatalogItem = {
       ...item,
       id: 'srv-' + Date.now(),
       isActive: true,
       priceLastUpdated: new Date().toISOString().substring(0, 10)
     };
-    setServicesCatalog(prev => [...prev, newItem]);
-    insertServiceCatalogItemToSupabase(newItem);
+    const res = await insertServiceCatalogItemToSupabase(newItem);
+    if (res.success) {
+      setServicesCatalog(prev => [...prev, newItem]);
+      setNotifModal({
+        isOpen: true,
+        title: '¡Servicio Creado!',
+        type: 'success',
+        message: `El servicio "${newItem.name}" se guardó correctamente.`
+      });
+    } else {
+      setNotifModal({
+        isOpen: true,
+        title: 'Error al Guardar Servicio',
+        type: 'warning',
+        message: res.error || `No se pudo guardar el servicio "${newItem.name}" en el sistema. Por favor intente nuevamente.`
+      });
+    }
   };
 
   const handleUpdateServiceInCatalog = (id: string, itemData: Partial<ServiceCatalogItem>) => {
@@ -679,19 +709,26 @@ export const App: React.FC = () => {
     alerts?: string[];
   }) => {
     const newPat = createNewPatientRecord(patientData);
-    setPatients([newPat, ...patients]);
-    setSelectedPatient(newPat);
     const res = await insertPatientToSupabase(newPat);
-    setActiveModuleState('pacientes');
-    setActiveSubmodule('ficha-pacientes');
-    setNotifModal({
-      isOpen: true,
-      title: res.success ? '¡Paciente Guardado!' : 'Aviso de Almacenamiento',
-      type: res.success ? 'success' : 'warning',
-      message: res.success
-        ? `¡Paciente ${newPat.name} guardado exitosamente!`
-        : `Paciente agregado localmente. (${res.error || 'Verifique la conexión'})`
-    });
+    if (res.success) {
+      setPatients(prev => [newPat, ...prev]);
+      setSelectedPatient(newPat);
+      setActiveModuleState('pacientes');
+      setActiveSubmodule('ficha-pacientes');
+      setNotifModal({
+        isOpen: true,
+        title: '¡Paciente Guardado!',
+        type: 'success',
+        message: `¡Paciente ${newPat.name} guardado exitosamente!`
+      });
+    } else {
+      setNotifModal({
+        isOpen: true,
+        title: 'Error al Guardar Paciente',
+        type: 'warning',
+        message: res.error || `No se pudo guardar el paciente "${newPat.name}" en el sistema. Por favor intente nuevamente.`
+      });
+    }
   };
 
   const syncProductsAfterBill = (bill: SupplierBill) => {
@@ -1113,6 +1150,10 @@ export const App: React.FC = () => {
                     patients={patients}
                     selectedPatient={selectedPatient}
                     onSelectPatient={setSelectedPatient}
+                    onNavigateToPatient={(pat) => {
+                      setSelectedPatient(pat);
+                      setActiveSubmodule('ficha-pacientes');
+                    }}
                     vaccineCatalog={vaccineCatalog}
                     onAddVaccineToCatalog={handleAddVaccineToCatalog}
                     onUpdateVaccineInCatalog={handleUpdateVaccineInCatalog}
@@ -1134,6 +1175,10 @@ export const App: React.FC = () => {
                     receipts={receipts}
                     medicalAppointments={medicalAppointments}
                     groomingAppointments={groomingAppointments}
+                    onSelectPatient={(pat) => {
+                      setSelectedPatient(pat);
+                      setActiveSubmodule('ficha-pacientes');
+                    }}
                   />
                 )}
 

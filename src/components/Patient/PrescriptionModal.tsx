@@ -81,8 +81,8 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in overflow-y-auto print:bg-white print:p-8 print:static print:block print:inset-auto print:backdrop-blur-none">
-      <div className="relative bg-white rounded-2xl max-w-2xl w-full p-8 shadow-2xl flex flex-col gap-6 border border-slate-200 my-auto text-slate-900 font-body-md print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:m-0">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto print:bg-white print:p-8 print:static print:block print:inset-auto print:backdrop-blur-none">
+      <div className="relative bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl flex flex-col gap-6 border border-slate-200 my-4 sm:my-auto text-slate-900 font-body-md print:shadow-none print:border-none print:w-full print:max-w-none print:p-0 print:m-0">
         
         {/* Botón Cerrar (X) Arriba a la Derecha */}
         <button

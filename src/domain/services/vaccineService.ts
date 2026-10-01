@@ -1,4 +1,4 @@
-import { PatientRequiredVaccine, VaccineCatalogItem, VaccineDosis } from '../types';
+import { Patient, PatientRequiredVaccine, VaccineCatalogItem, VaccineDosis } from '../types';
 
 export function calculateExpirationDate(applicationDate: string, frequencyDays: number): string {
   const date = new Date(applicationDate + 'T00:00:00');
@@ -101,5 +101,125 @@ export function getEffectiveVaccineNextDueDate(
   const baseDate = vac.appliedDate || vac.suggestedDate || new Date().toISOString().split('T')[0];
 
   return calculateExpirationDate(baseDate, frequencyDays);
+}
+
+export interface PendingVaccineInfo {
+  vaccineName: string;
+  expirationDate: string;
+  isExpired: boolean;
+  isRequiredPending: boolean;
+}
+
+export function getPendingOrDueVaccine(
+  patient: Patient,
+  vaccineDoses: VaccineDosis[] = [],
+  currentDate: string = new Date().toISOString().split('T')[0]
+): PendingVaccineInfo | null {
+  const patientDoses = vaccineDoses.filter(d => d.patientId === patient.id);
+  
+  // 1. Check for expired or due soon doses in history
+  const dueOrExpiredDose = patientDoses.find(d => {
+    const isExp = d.status === 'expired' || Boolean(d.expirationDate && d.expirationDate < currentDate);
+    const isDue = d.status === 'due_soon';
+    return isExp || isDue;
+  });
+
+  if (dueOrExpiredDose) {
+    const isExp = dueOrExpiredDose.status === 'expired' || Boolean(dueOrExpiredDose.expirationDate && dueOrExpiredDose.expirationDate < currentDate);
+    return {
+      vaccineName: dueOrExpiredDose.vaccineName,
+      expirationDate: dueOrExpiredDose.expirationDate,
+      isExpired: Boolean(isExp),
+      isRequiredPending: false
+    };
+  }
+
+  // 2. Check for pending required vaccines
+  const pendingReq = (patient.requiredVaccines || []).find(v => v.status === 'pendiente');
+  if (pendingReq) {
+    const isExp = pendingReq.suggestedDate ? pendingReq.suggestedDate < currentDate : false;
+    return {
+      vaccineName: pendingReq.vaccineName,
+      expirationDate: pendingReq.suggestedDate,
+      isExpired: Boolean(isExp),
+      isRequiredPending: true
+    };
+  }
+
+  return null;
+}
+
+export interface PatientVaccineCoverage {
+  percentage: number;
+  validCount: number;
+  totalCount: number;
+  label: string;
+}
+
+export function calculatePatientVaccineCoverage(
+  patient: Patient,
+  vaccineDoses: VaccineDosis[] = [],
+  vaccineCatalog: VaccineCatalogItem[] = [],
+  currentDate: string = new Date().toISOString().split('T')[0]
+): PatientVaccineCoverage {
+  const patientDoses = vaccineDoses.filter(d => d.patientId === patient.id);
+  const reqList = patient.requiredVaccines || [];
+
+  // Caso 1: Paciente tiene vacunas requeridas definidas en su ficha
+  if (reqList.length > 0) {
+    const totalCount = reqList.length;
+    let validCount = 0;
+
+    for (const req of reqList) {
+      if (req.status === 'aplicada') {
+        const nextDueDate = getEffectiveVaccineNextDueDate(patient.id, req, vaccineDoses, vaccineCatalog);
+        if (nextDueDate && nextDueDate >= currentDate) {
+          validCount++;
+        }
+      }
+    }
+
+    const percentage = Math.round((validCount / totalCount) * 100);
+    const label = `${validCount} de ${totalCount} requeridas al día`;
+
+    return { percentage, validCount, totalCount, label };
+  }
+
+  // Caso 2: Paciente no tiene vacunas requeridas, pero tiene dosis en su historial
+  if (patientDoses.length > 0) {
+    // Agrupar por nombre de vacuna y tomar la última dosis de cada tipo
+    const latestDosisByVaccine = new Map<string, VaccineDosis>();
+    for (const dose of patientDoses) {
+      const key = (dose.vaccineName || '').trim().toLowerCase();
+      const existing = latestDosisByVaccine.get(key);
+      if (!existing || (dose.applicationDate && (!existing.applicationDate || dose.applicationDate > existing.applicationDate))) {
+        latestDosisByVaccine.set(key, dose);
+      }
+    }
+
+    const uniqueDoses = Array.from(latestDosisByVaccine.values());
+    const totalCount = uniqueDoses.length;
+    let validCount = 0;
+
+    for (const dose of uniqueDoses) {
+      const isExpired = dose.status === 'expired' || Boolean(dose.expirationDate && dose.expirationDate < currentDate);
+      if (!isExpired) {
+        validCount++;
+      }
+    }
+
+    const percentage = totalCount > 0 ? Math.round((validCount / totalCount) * 100) : 0;
+    const label = `${validCount} de ${totalCount} vacunas al día`;
+
+    return { percentage, validCount, totalCount, label };
+  }
+
+  // Caso 3: Paciente sin vacunas
+  return {
+    percentage: 0,
+    validCount: 0,
+    totalCount: 0,
+    label: '0 dosis registradas'
+  };
 }
 

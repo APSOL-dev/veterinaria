@@ -7,8 +7,9 @@ Permite administrar tanto el inventario de productos físicos (medicamentos, ali
 
 **Escenarios cubiertos:**
 - **Actualización Masiva de Precios por Inflación:**
-  - **Selección múltiple de productos:** Checkboxes individuales por fila y casilla de selección global en el encabezado de la tabla para seleccionar varios productos simultáneamente.
-  - **Actualización por Categoría o Catálogo Completo:** Posibilidad de aplicar aumentos o ajustes porcentuales a una categoría específica (`Medicamentos`, `Alimentación`, `Accesorios`, `Insumos Clínicos`) o a la totalidad del catálogo.
+  - **Modo Selección bajo demanda:** Por defecto, las listas (tarjetas mobile y tabla de escritorio) se presentan limpias sin casillas de selección. Las casillas (`checkboxes`) se habilitan automáticamente cuando el usuario hace clic en el botón **"Seleccionados"** del modal de inflación o cuando activa el modo de selección.
+  - **Banner de Selección y Acciones:** Al activar la selección, se muestra un banner superior contextual (*"Modo Selección: Marque los productos que desea actualizar"*) con botón directo para continuar con la actualización o cancelar para volver a ocultar las casillas.
+  - **Actualización por Categoría o Catálogo Completo:** Posibilidad de aplicar aumentos o ajustes porcentuales a una categoría específica (`Medicamentos`, `Alimentación`, `Accesorios`, `Insumos Clínicos`) o a la totalidad del catálogo sin necesidad de seleccionar uno por uno.
   - **Modal de Ajuste por Inflación:** Permite ingresar un porcentaje libre (ej: `+12.5%` o `-5%`), botones de acceso rápido (`+5%`, `+10%`, `+15%`, `+20%`, `+25%`, `+30%`, `-5%`), y visualiza una vista previa en vivo con precio anterior, nuevo precio calculado y diferencia antes de confirmar.
   - **Actualización de Vigencia:** Actualiza automáticamente `priceLastUpdated` con la fecha del día (`YYYY-MM-DD`) para resetear los días de vencimiento.
 
@@ -30,6 +31,11 @@ Permite administrar tanto el inventario de productos físicos (medicamentos, ali
   - Ajuste manual de stock por roturas o consumos internos.
   - **Frecuencia de Actualización de Precios:** Configuración del plazo de vencimiento o actualización en días (campo numérico directo, ej: 30 días).
   - **Indicador de Vencimiento de Precio en Productos:** Cálculo en tiempo real en las columnas `Última actualización` y `Frecuencia / Vencimiento` de la tabla de Productos Físicos (Badge **Vencido (Xd)** / Badge **Vigente**).
+
+- **Vista Responsive para Dispositivos Móviles (360px - 768px):**
+  - En smartphones (`< md`), la tabla tabular extensa de productos se convierte automáticamente en una vista de tarjetas táctiles a ancho completo.
+  - Cada tarjeta presenta de manera inmediata el nombre del producto, categoría, precio de venta destacado, stock disponible vs. mínimo en badges claros (`Stock: X | Mín: Y`), estado de vigencia del precio, y botones de acción rápida con áreas de toque accesibles (`[Ajustar stock]`, `[Editar]`, `[Eliminar]`), evitando scroll horizontal desbordado.
+  - En resoluciones de escritorio y tablets (`>= 768px`), se visualiza la tabla completa con todas sus columnas y controles de selección múltiple.
 
 - **Paginación Inteligente de Tablas:**
   - **Navegación por páginas:** Control numérico con cálculo inteligente de rangos (`1 2 3 4 5 ... N`), botones anterior/siguiente con chevron (`<` y `>`) y estado deshabilitado en bordes.

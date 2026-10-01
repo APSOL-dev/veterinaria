@@ -19,7 +19,8 @@ import {
   filterAppointmentsByCriteria,
   formatAppointmentDurationBadge,
   generateTimeSlots,
-  ensureTimeInSlots
+  ensureTimeInSlots,
+  getEffectiveAppointmentStatus
 } from '../../domain/services/agendaService';
 import { formatDate } from '../../utils/dateUtils';
 import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
@@ -114,6 +115,28 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
       return filterAppointmentsWithNotes(groomingAppointments, historySearchQuery);
     }
   }, [activeMode, medicalAppointments, groomingAppointments, historySearchQuery]);
+
+  const [selectedDayISO, setSelectedDayISO] = useState<string>('');
+
+  const activeDayISO = useMemo(() => {
+    if (selectedDayISO && weekDays.some(d => d.dateStr === selectedDayISO)) {
+      return selectedDayISO;
+    }
+    const todayInWeek = weekDays.find(d => d.dateStr === todayISO);
+    return todayInWeek ? todayInWeek.dateStr : weekDays[0]?.dateStr || todayISO;
+  }, [selectedDayISO, weekDays, todayISO]);
+
+  const mobileDayAppointments = useMemo(() => {
+    if (activeMode === 'medica') {
+      return filteredMedicalAppointments
+        .filter(app => app.date === activeDayISO)
+        .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    } else {
+      return filteredGroomingAppointments
+        .filter(g => g.date === activeDayISO)
+        .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    }
+  }, [activeMode, activeDayISO, filteredMedicalAppointments, filteredGroomingAppointments]);
 
   // New Medical / Grooming Appointment form state
   const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId || patients[0]?.id || '');
@@ -308,115 +331,117 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
       </div>
 
       {/* Top Controls Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-md bg-white p-sm px-md rounded-2xl shadow-sm border border-slate-200">
-        <div className="flex flex-wrap items-center gap-sm">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3 sm:px-md rounded-2xl shadow-sm border border-slate-200">
+        <div className="flex items-center justify-between sm:justify-start gap-2 flex-wrap">
           <div className="flex items-center gap-xs bg-purple-50/80 p-1 rounded-xl border border-purple-100">
             <button 
               onClick={() => setRefDate(prev => shiftWeek(prev, -1))}
               title="Semana anterior"
-              className="p-xs text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
+              className="p-1.5 text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer min-h-[36px] min-w-[36px]"
+              aria-label="Semana anterior"
             >
-              <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_left</span>
             </button>
             <button 
               onClick={() => setRefDate(new Date())}
               title="Ir a la semana actual"
-              className="px-sm py-0.5 text-slate-800 hover:bg-purple-100 rounded-lg transition-colors font-label-md text-xs font-medium cursor-pointer"
+              className="px-3 py-1 text-slate-800 hover:bg-purple-100 rounded-lg transition-colors font-label-md text-xs font-semibold cursor-pointer min-h-[36px]"
             >
               Hoy
             </button>
             <button 
               onClick={() => setRefDate(prev => shiftWeek(prev, 1))}
               title="Semana siguiente"
-              className="p-xs text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
+              className="p-1.5 text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer min-h-[36px] min-w-[36px]"
+              aria-label="Semana siguiente"
             >
-              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_right</span>
             </button>
           </div>
 
-          <span className="font-headline-sm text-sm text-slate-900 font-semibold ml-xs">{weekHeaderLabel}</span>
+          <span className="font-headline-sm text-xs sm:text-sm text-slate-900 font-semibold">{weekHeaderLabel}</span>
         </div>
 
         {/* Distinct Filters for Patient and Tutor */}
-        <div className="flex flex-wrap items-center gap-2 flex-1 max-w-lg">
+        <div className="flex flex-col sm:flex-row items-center gap-2 flex-1 max-w-lg w-full">
           {/* Patient Filter */}
-          <div className="relative flex items-center min-w-[150px] flex-1">
-            <span className="material-symbols-outlined absolute left-2.5 text-slate-400 text-[16px] pointer-events-none">pets</span>
+          <div className="relative flex items-center w-full sm:flex-1">
+            <span className="material-symbols-outlined absolute left-2.5 text-slate-400 text-[16px] pointer-events-none" aria-hidden="true">pets</span>
             <input
               type="text"
               value={patientFilter}
               onChange={(e) => setPatientFilter(e.target.value)}
-              placeholder="Filtrar por paciente..."
-              className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-[#9A7DB8] rounded-full pl-8 pr-7 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all shadow-2xs"
+              placeholder="Buscar paciente..."
+              className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-[#9A7DB8] rounded-full pl-8 pr-7 py-2 sm:py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all shadow-2xs"
             />
             {patientFilter && (
               <button
                 type="button"
                 onClick={() => setPatientFilter('')}
-                className="absolute right-2 text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer rounded-full"
+                className="absolute right-2 text-slate-400 hover:text-slate-700 p-1 cursor-pointer rounded-full"
                 title="Limpiar filtro de paciente"
               >
-                <span className="material-symbols-outlined text-[13px]">close</span>
+                <span className="material-symbols-outlined text-[14px]" aria-hidden="true">close</span>
               </button>
             )}
           </div>
 
           {/* Tutor Filter */}
-          <div className="relative flex items-center min-w-[150px] flex-1">
-            <span className="material-symbols-outlined absolute left-2.5 text-slate-400 text-[16px] pointer-events-none">person</span>
+          <div className="relative flex items-center w-full sm:flex-1">
+            <span className="material-symbols-outlined absolute left-2.5 text-slate-400 text-[16px] pointer-events-none" aria-hidden="true">person</span>
             <input
               type="text"
               value={tutorFilter}
               onChange={(e) => setTutorFilter(e.target.value)}
-              placeholder="Filtrar por tutor..."
-              className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-[#9A7DB8] rounded-full pl-8 pr-7 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all shadow-2xs"
+              placeholder="Buscar tutor..."
+              className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-[#9A7DB8] rounded-full pl-8 pr-7 py-2 sm:py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all shadow-2xs"
             />
             {tutorFilter && (
               <button
                 type="button"
                 onClick={() => setTutorFilter('')}
-                className="absolute right-2 text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer rounded-full"
+                className="absolute right-2 text-slate-400 hover:text-slate-700 p-1 cursor-pointer rounded-full"
                 title="Limpiar filtro de tutor"
               >
-                <span className="material-symbols-outlined text-[13px]">close</span>
+                <span className="material-symbols-outlined text-[14px]" aria-hidden="true">close</span>
               </button>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-md">
+        <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap">
           {/* Mode Title or Switcher */}
           {!fixedMode ? (
             <div className="flex bg-purple-50/80 p-1 rounded-full border border-purple-100">
               <button
                 onClick={() => setAgendaMode('medica')}
-                className={`px-md py-1.5 rounded-full font-label-md text-xs transition-all flex items-center gap-1 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-full font-label-md text-xs transition-all flex items-center gap-1 cursor-pointer ${
                   agendaMode === 'medica'
-                    ? 'bg-[#9A7DB8] text-white shadow-sm font-medium'
+                    ? 'bg-[#9A7DB8] text-white shadow-sm font-semibold'
                     : 'text-slate-600 hover:text-slate-900 font-medium'
                 }`}
               >
-                <span className="material-symbols-outlined text-[16px]">stethoscope</span>
-                Área Médica
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">stethoscope</span>
+                Médica
               </button>
               <button
                 onClick={() => setAgendaMode('peluqueria')}
-                className={`px-md py-1.5 rounded-full font-label-md text-xs transition-all flex items-center gap-1 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-full font-label-md text-xs transition-all flex items-center gap-1 cursor-pointer ${
                   agendaMode === 'peluqueria'
-                    ? 'bg-[#8362A5] text-white shadow-sm font-medium'
+                    ? 'bg-[#8362A5] text-white shadow-sm font-semibold'
                     : 'text-slate-600 hover:text-slate-900 font-medium'
                 }`}
               >
-                <span className="material-symbols-outlined text-[16px]">content_cut</span>
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">content_cut</span>
                 Peluquería
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 border border-purple-200 rounded-full text-xs font-medium text-[#5C3C7B]">
-              <span className="material-symbols-outlined text-[16px]">
+              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
                 {fixedMode === 'medica' ? 'stethoscope' : 'content_cut'}
               </span>
-              <span>{fixedMode === 'medica' ? 'Calendario Área Médica' : 'Calendario Peluquería'}</span>
+              <span>{fixedMode === 'medica' ? 'Clínica Médica' : 'Peluquería'}</span>
             </div>
           )}
 
@@ -431,16 +456,193 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
               setAppEndTime(calculateEndTime(appTime, duration));
               setShowNewModal(true);
             }}
-            className="flex items-center gap-xs bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-md py-1.5 rounded-full font-label-md text-xs transition-all shadow-sm font-medium cursor-pointer"
+            className="flex items-center gap-1.5 bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 min-h-[40px] rounded-full font-label-md text-xs transition-all shadow-sm font-semibold cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[16px]">add</span>
-            Nuevo turno
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">add</span>
+            <span>Nuevo turno</span>
           </button>
         </div>
       </div>
 
-      {/* Main Weekly Calendar Grid */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-300 flex-1 overflow-hidden flex flex-col">
+      {/* MOBILE ONLY VIEW: Day Pill Selector + Full Width Appointment Cards */}
+      <div className="md:hidden flex flex-col gap-3">
+        {/* Day Pill Bar */}
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-1 px-0.5 bg-white rounded-2xl border border-slate-200 p-2 shadow-xs">
+          {weekDays.map((dayObj) => {
+            const isSelected = dayObj.dateStr === activeDayISO;
+            const isToday = dayObj.dateStr === todayISO;
+            const count = activeMode === 'medica'
+              ? filteredMedicalAppointments.filter(a => a.date === dayObj.dateStr).length
+              : filteredGroomingAppointments.filter(g => g.date === dayObj.dateStr).length;
+
+            return (
+              <button
+                key={dayObj.dateStr}
+                type="button"
+                onClick={() => setSelectedDayISO(dayObj.dateStr)}
+                className={`flex-1 min-w-[52px] py-2 px-1 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#8362A5] text-white shadow-md font-bold'
+                    : isToday
+                    ? 'bg-purple-100 text-[#5C3C7B] font-semibold border border-purple-300'
+                    : 'bg-slate-50 text-slate-700 hover:bg-purple-50 font-medium'
+                }`}
+              >
+                <span className="text-[10px] uppercase font-bold">{dayObj.dayName.slice(0, 3)}</span>
+                <span className="text-sm font-bold">{dayObj.dayNumber}</span>
+                {count > 0 && (
+                  <span className={`text-[9px] px-1.5 py-0.2 rounded-full mt-0.5 font-bold ${
+                    isSelected ? 'bg-white text-[#8362A5]' : 'bg-purple-200 text-purple-900'
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Selected Day Appointments Card List */}
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-bold text-slate-800">
+              Turnos del {weekDays.find(d => d.dateStr === activeDayISO)?.fullLabel || activeDayISO} ({mobileDayAppointments.length})
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setAppDate(activeDayISO);
+                setShowNewModal(true);
+              }}
+              className="text-xs text-[#5C3C7B] font-semibold flex items-center gap-1 hover:underline p-1 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">add_circle</span>
+              Agendar en este día
+            </button>
+          </div>
+
+          {mobileDayAppointments.length === 0 ? (
+            <div className="py-8 text-center flex flex-col items-center justify-center bg-white rounded-2xl border border-dashed border-slate-300 p-4 gap-2">
+              <span className="material-symbols-outlined text-4xl text-slate-300" aria-hidden="true">event_available</span>
+              <p className="text-xs text-slate-600 font-medium">No hay turnos agendados para este día.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setAppDate(activeDayISO);
+                  setShowNewModal(true);
+                }}
+                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white text-xs font-semibold px-4 py-2 min-h-[40px] rounded-xl mt-1 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]" aria-hidden="true">add</span>
+                + Agendar turno
+              </button>
+            </div>
+          ) : (
+            mobileDayAppointments.map((item) => {
+              const isMed = activeMode === 'medica';
+              const med = item as MedicalAppointment;
+              const groom = item as GroomingAppointment;
+              const effStatus = getEffectiveAppointmentStatus(item.date, item.time, item.status);
+              const duration = isMed 
+                ? formatAppointmentDurationBadge(med.time, med.endTime, 45) || '45 min'
+                : formatAppointmentDurationBadge(groom.time, groom.endTime, groom.durationMinutes || 45) || `${groom.durationMinutes || 45} min`;
+
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => handleOpenDetailModal(item, activeMode)}
+                  className={`${
+                    item.status === 'completed'
+                      ? 'bg-[#F0FDF4] border-emerald-300'
+                      : effStatus.isExpired
+                      ? 'bg-amber-50/60 border-amber-300'
+                      : 'bg-white border-slate-200'
+                  } border rounded-2xl p-3.5 shadow-sm flex flex-col gap-2 cursor-pointer hover:shadow-md transition-all`}
+                >
+                  {/* Header: Time, Patient Name & Badges */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-slate-900">{item.patientName}</span>
+                        {effStatus.isExpired && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-800 rounded border border-amber-300">
+                            Vencido
+                          </span>
+                        )}
+                        {item.status === 'completed' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded">
+                            Completado
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-600 font-medium mt-0.5">
+                        {item.species} {item.breed ? `(${item.breed})` : ''} &bull; <strong className="text-slate-800">Tutor:</strong> {item.ownerName}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="font-mono text-xs font-bold text-purple-900 bg-purple-100 px-2.5 py-1 rounded-lg">
+                        {item.time} hs
+                      </span>
+                      <span className="text-[10px] text-slate-600 font-medium font-mono">
+                        {duration}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Service or Medical Reason */}
+                  <div className="text-xs text-slate-800 bg-slate-50 p-2 rounded-xl border border-slate-100 font-medium">
+                    {isMed ? (
+                      <span><strong>Consulta:</strong> {med.reason || 'Atención clínica'} &bull; <strong>Dr:</strong> {med.vetName}</span>
+                    ) : (
+                      <span><strong>Servicio:</strong> {groom.serviceName}</span>
+                    )}
+                  </div>
+
+                  {/* Action buttons (Grandes para el dedo, min-h 42px) */}
+                  {item.status !== 'completed' && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isMed) {
+                            onUpdateMedicalAppointment?.(item.id, { status: 'completed' });
+                          } else {
+                            onUpdateGroomingAppointment?.(item.id, { status: 'completed' });
+                          }
+                        }}
+                        className="flex-1 bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-400 min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                      >
+                        <span className="material-symbols-outlined text-[16px]" aria-hidden="true">check_circle</span>
+                        Completar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isMed) {
+                            onNavigateToBilling?.(med.patientId, 'Consulta Médica', 15000);
+                          } else {
+                            onNavigateToBilling?.(groom.patientId, groom.serviceName, groom.price || 12000);
+                          }
+                        }}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[16px]" aria-hidden="true">payments</span>
+                        Cobrar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Main Weekly Calendar Grid (Desktop / Tablet) */}
+      <div className="hidden md:flex flex-col bg-white rounded-2xl shadow-sm border border-slate-300 flex-1 overflow-hidden">
         {/* Days Header Row */}
         <div className="grid grid-cols-7 border-b-2 border-purple-200/90 text-center bg-[#F9F6FC] font-label-md text-xs py-2 font-semibold">
           <div className="text-slate-700 font-semibold border-r border-purple-200 flex items-center justify-center">Hora</div>
@@ -495,6 +697,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                         const durationBadge = formatAppointmentDurationBadge(app.time, app.endTime, 45);
 
                         if (isStart) {
+                          const effectiveStatus = getEffectiveAppointmentStatus(app.date, app.time, app.status);
+                          const durationBadge = formatAppointmentDurationBadge(app.time, app.endTime, 45) || '45 min';
                           return (
                             <div 
                               key={app.id} 
@@ -502,22 +706,31 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                                 e.stopPropagation();
                                 handleOpenDetailModal(app, 'medica');
                               }}
-                              className="bg-[#F0FDF4] border border-emerald-300 rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all"
+                              className={`${
+                                app.status === 'completed'
+                                  ? 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
+                                  : effectiveStatus.isExpired
+                                  ? 'bg-amber-50/50 border-amber-300 hover:border-amber-500'
+                                  : 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
+                              } border rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs cursor-pointer hover:shadow-md transition-all`}
                             >
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="font-semibold text-emerald-950 truncate">{app.patientName}</span>
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded-md font-mono flex items-center gap-0.5 shrink-0">
-                                  <span className="material-symbols-outlined text-[10px]">schedule</span>
-                                  <span>{timeRangeText}</span>
-                                  {durationBadge && (
-                                    <span className="text-[9px] bg-emerald-200/80 text-emerald-950 px-1 rounded ml-0.5 font-bold">
-                                      {durationBadge}
+                              <div className="flex items-center justify-between gap-1 mb-0.5">
+                                <span className="font-bold text-slate-900 text-xs truncate" title={app.patientName}>
+                                  {app.patientName}
+                                </span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {effectiveStatus.isExpired && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded border border-amber-300">
+                                      Vencido
                                     </span>
                                   )}
-                                </span>
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded font-mono">
+                                    {durationBadge}
+                                  </span>
+                                </div>
                               </div>
-                              <span className="text-[11px] text-slate-700 truncate font-medium">{app.species} ({app.breed})</span>
-                              <span className="text-[10px] text-emerald-800 font-semibold truncate">Dr. {app.vetName}</span>
+                              <span className="text-[11px] text-slate-700 truncate font-semibold">{app.reason || 'Consulta Médica'}</span>
+                              <span className="text-[10px] text-emerald-800 truncate font-medium">Dr. {app.vetName} &bull; {app.species}</span>
                               {app.status === 'completed' ? (
                                 <div className="mt-1 bg-emerald-700 text-white px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs">
                                   Completado
@@ -593,10 +806,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                       className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1 cursor-pointer"
                     >
                       {matchingOccupations.map(({ g, isStart }) => {
-                        const timeRangeText = formatTimeRange(g.time, g.endTime, g.durationMinutes || 45);
-                        const durationBadge = formatAppointmentDurationBadge(g.time, g.endTime, g.durationMinutes || 45);
+                        const durationBadge = formatAppointmentDurationBadge(g.time, g.endTime, g.durationMinutes || 45) || `${g.durationMinutes || 45} min`;
 
                         if (isStart) {
+                          const effectiveStatus = getEffectiveAppointmentStatus(g.date, g.time, g.status);
                           return (
                             <div 
                               key={g.id} 
@@ -604,19 +817,28 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                                 e.stopPropagation();
                                 handleOpenDetailModal(g, 'peluqueria');
                               }}
-                              className="bg-[#F0FDF4] border border-emerald-300 rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all"
+                              className={`${
+                                g.status === 'completed'
+                                  ? 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
+                                  : effectiveStatus.isExpired
+                                  ? 'bg-amber-50/50 border-amber-300 hover:border-amber-500'
+                                  : 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
+                              } border rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs cursor-pointer hover:shadow-md transition-all`}
                             >
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="font-semibold text-emerald-950 truncate">{g.patientName}</span>
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded-md font-mono flex items-center gap-0.5 shrink-0">
-                                  <span className="material-symbols-outlined text-[10px]">schedule</span>
-                                  <span>{timeRangeText}</span>
-                                  {durationBadge && (
-                                    <span className="text-[9px] bg-emerald-200/80 text-emerald-950 px-1 rounded ml-0.5 font-bold">
-                                      {durationBadge}
+                              <div className="flex items-center justify-between gap-1 mb-0.5">
+                                <span className="font-bold text-slate-900 text-xs truncate" title={g.patientName}>
+                                  {g.patientName}
+                                </span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {effectiveStatus.isExpired && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded border border-amber-300">
+                                      Vencido
                                     </span>
                                   )}
-                                </span>
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded font-mono">
+                                    {durationBadge}
+                                  </span>
+                                </div>
                               </div>
                               <span className="text-[11px] text-slate-700 truncate font-semibold">{g.serviceName}</span>
                               <span className="text-[10px] text-emerald-800 truncate font-medium">Propietario: {g.ownerName}</span>
@@ -685,8 +907,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
       {/* New Appointment Modal */}
       {showNewModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200 my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
               <h3 className="font-headline-sm text-slate-900 text-base font-semibold">
                 Agendar turno ({activeMode === 'medica' ? 'Consulta médica' : 'Peluquería'})
@@ -858,48 +1080,47 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
       {/* Appointment Action / Detail Modal */}
       {detailModal?.isOpen && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200 my-4 sm:my-auto">
             {/* Header with info */}
-            <div className="flex justify-between items-start border-b border-slate-200 pb-md">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-display-lg text-lg text-slate-900 font-semibold">
-                    Turno: {detailModal.appointment.patientName}
-                  </h3>
-                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                    detailModal.appointment.status === 'cancelled'
-                      ? 'bg-rose-100 text-rose-700'
-                      : detailModal.appointment.status === 'completed'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-purple-100 text-[#5C3C7B]'
-                  }`}>
-                    {detailModal.appointment.status === 'cancelled'
-                      ? 'Cancelado'
-                      : detailModal.appointment.status === 'completed'
-                      ? 'Completado'
-                      : 'Confirmado'}
-                  </span>
+            {(() => {
+              const effectiveModalStatus = getEffectiveAppointmentStatus(
+                detailModal.appointment.date,
+                detailModal.appointment.time,
+                detailModal.appointment.status
+              );
+              return (
+                <div className="flex justify-between items-start border-b border-slate-200 pb-md">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-display-lg text-lg text-slate-900 font-semibold">
+                        Turno: {detailModal.appointment.patientName}
+                      </h3>
+                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${effectiveModalStatus.badgeClass}`}>
+                        {effectiveModalStatus.label}
+                      </span>
+                    </div>
+                    <p className="font-body-md text-xs text-slate-600">
+                      <span className="font-medium text-slate-800">Tutor:</span> {detailModal.appointment.ownerName} &bull;{' '}
+                      <span className="font-medium text-slate-800">Especie/Raza:</span> {detailModal.appointment.species} ({detailModal.appointment.breed})
+                    </p>
+                    <p className="font-body-md text-xs text-purple-900 font-medium mt-0.5 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[14px]">event</span>
+                      <span>{formatDate(detailModal.appointment.date)} de {detailModal.appointment.time} a {detailModal.appointment.endTime}</span>
+                      <span className="px-1.5 py-0.2 bg-purple-100 text-purple-900 font-bold rounded text-[10px]">
+                        {formatAppointmentDurationBadge(detailModal.appointment.time, detailModal.appointment.endTime) || `${editDuration} min`}
+                      </span>
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setDetailModal(null)} 
+                    className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">close</span>
+                  </button>
                 </div>
-                <p className="font-body-md text-xs text-slate-600">
-                  <span className="font-medium text-slate-800">Tutor:</span> {detailModal.appointment.ownerName} &bull;{' '}
-                  <span className="font-medium text-slate-800">Especie/Raza:</span> {detailModal.appointment.species} ({detailModal.appointment.breed})
-                </p>
-                <p className="font-body-md text-xs text-purple-900 font-medium mt-0.5 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[14px]">event</span>
-                  <span>{formatDate(detailModal.appointment.date)} de {detailModal.appointment.time} a {detailModal.appointment.endTime}</span>
-                  <span className="px-1.5 py-0.2 bg-purple-100 text-purple-900 font-bold rounded text-[10px]">
-                    {formatAppointmentDurationBadge(detailModal.appointment.time, detailModal.appointment.endTime) || `${editDuration} min`}
-                  </span>
-                </p>
-              </div>
-              <button 
-                onClick={() => setDetailModal(null)} 
-                className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
+              );
+            })()}
 
             {/* Quick Actions: Completar sin cobrar o Cobrar */}
             {detailModal.appointment.status !== 'completed' && (
@@ -1120,8 +1341,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
       {/* History Modal Overlay */}
       {showHistoryModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] p-lg shadow-2xl flex flex-col gap-md border border-slate-200 my-4 sm:my-auto">
             {/* Header */}
             <div className="flex justify-between items-start border-b border-slate-200 pb-md">
               <div>

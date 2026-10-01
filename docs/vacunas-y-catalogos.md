@@ -10,7 +10,10 @@ Hola (Nombre tutor), te recordamos que la vacuna (Nombre vacuna) para (Nombre pa
 
 **Escenarios cubiertos:**
 - **Cálculo de Próximo Refuerzo / Vencimiento en Vacunas Requeridas:** Cuando una vacuna requerida se marca como `aplicada`, la tarjeta del paciente en su perfil y en el control de vacunas muestra la fecha de aplicación (`Aplicada: DD/MM/AAAA`) y calcula de forma automática la fecha del **Próximo refuerzo** (`Próximo refuerzo: DD/MM/AAAA`). Esta fecha se obtiene a partir de la dosis registrada en el historial del paciente (`expirationDate`) o calculando `appliedDate + frequencyDays` (según catálogo o 365 días por defecto).
-- **Cobertura Actual según Vacunas Necesarias:** Se calcula dividiendo la cantidad de vacunas necesarias en estado `aplicada` sobre el total de vacunas necesarias asignadas al paciente (`aplicadas / necesarias`).
+- **Cobertura Actual y Vigencia Sanitaria:** Se calcula en función del estado de vigencia real de las vacunas a la fecha actual (`currentDate`):
+  - Para pacientes con **vacunas requeridas**: solo contabilizan como cubiertas aquellas vacunas aplicadas cuya fecha de próximo vencimiento no ha expirado (`vencimiento >= hoy`). Si todas están vencidas o pendientes, la cobertura es **0%**.
+  - Para pacientes con **historial de dosis**: se evalúa la última aplicación de cada tipo único de vacuna registrada. Si todas las últimas dosis se encuentran vencidas (por ejemplo, aplicaciones de años anteriores sin refuerzo vigente), la cobertura sanitaria es **0%** e indica *"0 de X vacunas al día (todas vencidas)"*.
+  - La barra y el porcentaje adoptan colores semánticos: verde (100% al día), rojo (0% al día / vencidas) y lila/ámbar para coberturas parciales.
 - **Eliminación en Cascada del Historial:** Al desmarcar o remover una vacuna aplicada del esquema del paciente, el registro de la dosis correspondiente se elimina de forma inmediata del Historial de Vacunación y de la base de datos Supabase (`vetsoft_dosis_vacunas`).
 - **Profesional por Defecto:** El campo "Profesional / Veterinario" en los formularios de consulta, vacunación y agenda toma por defecto el nombre del usuario activo con sesión iniciada (`userSession.name`).
 - Configuración de vacunas por clínica: Nombre y frecuencia de vencimiento (medida en días).
@@ -22,5 +25,35 @@ Hola (Nombre tutor), te recordamos que la vacuna (Nombre vacuna) para (Nombre pa
 **Operaciones CRUD y Sincronización en Base de Datos:**
 - **Catálogo de Vacunas (`public.vetsoft_vacunas_catalogo`):** Permite **Agregar**, **Editar** y **Eliminar** ítems del catálogo general, sincronizando en tiempo real con Supabase.
 - **Dosis Aplicadas (`public.vetsoft_dosis_vacunas`):** Inserta (`insertVaccineDosisToSupabase`) y elimina (`deleteVaccineDosisFromSupabase` / `deleteVaccineDosesByPatientAndVaccineFromSupabase`) las dosis aplicadas del historial y la base de datos.
-- **Búsqueda con Fallback e Identificación del Paciente:** El registro de dosis acepta tanto el ID del ítem en catálogo como el nombre de la vacuna (`vaccineId` o `vaccineName`), garantizando la creación de la dosis sin fallar aunque la vacuna no existiese previamente en la lista en memoria. Sincroniza automáticamente el estado de la vacuna del paciente a `aplicada`.
+- **Detección Dinámica y Consistencia de Recordatorios:** El panel de recordatorios y la tarjeta de "Próxima aplicación" evalúan dinámicamente si el paciente tiene dosis aplicadas vencidas/por vencer o vacunas requeridas en estado `pendiente`. Si el paciente no posee dosis pendientes ni vacunas requeridas, se muestra el estado "Sin recordatorios pendientes" y "Todas las vacunas están al día", eliminando cualquier recordatorio artificial o datos hardcodeados inventados.
+
+- **Navegación Móvil Master-Detail y Acceso a Ficha Médica:**
+  - En dispositivos móviles (`< md`), la interfaz de Control de Vacunas presenta inicialmente el listado de pacientes gestionados.
+  - Al presionar cualquier paciente del listado, la pantalla cambia al detalle del carnet y control de vacunas del paciente seleccionado.
+  - En la cabecera del detalle se incluye el botón **`← Volver a la lista de pacientes`** para regresar al listado rápidamente.
+  - Asimismo, se incluye el botón **`Ficha médica`** en el encabezado para acceder a la historia clínica integral del paciente con un solo toque.
+
+**Catálogo Estándar de Biológicos e Inmunizaciones Configurado:**
+- **Caninos:**
+  - `SÉXTUPLE CANINA` (365 días / 12 meses)
+  - `ANTIRRÁBICA` (365 días / 12 meses)
+  - `QUÍNTUPLE CANINA` (365 días / 12 meses)
+  - `PUPPY DP / PRIMOVACUNACIÓN` (30 días / 1 mes)
+  - `TOS DE LAS PERRERAS / KC` (365 días / 12 meses)
+  - `GIARDIA CANINA` (365 días / 12 meses)
+  - `CORONAVIRUS CANINO` (365 días / 12 meses)
+  - `LEPTOSPIROSIS REFUERZO` (180 días / 6 meses)
+- **Felinos:**
+  - `TRIPLE FELINA` (365 días / 12 meses)
+  - `LEUCEMIA FELINA` (365 días / 12 meses)
+  - `PANLEUCOPENIA` (365 días / 12 meses)
+- **Preventivos / Antiparasitarios:**
+  - `ANTIPARASITARIA INTERNA` (90 días / 3 meses)
+  - `ANTIPARASITARIA EXTERNA (Pipeta / Comprimido)` (30 días / 1 mes)
+  - `ANTICONCEPTIVA` (150 días / 5 meses)
+  - `ANTITETÁNICA` (365 días / 12 meses)
+
+**Casos borde conocidos:**
+- **Paciente sin vacunas previas:** No muestra recordatorios ficticios; la tarjeta de próxima aplicación ofrece agendar control preventivo general.
+
 

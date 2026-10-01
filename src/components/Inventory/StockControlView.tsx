@@ -69,11 +69,15 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   // Bulk inflation update state
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState<boolean>(false);
   const [showInflationModal, setShowInflationModal] = useState(false);
   const [inflationScope, setInflationScope] = useState<'selected' | 'category' | 'all'>('all');
   const [inflationCategory, setInflationCategory] = useState<string>('Medicamentos');
   const [inflationPercentage, setInflationPercentage] = useState<number>(10);
   const [inflationSuccessMsg, setInflationSuccessMsg] = useState<string | null>(null);
+
+  const isProductSelectionActive = isSelectionMode || selectedProductIds.length > 0;
+  const isServiceSelectionActive = isSelectionMode || selectedServiceIds.length > 0;
 
   const serviceCategories = useMemo(() => {
     const unique = Array.from(new Set(servicesCatalog.map(s => (s.category || '').trim()).filter(Boolean)));
@@ -326,6 +330,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         onUpdateServicesCatalog(result.updatedServices);
         setInflationSuccessMsg(`¡Precios actualizados exitosamente en ${result.updatedCount} servicio(s) (${pct > 0 ? '+' : ''}${pct}%)!`);
         setSelectedServiceIds([]);
+        setIsSelectionMode(false);
         setTimeout(() => {
           setShowInflationModal(false);
           setInflationSuccessMsg(null);
@@ -356,6 +361,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
       }
       setInflationSuccessMsg(`¡Precios actualizados exitosamente en ${result.updatedCount} producto(s) (${pct > 0 ? '+' : ''}${pct}%)!`);
       setSelectedProductIds([]);
+      setIsSelectionMode(false);
       setTimeout(() => {
         setShowInflationModal(false);
         setInflationSuccessMsg(null);
@@ -364,7 +370,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full gap-md flex-1 font-body-md text-slate-800 fixed inset-x-0 top-28 bottom-0 overflow-y-auto p-md lg:static lg:inset-auto lg:p-0 lg:h-full lg:overflow-y-auto lg:pr-1">
+    <div className="flex flex-col w-full gap-md flex-1 font-body-md text-slate-800 h-full overflow-y-auto p-md lg:p-0 lg:pr-1">
       {/* Top Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-sm mb-md shrink-0">
         <div className="flex flex-col">
@@ -495,57 +501,200 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
             </div>
 
             {/* Selection Banner */}
-            {selectedProductIds.length > 0 && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 px-4 flex items-center justify-between gap-3 text-xs animate-fade-in shadow-xs">
-                <div className="flex items-center gap-2 text-emerald-950 font-semibold">
-                  <span className="material-symbols-outlined text-[18px] text-emerald-700">check_box</span>
-                  <span>{selectedProductIds.length} producto{selectedProductIds.length > 1 ? 's' : ''} seleccionado{selectedProductIds.length > 1 ? 's' : ''} para actualizar</span>
+            {isProductSelectionActive && (
+              <div className="bg-purple-50/90 border border-purple-200 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-fade-in shadow-xs">
+                <div className="flex items-center gap-2 text-[#5C3C7B] font-semibold">
+                  <span className="material-symbols-outlined text-[20px] text-[#5C3C7B]" aria-hidden="true">checklist</span>
+                  <span>
+                    {selectedProductIds.length === 0
+                      ? 'Modo Selección: Marque los productos que desea actualizar en la lista'
+                      : `${selectedProductIds.length} ${selectedProductIds.length === 1 ? 'producto seleccionado' : 'productos seleccionados'} para actualizar`}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                   <button
                     type="button"
+                    disabled={selectedProductIds.length === 0}
                     onClick={() => {
                       setInflationScope('selected');
                       setShowInflationModal(true);
                     }}
-                    className="bg-[#27AE60] hover:bg-[#219653] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-xs cursor-pointer transition-colors"
+                    className={`px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer ${
+                      selectedProductIds.length > 0
+                        ? 'bg-[#27AE60] hover:bg-[#219653] text-white'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
                   >
-                    <span className="material-symbols-outlined text-[15px]">trending_up</span>
-                    Actualizar precios por inflación
+                    <span className="material-symbols-outlined text-[16px]" aria-hidden="true">trending_up</span>
+                    <span>Actualizar por inflación ({selectedProductIds.length})</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedProductIds([])}
-                    className="bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                    onClick={() => {
+                      setIsSelectionMode(false);
+                      setSelectedProductIds([]);
+                    }}
+                    className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-semibold cursor-pointer transition-colors"
                   >
-                    Deseleccionar
+                    Cancelar
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Products Table */}
-            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            {/* MOBILE ONLY VIEW: Responsive Product Cards */}
+            <div className="md:hidden flex flex-col gap-3">
+              {paginatedProducts.map((p) => {
+                const isOutOfStock = p.currentStock === 0;
+                const isLowStock = p.currentStock > 0 && p.currentStock <= p.minStock;
+                const priceUpdateInfo = getPriceUpdateStatusInfo(
+                  p.priceLastUpdated || new Date().toISOString().substring(0, 10),
+                  p.updateFrequencyDays || 30
+                );
+                const isSelected = selectedProductIds.includes(p.id);
+
+                return (
+                  <div
+                    key={p.id}
+                    className={`p-4 rounded-2xl border transition-all shadow-sm flex flex-col gap-3 ${
+                      isSelected ? 'bg-purple-50/80 border-[#9A7DB8] ring-1 ring-[#9A7DB8]/30' : 'bg-white border-slate-300 hover:border-purple-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 min-w-0">
+                        {isProductSelectionActive && (
+                          <label className="min-w-[44px] min-h-[44px] -ml-2 -mt-2 flex items-center justify-center cursor-pointer shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedProductIds(prev => [...prev, p.id]);
+                                } else {
+                                  setSelectedProductIds(prev => prev.filter(id => id !== p.id));
+                                }
+                              }}
+                              className="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-[#5C3C7B]"
+                              aria-label={`Seleccionar ${p.name}`}
+                            />
+                          </label>
+                        )}
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-sm text-slate-900 leading-snug break-words">{p.name}</h3>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border border-slate-200">
+                              {p.category}
+                            </span>
+                            {priceUpdateInfo.isExpired ? (
+                              <span className="px-2 py-0.5 bg-[#FDEDEC] text-[#C0392B] border border-red-200 rounded-full text-[10px] font-semibold">
+                                Precio vencido
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-base font-bold text-emerald-800 font-mono block">
+                          ${p.price.toLocaleString('es-AR')}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-medium">
+                          {p.priceLastUpdated || 'Sin fecha'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Stock & Status Bar */}
+                    <div className="flex items-center justify-between bg-slate-50/90 p-2.5 px-3 rounded-xl border border-slate-200 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-600 font-medium">Stock:</span>
+                        <span className={`font-bold text-sm ${
+                          isOutOfStock ? 'text-red-600' : isLowStock ? 'text-amber-600' : 'text-slate-900'
+                        }`}>
+                          {p.currentStock}
+                        </span>
+                        <span className="text-slate-400 text-[11px]">(Mín: {p.minStock})</span>
+                      </div>
+
+                      <div>
+                        {!isLowStock && !isOutOfStock && (
+                          <span className="inline-flex px-2.5 py-1 bg-[#E8F5E9] text-[#1B5E20] border border-emerald-200 rounded-full text-[11px] font-bold">
+                            OK
+                          </span>
+                        )}
+                        {isLowStock && (
+                          <span className="inline-flex px-2.5 py-1 bg-[#FFF3E0] text-[#E65100] border border-amber-200 rounded-full text-[11px] font-bold">
+                            Stock bajo
+                          </span>
+                        )}
+                        {isOutOfStock && (
+                          <span className="inline-flex px-2.5 py-1 bg-red-100 text-red-700 border border-red-200 rounded-full text-[11px] font-bold">
+                            Sin stock
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quick Touch Actions with 44px min-height */}
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedProduct(p); setAdjustNewStock(p.currentStock); setShowAdjustModal(true); }}
+                        className="flex-1 min-h-[44px] bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <span className="material-symbols-outlined text-[18px]" aria-hidden="true">tune</span>
+                        <span>Ajustar</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditProduct(p)}
+                        className="flex-1 min-h-[44px] bg-purple-50/70 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <span className="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span>
+                        <span>Editar</span>
+                      </button>
+                      {onDeleteProduct && (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirm({ isOpen: true, type: 'product', id: p.id, name: p.name })}
+                          className="min-h-[44px] min-w-[44px] bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer ml-1 shadow-2xs"
+                          title="Eliminar producto"
+                          aria-label={`Eliminar ${p.name}`}
+                        >
+                          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Products Table */}
+            <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-xl">
               <table className="w-full text-left border-collapse font-body-md text-xs">
                 <thead>
                   <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
-                    <th className="p-sm px-2 text-center w-10 rounded-tl-lg">
-                      <input
-                        type="checkbox"
-                        checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedProductIds.includes(p.id))}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            const newSelected = Array.from(new Set([...selectedProductIds, ...paginatedProducts.map(p => p.id)]));
-                            setSelectedProductIds(newSelected);
-                          } else {
-                            const pageIds = new Set(paginatedProducts.map(p => p.id));
-                            setSelectedProductIds(selectedProductIds.filter(id => !pageIds.has(id)));
-                          }
-                        }}
-                        className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-[#5C3C7B]"
-                        title="Seleccionar / Deseleccionar visibles de la página"
-                      />
-                    </th>
+                    {isProductSelectionActive && (
+                      <th className="p-sm px-2 text-center w-10 rounded-tl-lg">
+                        <input
+                          type="checkbox"
+                          checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedProductIds.includes(p.id))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              const newSelected = Array.from(new Set([...selectedProductIds, ...paginatedProducts.map(p => p.id)]));
+                              setSelectedProductIds(newSelected);
+                            } else {
+                              const pageIds = new Set(paginatedProducts.map(p => p.id));
+                              setSelectedProductIds(selectedProductIds.filter(id => !pageIds.has(id)));
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-[#5C3C7B]"
+                          title="Seleccionar / Deseleccionar visibles de la página"
+                          aria-label="Seleccionar todos los productos visibles"
+                        />
+                      </th>
+                    )}
                     <th className="p-sm px-md">Producto</th>
                     <th className="p-sm px-md">Categoría</th>
                     <th className="p-sm px-md text-right">Stock actual</th>
@@ -571,20 +720,23 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                       <tr key={p.id} className={`hover:bg-surface-container transition-colors group border-b border-surface-container-low ${
                         selectedProductIds.includes(p.id) ? 'bg-purple-50/60' : 'bg-surface-container-lowest'
                       }`}>
-                        <td className="p-sm px-2 text-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedProductIds.includes(p.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedProductIds(prev => [...prev, p.id]);
-                              } else {
-                                setSelectedProductIds(prev => prev.filter(id => id !== p.id));
-                              }
-                            }}
-                            className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-[#5C3C7B]"
-                          />
-                        </td>
+                        {isProductSelectionActive && (
+                          <td className="p-sm px-2 text-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedProductIds.includes(p.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedProductIds(prev => [...prev, p.id]);
+                                } else {
+                                  setSelectedProductIds(prev => prev.filter(id => id !== p.id));
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-[#5C3C7B]"
+                              aria-label={`Seleccionar ${p.name}`}
+                            />
+                          </td>
+                        )}
                         <td className="p-sm px-md font-semibold text-primary">
                           {p.name}
                         </td>
@@ -635,28 +787,31 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                           )}
                         </td>
                         <td className="p-sm px-md text-right">
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => { setSelectedProduct(p); setAdjustNewStock(p.currentStock); setShowAdjustModal(true); }}
-                              className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-lg transition-colors cursor-pointer"
+                              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-xl transition-colors cursor-pointer"
                               title="Ajustar Stock"
+                              aria-label={`Ajustar stock de ${p.name}`}
                             >
-                              <span className="material-symbols-outlined text-[16px]">tune</span>
+                              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">tune</span>
                             </button>
                             <button
                               onClick={() => handleOpenEditProduct(p)}
-                              className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-lg transition-colors cursor-pointer"
+                              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-xl transition-colors cursor-pointer"
                               title="Editar Producto"
+                              aria-label={`Editar ${p.name}`}
                             >
-                              <span className="material-symbols-outlined text-[16px]">edit</span>
+                              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span>
                             </button>
                             {onDeleteProduct && (
                               <button
                                 onClick={() => setDeleteConfirm({ isOpen: true, type: 'product', id: p.id, name: p.name })}
-                                className="p-1.5 text-on-surface-variant hover:text-error hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-on-surface-variant hover:text-error hover:bg-red-50 rounded-xl transition-colors cursor-pointer ml-1"
                                 title="Eliminar Producto del Catálogo"
+                                aria-label={`Eliminar ${p.name}`}
                               >
-                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
                               </button>
                             )}
                           </div>
@@ -682,48 +837,169 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
           /* Services Catalog Table */
           <div className="flex flex-col gap-md">
             {/* Selection Banner for Services */}
-            {selectedServiceIds.length > 0 && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 px-4 flex items-center justify-between gap-3 text-xs animate-fade-in shadow-xs">
-                <div className="flex items-center gap-2 text-emerald-950 font-semibold">
-                  <span className="material-symbols-outlined text-[18px] text-emerald-700">check_box</span>
-                  <span>{selectedServiceIds.length} servicio{selectedServiceIds.length > 1 ? 's' : ''} seleccionado{selectedServiceIds.length > 1 ? 's' : ''} para actualizar</span>
+            {isServiceSelectionActive && (
+              <div className="bg-purple-50/90 border border-purple-200 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-fade-in shadow-xs">
+                <div className="flex items-center gap-2 text-[#5C3C7B] font-semibold">
+                  <span className="material-symbols-outlined text-[20px] text-[#5C3C7B]" aria-hidden="true">checklist</span>
+                  <span>
+                    {selectedServiceIds.length === 0
+                      ? 'Modo Selección: Marque los servicios que desea actualizar en la lista'
+                      : `${selectedServiceIds.length} ${selectedServiceIds.length === 1 ? 'servicio seleccionado' : 'servicios seleccionados'} para actualizar`}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                   <button
                     type="button"
+                    disabled={selectedServiceIds.length === 0}
                     onClick={() => {
                       setInflationScope('selected');
                       setShowInflationModal(true);
                     }}
-                    className="bg-[#27AE60] hover:bg-[#219653] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-xs cursor-pointer transition-colors"
+                    className={`px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer ${
+                      selectedServiceIds.length > 0
+                        ? 'bg-[#27AE60] hover:bg-[#219653] text-white'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
                   >
-                    <span className="material-symbols-outlined text-[15px]">trending_up</span>
-                    Actualizar precios por inflación
+                    <span className="material-symbols-outlined text-[16px]" aria-hidden="true">trending_up</span>
+                    <span>Actualizar por inflación ({selectedServiceIds.length})</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedServiceIds([])}
-                    className="bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                    onClick={() => {
+                      setIsSelectionMode(false);
+                      setSelectedServiceIds([]);
+                    }}
+                    className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-semibold cursor-pointer transition-colors"
                   >
-                    Deseleccionar
+                    Cancelar
                   </button>
                 </div>
               </div>
             )}
 
-            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            {/* MOBILE ONLY VIEW: Responsive Services Cards */}
+            <div className="md:hidden flex flex-col gap-3">
+              {paginatedServices.map((srv) => {
+                const statusInfo = getPriceUpdateStatusInfo(srv.priceLastUpdated, srv.updateFrequencyDays || 30);
+                const isSelected = selectedServiceIds.includes(srv.id);
+
+                return (
+                  <div
+                    key={srv.id}
+                    className={`p-4 rounded-2xl border transition-all shadow-sm flex flex-col gap-3 ${
+                      isSelected ? 'bg-purple-50/80 border-[#9A7DB8] ring-1 ring-[#9A7DB8]/30' : 'bg-white border-slate-300 hover:border-purple-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 min-w-0">
+                        {isServiceSelectionActive && (
+                          <label className="min-w-[44px] min-h-[44px] -ml-2 -mt-2 flex items-center justify-center cursor-pointer shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleServiceSelect(srv.id)}
+                              className="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-[#5C3C7B]"
+                              aria-label={`Seleccionar ${srv.name}`}
+                            />
+                          </label>
+                        )}
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-sm text-slate-900 leading-snug break-words">{srv.name}</h3>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md text-[11px] font-semibold capitalize border border-slate-200">
+                              {srv.category}
+                            </span>
+                            {statusInfo.isExpired ? (
+                              <span className="px-2 py-0.5 bg-[#FDEDEC] text-[#C0392B] border border-red-200 rounded-full text-[10px] font-semibold">
+                                Vencido ({statusInfo.daysDifference}d)
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-[#E8F5E9] text-[#27AE60] border border-green-200 rounded-full text-[10px] font-semibold">
+                                Vigente
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-base font-bold text-[#5C3C7B] font-mono block">
+                          ${srv.price.toLocaleString('es-AR')}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-medium">
+                          {srv.priceLastUpdated || 'Sin fecha'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {srv.description && (
+                      <p className="text-xs text-slate-700 leading-relaxed font-normal bg-slate-50/90 p-2.5 px-3 rounded-xl border border-slate-200">
+                        {srv.description}
+                      </p>
+                    )}
+
+                    {/* Status Toggle Row */}
+                    <div className="flex items-center justify-between bg-slate-50/90 p-2 px-3 rounded-xl border border-slate-200 text-xs">
+                      <span className="text-slate-600 font-medium">Estado del servicio:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleService(srv)}
+                        className={`px-3 py-1 min-h-[36px] rounded-full text-xs font-bold cursor-pointer transition-all border ${
+                          srv.isActive 
+                            ? 'bg-[#E8F5E9] text-[#1B5E20] border-emerald-300 hover:bg-emerald-200' 
+                            : 'bg-[#FDEDEC] text-[#C0392B] border-red-300 hover:bg-red-200'
+                        }`}
+                        title="Tocar para cambiar estado Activo/Inactivo"
+                      >
+                        {srv.isActive ? '✓ Activo' : '✕ Inactivo'}
+                      </button>
+                    </div>
+
+                    {/* Quick Touch Actions with 44px min-height */}
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditService(srv)}
+                        className="flex-1 min-h-[44px] bg-purple-50/70 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <span className="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span>
+                        <span>Editar</span>
+                      </button>
+                      {onDeleteServiceCatalogItem && (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirm({ isOpen: true, type: 'service', id: srv.id, name: srv.name })}
+                          className="min-h-[44px] min-w-[44px] bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer ml-1 shadow-2xs"
+                          title="Eliminar servicio"
+                          aria-label={`Eliminar ${srv.name}`}
+                        >
+                          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Services Table */}
+            <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-xl">
               <table className="w-full text-left border-collapse font-body-md text-xs">
                 <thead>
                   <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
-                    <th className="p-sm px-md w-10 text-center">
-                      <input
-                        type="checkbox"
-                        checked={isAllServicesOnPageSelected}
-                        onChange={handleToggleSelectAllServices}
-                        className="rounded border-slate-300 text-[#5C3C7B] focus:ring-[#5C3C7B] cursor-pointer"
-                        title="Seleccionar todos los servicios de la página"
-                      />
-                    </th>
+                    {isServiceSelectionActive && (
+                      <th className="p-sm px-md w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isAllServicesOnPageSelected}
+                          onChange={handleToggleSelectAllServices}
+                          className="rounded border-slate-300 text-[#5C3C7B] focus:ring-[#5C3C7B] cursor-pointer"
+                          title="Seleccionar todos los servicios de la página"
+                          aria-label="Seleccionar todos los servicios visibles"
+                        />
+                      </th>
+                    )}
                     <th className="p-sm px-md">Categoría</th>
                     <th className="p-sm px-md">Servicio</th>
                     <th className="p-sm px-md">Descripción</th>
@@ -744,14 +1020,17 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                       <tr key={srv.id} className={`transition-colors group border-b border-surface-container-low ${
                         isSelected ? 'bg-purple-50/70' : 'bg-surface-container-lowest hover:bg-surface-container'
                       }`}>
-                        <td className="p-sm px-md text-center">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => handleToggleServiceSelect(srv.id)}
-                            className="rounded border-slate-300 text-[#5C3C7B] focus:ring-[#5C3C7B] cursor-pointer"
-                          />
-                        </td>
+                        {isServiceSelectionActive && (
+                          <td className="p-sm px-md text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleServiceSelect(srv.id)}
+                              className="rounded border-slate-300 text-[#5C3C7B] focus:ring-[#5C3C7B] cursor-pointer"
+                              aria-label={`Seleccionar ${srv.name}`}
+                            />
+                          </td>
+                        )}
                         <td className="p-sm px-md font-medium text-primary capitalize">{srv.category}</td>
                         <td className="p-sm px-md font-semibold text-on-surface">{srv.name}</td>
                         <td className="p-sm px-md text-on-surface-variant max-w-xs truncate">{srv.description}</td>
@@ -787,22 +1066,24 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                         </td>
                       <td className="p-sm px-md text-center text-on-surface-variant">{srv.lastSoldAt || 'Sin ventas'}</td>
                       <td className="p-sm px-md text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleOpenEditService(srv)}
-                            className="px-2.5 py-1.5 bg-surface-container-high hover:bg-primary hover:text-white rounded-lg text-[11px] font-semibold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                            className="min-h-[44px] px-3 py-2 bg-surface-container-high hover:bg-primary hover:text-white rounded-xl text-xs font-semibold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
                             title="Editar servicio / precio"
+                            aria-label={`Editar ${srv.name}`}
                           >
-                            <span className="material-symbols-outlined text-[14px]">edit</span>
+                            <span className="material-symbols-outlined text-[16px]">edit</span>
                             <span>Editar</span>
                           </button>
                           {onDeleteServiceCatalogItem && (
                             <button
                               onClick={() => setDeleteConfirm({ isOpen: true, type: 'service', id: srv.id, name: srv.name })}
-                              className="p-1.5 bg-red-50 text-error hover:bg-red-100 rounded-lg text-[11px] font-semibold transition-all shadow-2xs cursor-pointer"
+                              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 bg-red-50 text-error hover:bg-red-100 rounded-xl text-xs font-semibold transition-all shadow-2xs cursor-pointer ml-1"
                               title="Eliminar servicio del catálogo"
+                              aria-label={`Eliminar ${srv.name}`}
                             >
-                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
                             </button>
                           )}
                         </div>
@@ -829,11 +1110,11 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
       {/* Modals */}
       {showEntryModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-4 sm:p-lg shadow-xl flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Registrar entrada de mercadería</h3>
-              <button onClick={() => setShowEntryModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
+              <button onClick={() => setShowEntryModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-1">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -855,6 +1136,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Cantidad recibida</label>
               <input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={entryQty}
                 onChange={(e) => setEntryQty(Number(e.target.value))}
                 min={1}
@@ -871,11 +1154,11 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
       )}
 
       {showAdjustModal && selectedProduct && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-4 sm:p-lg shadow-xl flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Ajuste manual de stock</h3>
-              <button onClick={() => setShowAdjustModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
+              <button onClick={() => setShowAdjustModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-1">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -886,6 +1169,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Nuevo stock</label>
               <input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={adjustNewStock}
                 onChange={(e) => setAdjustNewStock(Number(e.target.value))}
                 min={0}
@@ -902,11 +1187,11 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
       )}
 
       {showPriceModal && selectedService && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-4 sm:p-lg shadow-xl flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Actualizar precio de servicio</h3>
-              <button onClick={() => setShowPriceModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
+              <button onClick={() => setShowPriceModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-1">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -918,6 +1203,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Nuevo precio ($)</label>
               <input
                 type="number"
+                inputMode="decimal"
                 value={newServicePrice}
                 onChange={(e) => setNewServicePrice(Number(e.target.value))}
                 min={1}
@@ -935,11 +1221,11 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
       {/* New Product Modal */}
       {showNewProductModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-4 sm:p-lg shadow-xl flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Nuevo producto del inventario</h3>
-              <button onClick={() => setShowNewProductModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
+              <button onClick={() => setShowNewProductModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-1">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -972,6 +1258,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   <label className="font-semibold text-xs text-slate-700 block">Stock inicial *</label>
                   <input
                     type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={newInitialStock}
                     onChange={(e) => setNewInitialStock(Number(e.target.value))}
                     min={0}
@@ -983,6 +1271,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   <label className="font-semibold text-xs text-slate-700 block">Stock mínimo (Alerta) *</label>
                   <input
                     type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={newMinStock}
                     onChange={(e) => setNewMinStock(Number(e.target.value))}
                     min={0}
@@ -995,6 +1285,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Precio de venta ($) *</label>
               <input
                 type="number"
+                inputMode="decimal"
                 value={newPrice}
                 onChange={(e) => setNewPrice(Number(e.target.value))}
                 min={0}
@@ -1005,6 +1296,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización / vencimiento del precio (días) *</label>
               <input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 min={1}
                 value={newUpdateFrequency}
                 onChange={(e) => setNewUpdateFrequency(Number(e.target.value))}
@@ -1023,11 +1316,11 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
       {/* Edit Product Modal */}
       {showEditProductModal && selectedProduct && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-4 sm:p-lg shadow-xl flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Editar producto del inventario</h3>
-              <button onClick={() => setShowEditProductModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
+              <button onClick={() => setShowEditProductModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-1">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -1057,6 +1350,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Precio de venta ($) *</label>
               <input
                 type="number"
+                inputMode="decimal"
                 value={editPrice}
                 onChange={(e) => setEditPrice(Number(e.target.value))}
                 min={0}
@@ -1067,6 +1361,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Stock mínimo (Alerta)</label>
               <input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={editMinStock}
                 onChange={(e) => setEditMinStock(Number(e.target.value))}
                 min={0}
@@ -1077,6 +1373,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización / vencimiento del precio (días) *</label>
               <input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 min={1}
                 value={editUpdateFrequency}
                 onChange={(e) => setEditUpdateFrequency(Number(e.target.value))}
@@ -1095,13 +1393,13 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
       {/* Service Catalog Add/Edit Modal */}
       {showServiceModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-lg shadow-xl flex flex-col gap-md">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-4 sm:p-lg shadow-xl flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">
                 {selectedService ? 'Editar servicio / prestación' : 'Nuevo servicio / prestación'}
               </h3>
-              <button onClick={() => setShowServiceModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer">
+              <button onClick={() => setShowServiceModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-1">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -1142,6 +1440,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Precio ($) *</label>
               <input
                 type="number"
+                inputMode="decimal"
                 value={serviceFormPrice}
                 onChange={(e) => setServiceFormPrice(Number(e.target.value))}
                 min={0}
@@ -1152,6 +1451,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización / vencimiento del precio (días) *</label>
               <input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 min={1}
                 value={serviceFormFrequency}
                 onChange={(e) => setServiceFormFrequency(Number(e.target.value))}
@@ -1206,8 +1507,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
       {/* Modal: Actualización masiva de precios por inflación */}
       {showInflationModal && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-lg shadow-2xl flex flex-col gap-md border border-slate-200 my-4 sm:my-auto">
             <div className="flex justify-between items-start border-b border-slate-200 pb-sm">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
@@ -1247,19 +1548,31 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   <div className="grid grid-cols-3 gap-1.5">
                     <button
                       type="button"
-                      disabled={activeSubmodule === 'servicios-catalogo' ? selectedServiceIds.length === 0 : selectedProductIds.length === 0}
-                      onClick={() => setInflationScope('selected')}
+                      onClick={() => {
+                        const count = activeSubmodule === 'servicios-catalogo' ? selectedServiceIds.length : selectedProductIds.length;
+                        if (count === 0) {
+                          setIsSelectionMode(true);
+                          setShowInflationModal(false);
+                        } else {
+                          setInflationScope('selected');
+                        }
+                      }}
                       className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${
                         inflationScope === 'selected'
                           ? 'bg-[#5C3C7B] text-white border-[#5C3C7B] shadow-xs'
-                          : (activeSubmodule === 'servicios-catalogo' ? selectedServiceIds.length === 0 : selectedProductIds.length === 0)
-                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
+                      title={
+                        (activeSubmodule === 'servicios-catalogo' ? selectedServiceIds.length : selectedProductIds.length) === 0
+                          ? 'Clic para elegir productos o servicios específicos de la lista'
+                          : 'Aplicar a los ítems seleccionados'
+                      }
                     >
                       <span className="text-[11px] font-bold">Seleccionados</span>
                       <span className="text-[10px] opacity-80 font-medium">
-                        ({activeSubmodule === 'servicios-catalogo' ? selectedServiceIds.length : selectedProductIds.length} items)
+                        {(activeSubmodule === 'servicios-catalogo' ? selectedServiceIds.length : selectedProductIds.length) > 0
+                          ? `(${activeSubmodule === 'servicios-catalogo' ? selectedServiceIds.length : selectedProductIds.length} items)`
+                          : '(Elegir en lista)'}
                       </span>
                     </button>
 
@@ -1292,6 +1605,26 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {/* Si está en 'selected' y hay ítems seleccionados, botón para modificar selección */}
+                {inflationScope === 'selected' && (activeSubmodule === 'servicios-catalogo' ? selectedServiceIds.length : selectedProductIds.length) > 0 && (
+                  <div className="flex items-center justify-between bg-purple-50/80 p-2.5 px-3 rounded-xl border border-purple-200 text-xs animate-fade-in">
+                    <span className="font-semibold text-[#5C3C7B]">
+                      {activeSubmodule === 'servicios-catalogo' ? selectedServiceIds.length : selectedProductIds.length} {activeSubmodule === 'servicios-catalogo' ? 'servicio(s)' : 'producto(s)'} listos para ajustar
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSelectionMode(true);
+                        setShowInflationModal(false);
+                      }}
+                      className="text-xs font-bold text-[#5C3C7B] hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-[15px]" aria-hidden="true">edit</span>
+                      <span>Modificar en la lista</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Category Dropdown if Scope is Category */}
                 {inflationScope === 'category' && (
@@ -1334,6 +1667,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   <div className="relative flex items-center">
                     <input
                       type="number"
+                      inputMode="decimal"
                       step="0.1"
                       value={inflationPercentage}
                       onChange={(e) => setInflationPercentage(Number(e.target.value))}

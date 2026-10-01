@@ -234,11 +234,11 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
                           <span>{summaryLabel}</span>
                         </span>
                       </td>
-                      <td className="py-3 px-md text-right">
+                      <td className="py-3 px-md text-right whitespace-nowrap">
                         {row.pendingBillsCount > 0 ? (
                           <div>
                             <span className="font-semibold text-slate-900">{row.pendingBillsCount} facturas</span>
-                            <div className="text-[11px] text-amber-700 font-semibold">$ {row.pendingTotal.toLocaleString('es-AR')}</div>
+                            <div className="text-[11px] text-amber-700 font-semibold whitespace-nowrap">$ {row.pendingTotal.toLocaleString('es-AR')}</div>
                           </div>
                         ) : (
                           <span className="text-slate-400 font-medium">Al día</span>
@@ -274,8 +274,8 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
 
       {/* Modal Edit Supplier Credit Term (Estilo Claro) */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-xs z-50 flex items-center justify-center p-md animate-fade-in">
-          <div className="bg-surface-container-lowest text-slate-800 rounded-2xl max-w-md w-full shadow-2xl border border-outline-variant/30 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-surface-container-lowest text-slate-800 rounded-2xl max-w-md w-full shadow-2xl border border-outline-variant/30 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-4 sm:my-auto">
             {/* Header del Modal */}
             <div className="bg-[#5C3C7B] text-white p-4 flex items-center justify-between">
               <div>
@@ -307,6 +307,8 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
                   type="number"
                   min="0"
                   max="100"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={contadoPercent}
                   onChange={e => setContadoPercent(e.target.value !== '' ? Number(e.target.value) : 0)}
                   className="w-full bg-surface-container/60 border border-outline-variant/40 rounded-xl p-3 text-slate-900 font-bold text-sm outline-none focus:border-[#5C3C7B] focus:ring-1 focus:ring-[#5C3C7B] transition-all"
@@ -322,6 +324,8 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
                   type="number"
                   min="0"
                   max="100"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={dias30Percent}
                   onChange={e => setDias30Percent(e.target.value !== '' ? Number(e.target.value) : 0)}
                   className="w-full bg-surface-container/60 border border-outline-variant/40 rounded-xl p-3 text-slate-900 font-bold text-sm outline-none focus:border-[#5C3C7B] focus:ring-1 focus:ring-[#5C3C7B] transition-all"
@@ -337,6 +341,8 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
                   type="number"
                   min="0"
                   max="100"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={dias60Percent}
                   onChange={e => setDias60Percent(e.target.value !== '' ? Number(e.target.value) : 0)}
                   className="w-full bg-surface-container/60 border border-outline-variant/40 rounded-xl p-3 text-slate-900 font-bold text-sm outline-none focus:border-[#5C3C7B] focus:ring-1 focus:ring-[#5C3C7B] transition-all"
@@ -352,6 +358,8 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
                   type="number"
                   min="0"
                   max="100"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={dias90Percent}
                   onChange={e => setDias90Percent(e.target.value !== '' ? Number(e.target.value) : 0)}
                   className="w-full bg-surface-container/60 border border-outline-variant/40 rounded-xl p-3 text-slate-900 font-bold text-sm outline-none focus:border-[#5C3C7B] focus:ring-1 focus:ring-[#5C3C7B] transition-all"

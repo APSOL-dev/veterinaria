@@ -29,6 +29,7 @@ El módulo **Cobros** administra la emisión de facturas electrónicas, remitos 
    - Mantiene una tabla limpia con Comprobante Nº, Fecha, Paciente/Dueño, Tipo Doc, Medio de Pago, Total y Acciones.
    - Sincroniza la cabecera del comprobante en `vetsoft_recibos` y sus renglones en `vetsoft_detalle_recibos`.
    - En la consulta desde Supabase, soporta mapeo robusto para nombres de columna en snake_case (`invoice_number`, `patient_name`, `owner_name`, `payment_method`, `total_amount`) y realiza fallback automático a `vetsoft_recibos` si la vista `vetsoft_vw_recibos` no estuviese disponible.
+   - **Estado Vacío Amigable:** Si no existen cobros emitidos o registrados, la tabla muestra un mensaje claro con icono ("No hay cobros registrados") invitando a emitir una nueva factura en lugar de quedar vacía.
 
 **Casos borde conocidos:**
 - **Facturas A / B vs C:** Si el usuario decide cambiar manualmente a Factura A o B, se activa el cálculo de IVA (21% por defecto), manteniendo todos los precios editados por el usuario.

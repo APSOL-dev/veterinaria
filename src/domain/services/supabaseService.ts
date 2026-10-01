@@ -26,10 +26,39 @@ function sanitizeDateString(dateStr?: string | null): string | null {
   return trimmed.length >= 10 ? trimmed.substring(0, 10) : trimmed;
 }
 
-function extractErrorMessage(error: any): string | undefined {
+export function formatUserFriendlyErrorMessage(error: any): string {
+  if (!error) return 'Error de conexión o datos inválidos.';
+  
+  let rawStr = '';
+  if (typeof error === 'string') {
+    rawStr = error;
+  } else if (error && typeof error === 'object') {
+    rawStr = error.message || error.details || error.hint || error.error_description || JSON.stringify(error);
+  } else {
+    rawStr = String(error);
+  }
+
+  const lower = rawStr.toLowerCase();
+
+  if (lower.includes('duplicate key') || lower.includes('unique constraint') || lower.includes('ya existe')) {
+    return 'Ya existe un registro con estos datos en el sistema.';
+  }
+  if (lower.includes('row-level security') || lower.includes('policy') || lower.includes('rls') || lower.includes('permission denied')) {
+    return 'No se pudo completar la operación por permisos del sistema.';
+  }
+  if (lower.includes('401') || lower.includes('unauthorized') || lower.includes('jwt') || lower.includes('invalid claim')) {
+    return 'La sesión no es válida o ha expirado. Por favor recargue la página o inicie sesión nuevamente.';
+  }
+  if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('timeout') || lower.includes('econnrefused')) {
+    return 'Error de conexión con el servidor. Por favor verifique su acceso a internet.';
+  }
+
+  return rawStr;
+}
+
+export function extractErrorMessage(error: any): string | undefined {
   if (!error) return undefined;
-  if (typeof error === 'string') return error;
-  return error.message || error.details || error.hint || JSON.stringify(error);
+  return formatUserFriendlyErrorMessage(error);
 }
 
 // =============================================================================

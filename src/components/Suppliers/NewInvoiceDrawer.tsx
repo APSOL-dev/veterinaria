@@ -393,9 +393,9 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/25 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+    <div className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-xs flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
       <div 
-        className="w-full max-w-2xl bg-surface-container-lowest text-slate-800 max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border border-outline-variant/30 overflow-hidden font-body-md text-xs"
+        className="w-full max-w-2xl bg-surface-container-lowest text-slate-800 max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border border-outline-variant/30 overflow-hidden font-body-md text-xs my-4 sm:my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -736,10 +736,10 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                           <button
                             type="button"
                             onClick={() => handleRemoveBillItem(item.id)}
-                            className="shrink-0 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-700 border border-outline-variant/30 hover:border-rose-200 p-2 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                            className="shrink-0 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-700 border border-outline-variant/30 hover:border-rose-200 min-h-[44px] min-w-[44px] p-2 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
                             title="Eliminar ítem"
                           >
-                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
                           </button>
                         </div>
 
@@ -749,6 +749,8 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                             <input
                               type="number"
                               min="1"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
                               value={item.quantity}
                               onChange={(e) => handleBillItemChange(item.id, 'quantity', e.target.value)}
                               className="w-full bg-surface-container/50 border border-outline-variant/30 rounded-lg p-1.5 text-xs text-slate-900 text-center outline-none font-medium"
@@ -760,6 +762,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                               type="number"
                               step="0.01"
                               min="0"
+                              inputMode="decimal"
                               value={item.unitCost}
                               onChange={(e) => handleBillItemChange(item.id, 'unitCost', e.target.value)}
                               className="w-full bg-surface-container/50 border border-outline-variant/30 rounded-lg p-1.5 text-xs text-slate-900 text-right outline-none font-medium"
@@ -795,6 +798,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                   <input
                     type="number"
                     step="0.01"
+                    inputMode="decimal"
                     value={perceptions}
                     onChange={(e) => {
                       const newPerc = e.target.value === '' ? '' : Number(e.target.value);
