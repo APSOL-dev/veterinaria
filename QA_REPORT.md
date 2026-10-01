@@ -115,3 +115,17 @@ Pendientes:
 | Error 12: controles de 36 a 40 px en mobile | Corregido | `AgendaView.tsx` (semana anterior, hoy, semana siguiente, Nuevo turno) y `PatientProfileView.tsx` (Editar datos del paciente) pasan a 44 px en mobile y conservan su tamaño actual desde `sm`. |
 
 Verificación local: `tsc` sin errores y 339 tests pasan.
+
+---
+
+## 8. Reverificación en producción (bundle `index-DvEsKu3Z.js`)
+
+| Hallazgo | Resultado |
+|---|---|
+| Error 10: IVA y Percepciones con `min` | ✅ Los dos campos editables tienen `min="0"`. Subtotal y Total siguen de solo lectura. |
+| Error 11: Procesar factura sin archivo | ✅ Muestra "Seleccione un archivo (PDF o imagen) antes de procesar la factura." No pasa a "Procesando" y no se registró ningún request al webhook. |
+| Error 12: controles de 36 a 40 px en mobile | ✅ Pacientes y los controles de semana y "Nuevo turno" de Peluquería llegan a 44 px. Sin scroll horizontal en los 7 módulos a 390 px. |
+
+**Residual (bajo):** en las tarjetas de turno de Peluquería, "Completar" y "Cobrar" miden 42 px de alto en 390 px (2 px menos que el objetivo de 44 px).
+
+**Sin ejecutar:** carga real con OCR y emisión de cobro (siguen pendientes).
