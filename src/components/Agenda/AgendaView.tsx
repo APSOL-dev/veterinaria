@@ -359,7 +359,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
             <button 
               onClick={() => setRefDate(prev => shiftWeek(prev, -1))}
               title="Semana anterior"
-              className="p-1.5 text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer min-h-[36px] min-w-[36px]"
+              className="p-1.5 text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px]"
               aria-label="Semana anterior"
             >
               <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_left</span>
@@ -367,14 +367,14 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
             <button 
               onClick={() => setRefDate(new Date())}
               title="Ir a la semana actual"
-              className="px-3 py-1 text-slate-800 hover:bg-purple-100 rounded-lg transition-colors font-label-md text-xs font-semibold cursor-pointer min-h-[36px]"
+              className="px-3 py-1 text-slate-800 hover:bg-purple-100 rounded-lg transition-colors font-label-md text-xs font-semibold cursor-pointer min-h-[44px] sm:min-h-[36px]"
             >
               Hoy
             </button>
             <button 
               onClick={() => setRefDate(prev => shiftWeek(prev, 1))}
               title="Semana siguiente"
-              className="p-1.5 text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer min-h-[36px] min-w-[36px]"
+              className="p-1.5 text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px]"
               aria-label="Semana siguiente"
             >
               <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_right</span>
@@ -478,7 +478,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
               setAppEndTime(calculateEndTime(appTime, duration));
               setShowNewModal(true);
             }}
-            className="flex items-center gap-1.5 bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 min-h-[40px] rounded-full font-label-md text-xs transition-all shadow-sm font-semibold cursor-pointer"
+            className="flex items-center gap-1.5 bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 min-h-[44px] sm:min-h-[40px] rounded-full font-label-md text-xs transition-all shadow-sm font-semibold cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]" aria-hidden="true">add</span>
             <span>Nuevo turno</span>

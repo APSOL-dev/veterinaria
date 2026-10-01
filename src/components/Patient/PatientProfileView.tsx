@@ -505,7 +505,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                   href={`https://wa.me/${cleanPhone(selectedPatient.ownerPhone)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="bg-[#25D366] text-white hover:brightness-105 px-3.5 py-2 min-h-[40px] rounded-xl font-label-sm text-xs flex items-center gap-1.5 shadow-sm font-semibold transition-all"
+                  className="bg-[#25D366] text-white hover:brightness-105 px-3.5 py-2 min-h-[44px] sm:min-h-[40px] rounded-xl font-label-sm text-xs flex items-center gap-1.5 shadow-sm font-semibold transition-all"
                   title="Enviar WhatsApp al dueño"
                 >
                   <span className="material-symbols-outlined text-[16px]" aria-hidden="true">chat</span>
@@ -515,7 +515,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
               <button
                 onClick={handleOpenEditPetModal}
-                className="bg-white hover:bg-slate-100 text-[#5C3C7B] border border-slate-300 px-3.5 py-2 min-h-[40px] rounded-xl font-label-sm text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
+                className="bg-white hover:bg-slate-100 text-[#5C3C7B] border border-slate-300 px-3.5 py-2 min-h-[44px] sm:min-h-[40px] rounded-xl font-label-sm text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
                 title="Editar datos clínicos del paciente"
               >
                 <span className="material-symbols-outlined text-[16px]" aria-hidden="true">edit</span>

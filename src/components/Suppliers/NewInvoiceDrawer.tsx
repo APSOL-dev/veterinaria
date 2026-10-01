@@ -229,6 +229,10 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
 
   const handleProcessInvoiceWithN8n = async (fileToProcess?: File | null) => {
     const file = fileToProcess !== undefined ? fileToProcess : selectedFile;
+    if (!file) {
+      setExtractionError('Seleccione un archivo (PDF o imagen) antes de procesar la factura.');
+      return;
+    }
     setIsProcessing(true);
     setExtractionError(null);
 
@@ -668,6 +672,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                   </div>
                   <input
                     type="number"
+                    min="0"
                     step="0.01"
                     value={taxAmount}
                     readOnly={!applyIva || isInvoiceDocTypeWithoutIva(documentType)}
@@ -797,6 +802,7 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
                   <label className="text-[11px] font-semibold text-slate-700">Percepciones ($)</label>
                   <input
                     type="number"
+                    min="0"
                     step="0.01"
                     inputMode="decimal"
                     value={perceptions}
