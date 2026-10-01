@@ -1114,7 +1114,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-4 sm:p-lg shadow-xl flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Registrar entrada de mercadería</h3>
-              <button onClick={() => setShowEntryModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-1">
+              <button onClick={() => setShowEntryModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-surface-container" title="Cerrar">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -1124,7 +1124,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <select
                 value={entryProductId}
                 onChange={(e) => setEntryProductId(e.target.value)}
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
+                className="bg-surface-container border-none rounded-xl py-2.5 px-3 min-h-[44px] outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
               >
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -1142,10 +1142,10 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 onChange={(e) => setEntryQty(Number(e.target.value))}
                 min={1}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
+                className="bg-surface-container border-none rounded-xl py-2.5 px-3 min-h-[44px] outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary-container cursor-pointer shadow-sm">
+              <button type="submit" className="bg-primary text-on-primary py-2.5 min-h-[44px] rounded-xl font-semibold text-xs mt-md hover:bg-primary-container cursor-pointer shadow-sm">
                 Confirmar ingreso
               </button>
             </form>
@@ -1158,7 +1158,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-4 sm:p-lg shadow-xl flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Ajuste manual de stock</h3>
-              <button onClick={() => setShowAdjustModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-1">
+              <button onClick={() => setShowAdjustModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-surface-container" title="Cerrar">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -1175,10 +1175,10 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 onChange={(e) => setAdjustNewStock(Number(e.target.value))}
                 min={0}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
+                className="bg-surface-container border-none rounded-xl py-2.5 px-3 min-h-[44px] outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <button type="submit" className="bg-secondary text-on-secondary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary cursor-pointer shadow-sm">
+              <button type="submit" className="bg-secondary text-on-secondary py-2.5 min-h-[44px] rounded-xl font-semibold text-xs mt-md hover:bg-primary cursor-pointer shadow-sm">
                 Guardar ajuste
               </button>
             </form>
@@ -1191,7 +1191,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-4 sm:p-lg shadow-xl flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Actualizar precio de servicio</h3>
-              <button onClick={() => setShowPriceModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-1">
+              <button onClick={() => setShowPriceModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-surface-container" title="Cerrar">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -1208,10 +1208,10 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 onChange={(e) => setNewServicePrice(Number(e.target.value))}
                 min={1}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-semibold text-base"
+                className="bg-surface-container border-none rounded-xl py-2.5 px-3 min-h-[44px] outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary font-semibold"
               />
 
-              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary-container shadow-sm cursor-pointer">
+              <button type="submit" className="bg-primary text-on-primary py-2.5 min-h-[44px] rounded-xl font-semibold text-xs mt-md hover:bg-primary-container shadow-sm cursor-pointer">
                 Guardar precio y actualizar fecha
               </button>
             </form>
@@ -1225,7 +1225,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-4 sm:p-lg shadow-xl flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Nuevo producto del inventario</h3>
-              <button onClick={() => setShowNewProductModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-1">
+              <button onClick={() => setShowNewProductModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-surface-container" title="Cerrar">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -1320,7 +1320,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
           <div className="bg-surface-container-lowest rounded-2xl max-w-md w-full p-4 sm:p-lg shadow-xl flex flex-col gap-md my-4 sm:my-auto">
             <div className="flex justify-between items-center border-b pb-sm">
               <h3 className="font-headline-sm text-primary text-base font-semibold">Editar producto del inventario</h3>
-              <button onClick={() => setShowEditProductModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-1">
+              <button onClick={() => setShowEditProductModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-surface-container" title="Cerrar">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -1332,14 +1332,14 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
+                className="bg-surface-container border-none rounded-xl py-2.5 px-3 min-h-[44px] outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Categoría *</label>
               <select
                 value={editCategory}
                 onChange={(e) => setEditCategory(e.target.value as ProductCategory)}
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
+                className="bg-surface-container border-none rounded-xl py-2.5 px-3 min-h-[44px] outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
               >
                 <option value="Medicamentos">Medicamentos</option>
                 <option value="Alimentación">Alimentación</option>
@@ -1355,7 +1355,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 onChange={(e) => setEditPrice(Number(e.target.value))}
                 min={0}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
+                className="bg-surface-container border-none rounded-xl py-2.5 px-3 min-h-[44px] outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Stock mínimo (Alerta)</label>
@@ -1367,7 +1367,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 onChange={(e) => setEditMinStock(Number(e.target.value))}
                 min={0}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
+                className="bg-surface-container border-none rounded-xl py-2.5 px-3 min-h-[44px] outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Frecuencia de actualización / vencimiento del precio (días) *</label>
@@ -1380,10 +1380,10 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 onChange={(e) => setEditUpdateFrequency(Number(e.target.value))}
                 placeholder="Ej: 30"
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
+                className="bg-surface-container border-none rounded-xl py-2.5 px-3 min-h-[44px] outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
-              <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary-container shadow-sm cursor-pointer">
+              <button type="submit" className="bg-primary text-on-primary py-2.5 min-h-[44px] rounded-xl font-semibold text-xs mt-md hover:bg-primary-container shadow-sm cursor-pointer">
                 Guardar cambios del producto
               </button>
             </form>
@@ -1399,7 +1399,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               <h3 className="font-headline-sm text-primary text-base font-semibold">
                 {selectedService ? 'Editar servicio / prestación' : 'Nuevo servicio / prestación'}
               </h3>
-              <button onClick={() => setShowServiceModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-1">
+              <button onClick={() => setShowServiceModal(false)} className="text-on-surface-variant hover:text-error cursor-pointer p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-surface-container" title="Cerrar">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -1412,7 +1412,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 onChange={(e) => setServiceFormName(e.target.value)}
                 placeholder=""
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
+                className="bg-surface-container border-none rounded-xl py-2.5 px-3 min-h-[44px] outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
               <label className="font-semibold text-xs text-slate-700 block mt-xs">Categoría *</label>
@@ -1527,7 +1527,8 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               </div>
               <button 
                 onClick={() => { setShowInflationModal(false); setInflationSuccessMsg(null); }}
-                className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 transition-colors p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-slate-100 cursor-pointer"
+                title="Cerrar"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
@@ -1557,7 +1558,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                           setInflationScope('selected');
                         }
                       }}
-                      className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                      className={`p-2 min-h-[44px] rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
                         inflationScope === 'selected'
                           ? 'bg-[#5C3C7B] text-white border-[#5C3C7B] shadow-xs'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -1579,7 +1580,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setInflationScope('category')}
-                      className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                      className={`p-2 min-h-[44px] rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
                         inflationScope === 'category'
                           ? 'bg-[#5C3C7B] text-white border-[#5C3C7B] shadow-xs'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -1592,7 +1593,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setInflationScope('all')}
-                      className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                      className={`p-2 min-h-[44px] rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
                         inflationScope === 'all'
                           ? 'bg-[#5C3C7B] text-white border-[#5C3C7B] shadow-xs'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -1618,7 +1619,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                         setIsSelectionMode(true);
                         setShowInflationModal(false);
                       }}
-                      className="text-xs font-bold text-[#5C3C7B] hover:underline cursor-pointer flex items-center gap-1"
+                      className="text-xs font-bold text-[#5C3C7B] hover:underline cursor-pointer flex items-center gap-1 min-h-[36px]"
                     >
                       <span className="material-symbols-outlined text-[15px]" aria-hidden="true">edit</span>
                       <span>Modificar en la lista</span>
@@ -1635,7 +1636,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                     <select
                       value={inflationCategory}
                       onChange={(e) => setInflationCategory(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 font-semibold outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 cursor-pointer"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 px-3 min-h-[44px] text-base sm:text-xs text-slate-900 font-semibold outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20 cursor-pointer"
                     >
                       {activeSubmodule === 'servicios-catalogo'
                         ? serviceCategories.filter(c => c !== 'Todos').map(c => (
@@ -1673,19 +1674,19 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                       onChange={(e) => setInflationPercentage(Number(e.target.value))}
                       placeholder="Ej: 15"
                       required
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 pr-10 text-xs text-slate-900 font-bold text-sm outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 px-3 pr-10 text-base sm:text-xs text-slate-900 font-bold outline-none focus:border-[#5C3C7B] focus:ring-2 focus:ring-[#5C3C7B]/20"
                     />
                     <span className="absolute right-3 font-bold text-slate-500">%</span>
                   </div>
 
                   {/* Preset Pills */}
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="flex flex-wrap gap-1.5 mt-2">
                     {[5, 10, 15, 20, 25, 30].map(pct => (
                       <button
                         key={pct}
                         type="button"
                         onClick={() => setInflationPercentage(pct)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        className={`px-3 py-2 min-h-[38px] rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                           inflationPercentage === pct
                             ? 'bg-amber-600 text-white shadow-xs'
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -1697,7 +1698,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setInflationPercentage(-5)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      className={`px-3 py-2 min-h-[38px] rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                         inflationPercentage === -5
                           ? 'bg-rose-600 text-white shadow-xs'
                           : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'

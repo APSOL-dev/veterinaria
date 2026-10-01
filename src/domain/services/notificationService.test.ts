@@ -11,10 +11,11 @@ describe('notificationService', () => {
     expect(notif.title).toBe('Éxito');
   });
 
-  it('createInAppNotification should handle custom title and error type', () => {
-    const notif = createInAppNotification('Permiso denegado', 'error', 'Acceso Restringido');
+  it('createInAppNotification should handle warning type', () => {
+    const notif = createInAppNotification('Por favor, ingrese el texto de la consulta', 'warning', 'Aviso de VetSoft');
 
-    expect(notif.type).toBe('error');
-    expect(notif.title).toBe('Acceso Restringido');
+    expect(notif.type).toBe('warning');
+    expect(notif.title).toBe('Aviso de VetSoft');
+    expect(notif.message).toBe('Por favor, ingrese el texto de la consulta');
   });
 });

@@ -1,6 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Patient, VaccineCatalogItem, VaccineDosis } from '../../domain/types';
-import { formatVaccineReminderMessage, getEffectiveVaccineNextDueDate, getPendingOrDueVaccine, calculatePatientVaccineCoverage } from '../../domain/services/vaccineService';
+import { 
+  formatVaccineReminderMessage, 
+  getEffectiveVaccineNextDueDate, 
+  getPendingOrDueVaccine, 
+  calculatePatientVaccineCoverage,
+  getPatientVaccineGlobalStatus
+} from '../../domain/services/vaccineService';
 import { getRecentOrFilteredPatients } from '../../domain/services/patientService';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
 import { formatDate } from '../../utils/dateUtils';
@@ -38,7 +44,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   onScheduleAppointment,
   onDeleteDosis,
   onRemoveDosisByVaccine,
-  currentVetName = 'Dr. J. Silva',
+  currentVetName = 'Veterinaria',
   isGeneralCatalog = false,
   onUpdatePatients
 }) => {
@@ -82,7 +88,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
         patientId: selectedPatient.id,
         vaccineId: matchedCat ? matchedCat.id : toggledVacName,
         applicationDate: new Date().toISOString().split('T')[0],
-        vetName: currentVetName || 'Dr. J. Silva'
+        vetName: currentVetName || 'Veterinaria'
       });
     } else if (!isNowApplied && onRemoveDosisByVaccine) {
       onRemoveDosisByVaccine(selectedPatient.id, toggledVacName);
@@ -102,7 +108,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   // Register dosis state
   const [selectedVacId, setSelectedVacId] = useState(vaccineCatalog[0]?.id || '');
   const [appDate, setAppDate] = useState(new Date().toISOString().split('T')[0]);
-  const [vetName, setVetName] = useState(currentVetName || 'Dr. J. Silva');
+  const [vetName, setVetName] = useState(currentVetName || 'Veterinaria');
   const [batchNum, setBatchNum] = useState('');
 
   const activePatient = selectedPatient;
@@ -384,8 +390,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
             ) : (
               filteredPatients.map((p) => {
               const isSelected = p.id === activePatient.id;
-              const pDoses = vaccineDoses.filter(d => d.patientId === p.id);
-              const hasExpired = pDoses.some(d => d.status === 'expired');
+              const patStatus = getPatientVaccineGlobalStatus(p, vaccineDoses, vaccineCatalog, todayStr);
 
               return (
                 <button
@@ -417,11 +422,9 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       <span className="font-headline-sm text-xs font-bold truncate text-slate-800 group-hover:text-[#5C3C7B] transition-colors">
                         {p.name}
                       </span>
-                      {hasExpired ? (
-                        <span className="bg-red-50 text-red-700 border border-red-200 text-[9px] font-semibold px-1.5 py-0.2 rounded-full shrink-0">Vencida</span>
-                      ) : (
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-semibold px-1.5 py-0.2 rounded-full shrink-0">Al día</span>
-                      )}
+                      <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 border ${patStatus.badgeClass}`}>
+                        {patStatus.label}
+                      </span>
                     </div>
                     <span className="font-body-md text-[11px] truncate mt-0.5 text-slate-500">
                       {p.species} • {p.breed}
@@ -670,9 +673,9 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                                       Vencida
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                                      Al día
+                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-semibold text-[10px]">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                                      Pendiente
                                     </span>
                                   )}
                                 </td>
@@ -698,20 +701,28 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
               {/* Próxima Aplicación Card */}
               {(() => {
                 const pendingVaccine = getPendingOrDueVaccine(activePatient, vaccineDoses, todayStr);
+                const hasAnyVaccines = (activePatient.requiredVaccines && activePatient.requiredVaccines.length > 0) || patientDoses.length > 0;
+                
                 return (
                   <div className="bg-[#9A7DB8] text-white rounded-2xl p-md shadow-sm relative overflow-hidden flex flex-col justify-between">
                     <div>
                       <h3 className="font-label-md text-purple-100 text-[10px] mb-xs font-semibold">Próxima aplicación</h3>
                       <p className="font-display-lg text-lg mb-xs font-semibold">
-                        {pendingVaccine ? pendingVaccine.vaccineName : 'Sin aplicaciones pendientes'}
+                        {!hasAnyVaccines 
+                          ? 'Sin vacunas registradas'
+                          : pendingVaccine 
+                          ? pendingVaccine.vaccineName 
+                          : 'Todas las vacunas al día'}
                       </p>
                       <p className="font-body-md text-purple-100 text-xs flex items-center gap-xs mb-md font-medium">
                         <span className="material-symbols-outlined text-[14px]">
-                          {pendingVaccine ? 'warning' : 'check_circle'}
+                          {!hasAnyVaccines ? 'info' : pendingVaccine ? 'warning' : 'check_circle'}
                         </span>
-                        {pendingVaccine 
+                        {!hasAnyVaccines
+                          ? 'Paciente sin esquema de vacunación cargado'
+                          : pendingVaccine 
                           ? `${pendingVaccine.isExpired ? 'Vencida desde el' : 'Próxima a vencer el'} ${formatDate(pendingVaccine.expirationDate)}`
-                          : 'Todas las vacunas están al día'}
+                          : 'Inmunizaciones vigentes según el esquema actual'}
                       </p>
                     </div>
                     <button
@@ -722,7 +733,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       className="w-full bg-white text-[#5C3C7B] hover:bg-purple-50 py-2.5 rounded-xl font-label-md text-xs transition-colors font-semibold shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span className="material-symbols-outlined text-[16px]">calendar_month</span>
-                      <span>{pendingVaccine ? 'Agendar turno' : 'Agendar control'}</span>
+                      <span>{!hasAnyVaccines ? 'Agendar primera dosis' : pendingVaccine ? 'Agendar turno' : 'Agendar control'}</span>
                     </button>
                   </div>
                 );

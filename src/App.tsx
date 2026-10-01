@@ -424,7 +424,7 @@ export const App: React.FC = () => {
       id: 'note-' + Date.now(),
       patientId: selectedPatient.id,
       date: new Date().toISOString(),
-      vetName: 'Dr. J. Silva',
+      vetName: userSession ? userSession.name : 'Veterinaria',
       notes: data.notes,
       prescription: data.prescription
     };
@@ -509,7 +509,7 @@ export const App: React.FC = () => {
       targetPatientId,
       vac,
       data.applicationDate,
-      data.vetName || (userSession ? userSession.name : 'Dr. J. Silva'),
+      data.vetName || (userSession ? userSession.name : 'Veterinaria'),
       undefined,
       data.batch
     );

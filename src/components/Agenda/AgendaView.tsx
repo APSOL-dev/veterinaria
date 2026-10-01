@@ -65,7 +65,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   initialPatientId,
   initialReason,
   autoOpenNewModal,
-  currentVetName = 'Dr. J. Silva'
+  currentVetName = 'Veterinaria'
 }) => {
   const [agendaMode, setAgendaMode] = useState<'medica' | 'peluqueria'>(fixedMode || 'medica');
   const [patientFilter, setPatientFilter] = useState('');
@@ -140,7 +140,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
   // New Medical / Grooming Appointment form state
   const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId || patients[0]?.id || '');
-  const [vetName, setVetName] = useState(currentVetName || 'Dr. J. Silva');
+  const [vetName, setVetName] = useState(currentVetName || 'Veterinaria');
   const [appDate, setAppDate] = useState(() => formatDateToISO(new Date()));
   const [appTime, setAppTime] = useState('10:00');
   const [appDuration, setAppDuration] = useState(45);

@@ -8,7 +8,8 @@ import {
   getEstadoLabel,
   getEffectiveVaccineNextDueDate,
   getPendingOrDueVaccine,
-  calculatePatientVaccineCoverage
+  calculatePatientVaccineCoverage,
+  getPatientVaccineGlobalStatus
 } from './vaccineService';
 import { VaccineCatalogItem } from '../types';
 
@@ -383,6 +384,80 @@ describe('vaccineService', () => {
       expect(coverage.percentage).toBe(0);
       expect(coverage.validCount).toBe(0);
       expect(coverage.totalCount).toBe(1);
+    });
+  });
+
+  describe('getPatientVaccineGlobalStatus', () => {
+    const today = '2026-10-01';
+
+    const basePatient = {
+      id: 'p-mateo',
+      ownerId: 'own-1',
+      name: 'Mateo Prueba',
+      species: 'Canino' as const,
+      breed: 'Mestizo',
+      sex: 'Macho' as const,
+      birthDate: '2022-01-01',
+      ownerName: 'Juan',
+      status: 'active' as const,
+      weightKg: 10,
+      requiredVaccines: []
+    };
+
+    it('returns "sin_datos" (Sin datos) when patient has no doses and no required vaccines (Error 2 QA fix)', () => {
+      const status = getPatientVaccineGlobalStatus(basePatient, [], [], today);
+      expect(status.status).toBe('sin_datos');
+      expect(status.label).toBe('Sin datos');
+      expect(status.badgeClass).toContain('text-slate-600');
+    });
+
+    it('returns "vencida" when patient has expired required vaccines', () => {
+      const patient = {
+        ...basePatient,
+        requiredVaccines: [
+          { id: 'req-1', vaccineName: 'Antirrábica', suggestedDate: '2026-09-01', status: 'pendiente' as const }
+        ]
+      };
+      const status = getPatientVaccineGlobalStatus(patient, [], [], today);
+      expect(status.status).toBe('vencida');
+      expect(status.label).toBe('Vencida');
+      expect(status.badgeClass).toContain('text-red-700');
+    });
+
+    it('returns "pendiente" when patient has future pending required vaccines', () => {
+      const patient = {
+        ...basePatient,
+        requiredVaccines: [
+          { id: 'req-1', vaccineName: 'Antirrábica', suggestedDate: '2026-11-01', status: 'pendiente' as const }
+        ]
+      };
+      const status = getPatientVaccineGlobalStatus(patient, [], [], today);
+      expect(status.status).toBe('pendiente');
+      expect(status.label).toBe('Pendiente');
+      expect(status.badgeClass).toContain('text-amber-700');
+    });
+
+    it('returns "al_dia" when patient has valid applied required vaccines or doses', () => {
+      const patient = {
+        ...basePatient,
+        requiredVaccines: [
+          { id: 'req-1', vaccineName: 'Antirrábica', suggestedDate: '2026-05-01', status: 'aplicada' as const, appliedDate: '2026-05-01' }
+        ]
+      };
+      const doses = [{
+        id: 'd-1',
+        patientId: 'p-mateo',
+        vaccineId: 'v1',
+        vaccineName: 'Antirrábica',
+        applicationDate: '2026-05-01',
+        expirationDate: '2027-05-01',
+        vetName: 'Veterinaria',
+        status: 'ok' as const
+      }];
+      const status = getPatientVaccineGlobalStatus(patient, doses, [], today);
+      expect(status.status).toBe('al_dia');
+      expect(status.label).toBe('Al día');
+      expect(status.badgeClass).toContain('text-emerald-700');
     });
   });
 });

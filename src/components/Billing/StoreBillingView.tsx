@@ -79,7 +79,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
   // Checkout Config State
   const [documentType, setDocumentType] = useState<DocumentType>('factura-b');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
-  const [emitAfip, setEmitAfip] = useState<boolean>(true);
+  const [emitAfip, setEmitAfip] = useState<boolean>(false);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
 
   // Add Item Form State
@@ -311,7 +311,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                             onChange={(e) => handleUpdateDiscount(item.id, Number(e.target.value))}
                             min={0}
                             max={100}
-                            className="w-10 text-center bg-surface-container border-none rounded py-1 text-on-surface focus:ring-2 focus:ring-primary outline-none transition-all text-xs font-medium"
+                            className="w-10 text-center bg-surface-container border-none rounded py-1 text-on-surface focus:ring-2 focus:ring-primary outline-none transition-all text-base sm:text-xs font-medium"
                           />
                         </td>
                         <td className="p-sm px-md text-right font-semibold text-primary">
@@ -375,7 +375,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                 <select
                   value={documentType}
                   onChange={(e) => setDocumentType(e.target.value as DocumentType)}
-                  className="w-full bg-surface-container hover:bg-surface-variant border-none rounded-xl py-2 px-3 text-on-surface font-body-md text-xs focus:ring-2 focus:ring-primary outline-none cursor-pointer font-medium"
+                  className="w-full bg-surface-container hover:bg-surface-variant border-none rounded-xl py-2 px-3 text-on-surface font-body-md text-base sm:text-xs focus:ring-2 focus:ring-primary outline-none cursor-pointer font-medium"
                 >
                   <option value="factura-b">Factura B (Consumidor final)</option>
                   <option value="factura-a">Factura A (Responsable inscripto)</option>
@@ -469,7 +469,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                   <select
                     value={selectedProductId}
                     onChange={(e) => setSelectedProductId(e.target.value)}
-                    className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
+                    className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
                   >
                     {products.map(p => (
                       <option key={p.id} value={p.id}>
@@ -484,7 +484,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                   <select
                     value={selectedGroomSrvId}
                     onChange={(e) => setSelectedGroomSrvId(e.target.value)}
-                    className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
+                    className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary cursor-pointer font-medium"
                   >
                     {groomingServices.map(s => (
                       <option key={s.id} value={s.id}>
@@ -505,7 +505,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
                 onFocus={(e) => e.target.select()}
                 min={1}
                 required
-                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-xs focus:ring-2 focus:ring-secondary font-medium"
+                className="bg-surface-container border-none rounded-xl p-sm outline-none text-on-surface text-base sm:text-xs focus:ring-2 focus:ring-secondary font-medium"
               />
 
               <button type="submit" className="bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-xs mt-md hover:bg-primary-container cursor-pointer shadow-sm">

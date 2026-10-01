@@ -20,12 +20,16 @@ El módulo **Cobros** administra la emisión de facturas electrónicas, remitos 
    - Incluyen la propiedad `onFocus={(e) => e.target.select()}`, lo que selecciona automáticamente todo el texto al hacer clic para facilitar la tipeación directa.
    - Al cambiar el precio unitario de un renglón, se recalculan automáticamente el subtotal, los descuentos y el total general de la factura mediante `parsePriceInput`.
 
-4. **Caja de Adjunto de Comprobante / Factura:**
+4. **Configuración de Cobro y Control de Emisión Fiscal AFIP:**
+   - La opción **"Emitir Comprobante AFIP (CAE)"** se inicializa **desmarcada por defecto** (`isAfip: false`). Esto protege a la veterinaria de enviar autorizaciones fiscales reales a los servidores de AFIP de manera accidental o involuntaria en cada cobro estándar. El usuario debe tildarla explícitamente cuando requiera emitir con CAE fiscal.
+   - En dispositivos móviles, todos los campos de texto y desplegables de Cobros poseen un tamaño tipográfico mínimo de 16px (`text-base sm:text-xs`) para evitar el zoom involuntario de pantalla en iOS Safari al tocarlos.
+
+5. **Caja de Adjunto de Comprobante / Factura:**
    - En el panel derecho **Configuración de cobro**, se incluye un componente de carga de archivos (`.PDF`, `.PNG`, `.JPG`, `.JPEG`) para adjuntar la factura o comprobante impreso.
    - El archivo adjunto genera una vista previa del nombre con opción de desadjuntarlo antes de emitir el cobro.
    - La información del comprobante (`voucherName`, `voucherUrl`) se persiste en el `BillReceipt`.
 
-5. **Historial de Comprobantes y Persistencia en Supabase:**
+6. **Historial de Comprobantes y Persistencia en Supabase:**
    - Mantiene una tabla limpia con Comprobante Nº, Fecha, Paciente/Dueño, Tipo Doc, Medio de Pago, Total y Acciones.
    - Sincroniza la cabecera del comprobante en `vetsoft_recibos` y sus renglones en `vetsoft_detalle_recibos`.
    - En la consulta desde Supabase, soporta mapeo robusto para nombres de columna en snake_case (`invoice_number`, `patient_name`, `owner_name`, `payment_method`, `total_amount`) y realiza fallback automático a `vetsoft_recibos` si la vista `vetsoft_vw_recibos` no estuviese disponible.

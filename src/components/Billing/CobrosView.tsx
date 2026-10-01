@@ -63,7 +63,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
   const [posNumber, setPosNumber] = useState<string>('0001');
   const [customInvoiceNumber, setCustomInvoiceNumber] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
-  const [isAfip, setIsAfip] = useState(true);
+  const [isAfip, setIsAfip] = useState(false);
   const [applyTax, setApplyTax] = useState(false);
   const [taxPercent, setTaxPercent] = useState(21);
   const [voucherName, setVoucherName] = useState<string>('');
@@ -418,7 +418,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                                 value={item.unitPrice}
                                 onChange={(e) => handleUpdatePrice(item.id, e.target.value)}
                                 onFocus={(e) => e.target.select()}
-                                className="w-24 text-right bg-white border border-slate-300 rounded py-1 px-2 text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-[#9A7DB8] outline-none shadow-xs"
+                                className="w-24 text-right bg-white border border-slate-300 rounded py-1 px-2 text-slate-900 font-semibold text-base sm:text-xs focus:ring-2 focus:ring-[#9A7DB8] outline-none shadow-xs"
                               />
                             </div>
                           </td>
@@ -432,7 +432,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                               value={item.discountPercent}
                               onChange={(e) => handleUpdateDiscount(item.id, e.target.value)}
                               onFocus={(e) => e.target.select()}
-                              className="w-12 text-center bg-white border border-slate-300 rounded py-1 text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-[#9A7DB8] outline-none"
+                              className="w-12 text-center bg-white border border-slate-300 rounded py-1 text-slate-900 font-semibold text-base sm:text-xs focus:ring-2 focus:ring-[#9A7DB8] outline-none"
                             />
                           </td>
                           <td className="p-sm px-md text-right font-semibold text-slate-900 text-xs">
@@ -513,7 +513,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                       setApplyTax(true);
                     }
                   }}
-                  className="w-full bg-white border border-slate-300 rounded-xl py-2 px-md text-slate-900 font-semibold text-xs outline-none focus:ring-2 focus:ring-[#9A7DB8] cursor-pointer"
+                  className="w-full bg-white border border-slate-300 rounded-xl py-2 px-md text-slate-900 font-semibold text-base sm:text-xs outline-none focus:ring-2 focus:ring-[#9A7DB8] cursor-pointer"
                 >
                   <option value="factura-b">Factura B</option>
                   <option value="factura-a">Factura A</option>
@@ -535,7 +535,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                     value={posNumber}
                     onChange={(e) => setPosNumber(e.target.value)}
                     placeholder=""
-                    className="w-full bg-white border border-slate-300 rounded-xl py-2 px-md text-slate-900 font-semibold text-xs outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                    className="w-full bg-white border border-slate-300 rounded-xl py-2 px-md text-slate-900 font-semibold text-base sm:text-xs outline-none focus:ring-2 focus:ring-[#9A7DB8]"
                   />
                 </div>
 
@@ -550,7 +550,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                     value={customInvoiceNumber}
                     onChange={(e) => setCustomInvoiceNumber(e.target.value)}
                     placeholder=""
-                    className="w-full bg-white border border-slate-300 rounded-xl py-2 px-md text-slate-900 font-semibold text-xs outline-none focus:ring-2 focus:ring-[#9A7DB8]"
+                    className="w-full bg-white border border-slate-300 rounded-xl py-2 px-md text-slate-900 font-semibold text-base sm:text-xs outline-none focus:ring-2 focus:ring-[#9A7DB8]"
                   />
                 </div>
               </div>
@@ -698,7 +698,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                         step={0.5}
                         value={taxPercent}
                         onChange={(e) => setTaxPercent(Math.max(0, Number(e.target.value) || 0))}
-                        className="w-12 text-center bg-white border border-slate-300 rounded px-1 text-slate-900 font-bold text-xs focus:ring-2 focus:ring-[#9A7DB8] outline-none shadow-xs"
+                        className="w-14 text-center bg-white border border-slate-300 rounded px-1 py-0.5 text-slate-900 font-bold text-base sm:text-xs focus:ring-2 focus:ring-[#9A7DB8] outline-none shadow-xs"
                       />
                     </div>
                   )}
@@ -806,7 +806,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                     setSelectedCategoryFilter(e.target.value);
                     setSelectedCatalogItemId('');
                   }}
-                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-xs focus:border-[#9A7DB8] shadow-xs cursor-pointer capitalize"
+                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-base sm:text-xs focus:border-[#9A7DB8] shadow-xs cursor-pointer capitalize"
                 >
                   <option value="">-- Todas las categorías ({itemType === 'servicio' ? 'Servicios' : 'Productos'}) --</option>
                   {(itemType === 'servicio' ? availableServiceCategories : availableProductCategories).map((cat, idx) => (
@@ -826,7 +826,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                   value={selectedCatalogItemId}
                   onChange={(e) => handleSelectCatalogItem(e.target.value)}
                   required
-                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-xs focus:border-[#9A7DB8] shadow-xs cursor-pointer"
+                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-base sm:text-xs focus:border-[#9A7DB8] shadow-xs cursor-pointer"
                 >
                   <option value="">-- Seleccione un {itemType} del catálogo --</option>
                   {availableCatalogItems.map((item) => (
@@ -860,7 +860,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                   placeholder="0"
                   min={0}
                   step={100}
-                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs"
+                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-base sm:text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs"
                 />
               </div>
 

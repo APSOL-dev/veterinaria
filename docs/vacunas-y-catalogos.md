@@ -10,6 +10,11 @@ Hola (Nombre tutor), te recordamos que la vacuna (Nombre vacuna) para (Nombre pa
 
 **Escenarios cubiertos:**
 - **Cálculo de Próximo Refuerzo / Vencimiento en Vacunas Requeridas:** Cuando una vacuna requerida se marca como `aplicada`, la tarjeta del paciente en su perfil y en el control de vacunas muestra la fecha de aplicación (`Aplicada: DD/MM/AAAA`) y calcula de forma automática la fecha del **Próximo refuerzo** (`Próximo refuerzo: DD/MM/AAAA`). Esta fecha se obtiene a partir de la dosis registrada en el historial del paciente (`expirationDate`) o calculando `appliedDate + frequencyDays` (según catálogo o 365 días por defecto).
+- **Estado Global de Vacunación del Paciente (`getPatientVaccineGlobalStatus`):**
+  - **Sin datos (`sin_datos`):** Para pacientes nuevos sin dosis aplicadas en su historial y sin vacunas requeridas asignadas, el sistema muestra la etiqueta **"Sin datos"** con badge gris neutro (`text-slate-600 bg-slate-100`) y cobertura 0%, indicando claramente que aún no posee registros sanitarios (evitando catalogarlo erróneamente como "Al día").
+  - **Pendiente (`pendiente`):** Cuando el paciente posee vacunas requeridas programadas a futuro cuya fecha límite aún no ha vencido, se indica con badge ámbar **"Pendiente"**.
+  - **Vencida (`vencida`):** Si posee dosis aplicadas expiradas o vacunas requeridas cuya fecha sugerida ya pasó, se destaca con badge rojo **"Vencida"**.
+  - **Al día (`al_dia`):** Se muestra con badge verde únicamente cuando todas sus vacunas vigentes están aplicadas y dentro de su período de validez.
 - **Cobertura Actual y Vigencia Sanitaria:** Se calcula en función del estado de vigencia real de las vacunas a la fecha actual (`currentDate`):
   - Para pacientes con **vacunas requeridas**: solo contabilizan como cubiertas aquellas vacunas aplicadas cuya fecha de próximo vencimiento no ha expirado (`vencimiento >= hoy`). Si todas están vencidas o pendientes, la cobertura es **0%**.
   - Para pacientes con **historial de dosis**: se evalúa la última aplicación de cada tipo único de vacuna registrada. Si todas las últimas dosis se encuentran vencidas (por ejemplo, aplicaciones de años anteriores sin refuerzo vigente), la cobertura sanitaria es **0%** e indica *"0 de X vacunas al día (todas vencidas)"*.

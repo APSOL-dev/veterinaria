@@ -59,13 +59,14 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   vaccineCatalog = [],
   onRegisterDosis,
   onRemoveDosisByVaccine,
-  currentVetName = 'Dr. J. Silva',
+  currentVetName = 'Veterinaria',
   onAddVaccineToCatalog,
   medicalAppointments = [],
   groomingAppointments = [],
   onScheduleAppointment
 }) => {
   const [newNoteText, setNewNoteText] = useState('');
+  const [quickNoteError, setQuickNoteError] = useState(false);
   const [newPrescriptionText, setNewPrescriptionText] = useState('');
   const [showPrescriptionInput, setShowPrescriptionInput] = useState(false);
   const [editingNote, setEditingNote] = useState<ClinicalNote | null>(null);
@@ -133,7 +134,12 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   const [customAlertInput, setCustomAlertInput] = useState('');
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [newQuickWeight, setNewQuickWeight] = useState<string>('');
-  const [notifModal, setNotifModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+  const [notifModal, setNotifModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    title?: string;
+    type?: 'success' | 'warning' | 'error' | 'info';
+  }>({ isOpen: false, message: '', type: 'success' });
 
   const handleAddQuickWeight = (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,7 +248,17 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   ];
 
   const handleSaveConsultation = () => {
-    if (!newNoteText.trim()) return;
+    if (!newNoteText.trim()) {
+      setQuickNoteError(true);
+      setNotifModal({
+        isOpen: true,
+        title: 'Aviso de VetSoft',
+        message: 'Por favor, ingrese el texto de la consulta antes de guardar.',
+        type: 'warning'
+      });
+      return;
+    }
+    setQuickNoteError(false);
     const noteData = {
       notes: newNoteText,
       prescription: showPrescriptionInput ? newPrescriptionText : undefined
@@ -254,7 +270,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
         id: 'temp-' + Date.now(),
         patientId: selectedPatient.id,
         date: new Date().toISOString(),
-        vetName: 'Dr. J. Silva',
+        vetName: currentVetName || 'Veterinaria',
         notes: newNoteText,
         prescription: newPrescriptionText
       });
@@ -344,7 +360,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
         patientId: selectedPatient.id,
         vaccineId: matchedCat ? matchedCat.id : toggledVacName,
         applicationDate: new Date().toISOString().split('T')[0],
-        vetName: currentVetName || 'Dr. J. Silva'
+        vetName: currentVetName || 'Veterinaria'
       });
     } else if (foundTarget && foundTarget.status === 'aplicada' && onRemoveDosisByVaccine) {
       onRemoveDosisByVaccine(selectedPatient.id, toggledVacName);
@@ -637,12 +653,23 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             <div className="flex flex-col gap-1.5">
               <AutoResizeTextarea
                 value={newNoteText}
-                onChange={(e) => setNewNoteText(e.target.value)}
+                onChange={(e) => {
+                  setNewNoteText(e.target.value);
+                  if (quickNoteError && e.target.value.trim()) {
+                    setQuickNoteError(false);
+                  }
+                }}
                 minRows={2}
                 maxRows={15}
                 placeholder="Escriba observaciones de la consulta, síntomas, diagnóstico preliminar..."
-                className="w-full bg-white text-slate-900 font-body-md text-xs p-3 rounded-xl outline-none border border-slate-300 focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 placeholder:text-slate-400 font-normal leading-relaxed shadow-xs"
+                className={`w-full bg-white text-slate-900 font-body-md text-xs p-3 rounded-xl outline-none border ${quickNoteError ? 'border-red-500 ring-2 ring-red-400' : 'border-slate-300 focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20'} placeholder:text-slate-400 font-normal leading-relaxed shadow-xs`}
               />
+              {quickNoteError && (
+                <p className="text-red-600 text-xs font-semibold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">error</span>
+                  Debe ingresar observaciones o notas clínicas antes de guardar en la ficha.
+                </p>
+              )}
 
               {showPrescriptionInput && (
                 <div className="flex flex-col gap-1 bg-[#FAF5FF] p-3 rounded-xl border-l-4 border-l-[#9A7DB8] border-purple-200 shadow-xs">
@@ -1140,9 +1167,10 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
       <AppNotificationModal
         isOpen={notifModal.isOpen}
+        title={notifModal.title || 'Aviso de VetSoft'}
         message={notifModal.message}
-        type="success"
-        onClose={() => setNotifModal({ isOpen: false, message: '' })}
+        type={notifModal.type || 'success'}
+        onClose={() => setNotifModal({ isOpen: false, message: '', type: 'success' })}
       />
 
       {/* Prescription Modal Grande */}

@@ -33,7 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   isMobile = false,
   isMobileOpen = false,
   onCloseMobile,
-  userName = 'Dr. J. Silva',
+  userName = 'Administrador',
   userRole = 'Veterinario / Admin',
   userRoleType = 'Administrador',
   onLogout

@@ -219,7 +219,80 @@ export function calculatePatientVaccineCoverage(
     percentage: 0,
     validCount: 0,
     totalCount: 0,
-    label: '0 dosis registradas'
+    label: 'Sin vacunas registradas'
   };
 }
+
+export type PatientVaccineGlobalStatusType = 'sin_datos' | 'al_dia' | 'vencida' | 'pendiente';
+
+export interface PatientVaccineGlobalStatus {
+  status: PatientVaccineGlobalStatusType;
+  label: string;
+  badgeClass: string;
+}
+
+export function getPatientVaccineGlobalStatus(
+  patient: Patient,
+  vaccineDoses: VaccineDosis[] = [],
+  vaccineCatalog: VaccineCatalogItem[] = [],
+  currentDate: string = new Date().toISOString().split('T')[0]
+): PatientVaccineGlobalStatus {
+  const patientDoses = vaccineDoses.filter(d => d.patientId === patient.id);
+  const reqList = patient.requiredVaccines || [];
+
+  // 1. Si no tiene ni dosis ni vacunas requeridas cargadas: Sin datos
+  if (patientDoses.length === 0 && reqList.length === 0) {
+    return {
+      status: 'sin_datos',
+      label: 'Sin datos',
+      badgeClass: 'bg-slate-100 text-slate-600 border-slate-300'
+    };
+  }
+
+  // 2. Si tiene vacunas requeridas definidas en su ficha
+  if (reqList.length > 0) {
+    const hasExpiredReq = reqList.some(v => v.status !== 'aplicada' && Boolean(v.suggestedDate && v.suggestedDate < currentDate));
+    const hasExpiredDose = patientDoses.some(d => d.status === 'expired' || Boolean(d.expirationDate && d.expirationDate < currentDate));
+    
+    if (hasExpiredReq || hasExpiredDose) {
+      return {
+        status: 'vencida',
+        label: 'Vencida',
+        badgeClass: 'bg-red-50 text-red-700 border-red-200'
+      };
+    }
+
+    const hasPendingReq = reqList.some(v => v.status === 'pendiente');
+    if (hasPendingReq) {
+      return {
+        status: 'pendiente',
+        label: 'Pendiente',
+        badgeClass: 'bg-amber-50 text-amber-700 border-amber-200'
+      };
+    }
+
+    return {
+      status: 'al_dia',
+      label: 'Al día',
+      badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    };
+  }
+
+  // 3. Si solo tiene historial de dosis
+  const hasExpired = patientDoses.some(d => d.status === 'expired' || Boolean(d.expirationDate && d.expirationDate < currentDate));
+  if (hasExpired) {
+    return {
+      status: 'vencida',
+      label: 'Vencida',
+      badgeClass: 'bg-red-50 text-red-700 border-red-200'
+    };
+  }
+
+  return {
+    status: 'al_dia',
+    label: 'Al día',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  };
+}
+
 

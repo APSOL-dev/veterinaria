@@ -1199,7 +1199,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   <select
                     value={filterResponsible}
                     onChange={(e) => setFilterResponsible(e.target.value)}
-                    className="w-full appearance-none bg-surface-container pr-7 pl-2 p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
+                    className="w-full appearance-none bg-surface-container pr-8 pl-3 py-2.5 min-h-[44px] rounded-xl border border-outline-variant/40 text-base sm:text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
                   >
                     <option value="all">Todos</option>
                     {uniqueResponsibles.map(r => (
@@ -1216,7 +1216,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   <select
                     value={filterPeriod}
                     onChange={(e) => setFilterPeriod(e.target.value)}
-                    className="w-full appearance-none bg-surface-container pr-7 pl-2 p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
+                    className="w-full appearance-none bg-surface-container pr-8 pl-3 py-2.5 min-h-[44px] rounded-xl border border-outline-variant/40 text-base sm:text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
                   >
                     <option value="all">Todos</option>
                     <option value="current_month">Mes actual</option>
@@ -1233,7 +1233,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   <select
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
-                    className="w-full appearance-none bg-surface-container pr-7 pl-2 p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
+                    className="w-full appearance-none bg-surface-container pr-8 pl-3 py-2.5 min-h-[44px] rounded-xl border border-outline-variant/40 text-base sm:text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
                   >
                     <option value="all">Todos</option>
                     {uniqueCategories.map(c => (
@@ -1250,7 +1250,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   <select
                     value={filterAllocation}
                     onChange={(e) => setFilterAllocation(e.target.value)}
-                    className="w-full appearance-none bg-surface-container pr-7 pl-2 p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
+                    className="w-full appearance-none bg-surface-container pr-8 pl-3 py-2.5 min-h-[44px] rounded-xl border border-outline-variant/40 text-base sm:text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
                   >
                     <option value="all">Todas</option>
                     {uniqueAllocations.map(a => (
@@ -1267,7 +1267,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   <select
                     value={filterPaymentMethod}
                     onChange={(e) => setFilterPaymentMethod(e.target.value)}
-                    className="w-full appearance-none bg-surface-container pr-7 pl-2 p-1.5 rounded-xl border border-outline-variant/40 text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
+                    className="w-full appearance-none bg-surface-container pr-8 pl-3 py-2.5 min-h-[44px] rounded-xl border border-outline-variant/40 text-base sm:text-xs text-on-surface font-medium outline-none focus:border-primary cursor-pointer"
                   >
                     <option value="all">Todos</option>
                     {uniquePaymentMethods.map(p => (
@@ -1434,7 +1434,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     value={expDate}
                     onChange={(e) => setExpDate(e.target.value)}
                     required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                    className="bg-surface-container py-2.5 px-3 min-h-[44px] rounded-xl border border-outline-variant/40 text-base sm:text-xs font-medium outline-none focus:border-primary cursor-pointer"
                   />
                 </div>
 
@@ -1445,7 +1445,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                       value={expResponsible}
                       onChange={(e) => setExpResponsible(e.target.value)}
                       required
-                      className="w-full appearance-none bg-surface-container pr-8 pl-2 p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                      className="w-full appearance-none bg-surface-container pr-8 pl-3 py-2.5 min-h-[44px] rounded-xl border border-outline-variant/40 text-base sm:text-xs font-medium outline-none focus:border-primary cursor-pointer"
                     >
                       {uniqueResponsibles.map(r => (
                         <option key={r} value={r}>{r}</option>
@@ -1464,7 +1464,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                       value={expCategory}
                       onChange={(e) => setExpCategory(e.target.value)}
                       required
-                      className="w-full appearance-none bg-surface-container pr-8 pl-2 p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                      className="w-full appearance-none bg-surface-container pr-8 pl-3 py-2.5 min-h-[44px] rounded-xl border border-outline-variant/40 text-base sm:text-xs font-medium outline-none focus:border-primary cursor-pointer"
                     >
                       {uniqueCategories.map(c => (
                         <option key={c} value={c}>{c}</option>
@@ -1481,7 +1481,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                       value={expAllocation}
                       onChange={(e) => setExpAllocation(e.target.value)}
                       required
-                      className="w-full appearance-none bg-surface-container pr-8 pl-2 p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                      className="w-full appearance-none bg-surface-container pr-8 pl-3 py-2.5 min-h-[44px] rounded-xl border border-outline-variant/40 text-base sm:text-xs font-medium outline-none focus:border-primary cursor-pointer"
                     >
                       {uniqueAllocations.map(a => (
                         <option key={a} value={a}>{a}</option>
@@ -1500,7 +1500,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                       value={expPaymentMethod}
                       onChange={(e) => setExpPaymentMethod(e.target.value)}
                       required
-                      className="w-full appearance-none bg-surface-container pr-8 pl-2 p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                      className="w-full appearance-none bg-surface-container pr-8 pl-3 py-2.5 min-h-[44px] rounded-xl border border-outline-variant/40 text-base sm:text-xs font-medium outline-none focus:border-primary cursor-pointer"
                     >
                       {uniquePaymentMethods.map(p => (
                         <option key={p} value={p}>{p}</option>
@@ -1520,7 +1520,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     value={expAmount}
                     onChange={(e) => setExpAmount(Number(e.target.value))}
                     required
-                    className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-semibold outline-none focus:border-primary"
+                    className="bg-surface-container py-2.5 px-3 min-h-[44px] rounded-xl border border-outline-variant/40 text-base sm:text-xs font-semibold outline-none focus:border-primary"
                   />
                 </div>
               </div>
@@ -1533,7 +1533,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   onChange={(e) => setExpDescription(e.target.value)}
                   placeholder=""
                   required
-                  className="bg-surface-container p-2 rounded-xl border border-outline-variant/40 text-xs font-medium outline-none focus:border-primary"
+                  className="bg-surface-container py-2.5 px-3 min-h-[44px] rounded-xl border border-outline-variant/40 text-base sm:text-xs font-medium outline-none focus:border-primary"
                 />
               </div>
 

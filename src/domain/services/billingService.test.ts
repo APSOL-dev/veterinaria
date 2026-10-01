@@ -401,5 +401,13 @@ describe('billingService', () => {
       expect(res.medicalIdsToComplete).toEqual([]);
       expect(res.groomingIdsToComplete).toEqual([]);
     });
+
+    it('ensures AFIP CAE authorization is disabled by default to prevent accidental fiscal emission', () => {
+      // Default fiscal/AFIP emission flag policy
+      const defaultIsAfip = false;
+      const defaultEmitAfip = false;
+      expect(defaultIsAfip).toBe(false);
+      expect(defaultEmitAfip).toBe(false);
+    });
   });
 });

@@ -31,12 +31,13 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
   selectedPatient,
   onCancel,
   onSaveConsultation,
-  currentVetName = 'Dr. J. Silva'
+  currentVetName = 'Veterinaria'
 }) => {
   const [targetPatientId, setTargetPatientId] = useState<string>(selectedPatient.id);
-  const [vetName, setVetName] = useState(currentVetName || 'Dr. J. Silva');
+  const [vetName, setVetName] = useState(currentVetName || 'Veterinaria');
   const [vetLicenseNumber, setVetLicenseNumber] = useState('MP 8472-VET');
   const [notes, setNotes] = useState('');
+  const [notesError, setNotesError] = useState(false);
   const [showPrescription, setShowPrescription] = useState(false);
   const [prescriptionText, setPrescriptionText] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<string[]>([]);
@@ -45,6 +46,12 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [pendingConsultationData, setPendingConsultationData] = useState<any>(null);
+
+  React.useEffect(() => {
+    if (currentVetName && currentVetName !== 'Dr. J. Silva') {
+      setVetName(currentVetName);
+    }
+  }, [currentVetName]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,6 +104,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
 
   const handleSave = async () => {
     if (!notes.trim()) {
+      setNotesError(true);
       setModalNotif({
         isOpen: true,
         message: 'Por favor ingrese las notas clínicas de la consulta.',
@@ -104,6 +112,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
       });
       return;
     }
+    setNotesError(false);
 
     setIsUploading(true);
     const uploadedAttachments: string[] = [];
@@ -241,12 +250,23 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
           </label>
           <AutoResizeTextarea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => {
+              setNotes(e.target.value);
+              if (notesError && e.target.value.trim()) {
+                setNotesError(false);
+              }
+            }}
             minRows={4}
             maxRows={18}
             placeholder="Ingrese motivo de consulta, auscultación, constantes vitales, examen físico, diagnóstico presuntivo e indicaciones médicas..."
-            className="w-full bg-surface-container border border-outline-variant/80 text-on-surface font-body-md text-sm p-md rounded-xl outline-none transition-all focus:bg-surface focus:ring-2 focus:ring-secondary placeholder:text-on-surface-variant/70 font-normal leading-relaxed shadow-xs"
+            className={`w-full bg-surface-container border ${notesError ? 'border-red-500 ring-2 ring-red-400' : 'border-outline-variant/80'} text-on-surface font-body-md text-sm p-md rounded-xl outline-none transition-all focus:bg-surface focus:ring-2 focus:ring-secondary placeholder:text-on-surface-variant/70 font-normal leading-relaxed shadow-xs`}
           />
+          {notesError && (
+            <p className="text-red-600 text-xs font-semibold flex items-center gap-1 mt-0.5">
+              <span className="material-symbols-outlined text-[14px]">error</span>
+              Debe completar las notas clínicas antes de guardar la consulta.
+            </p>
+          )}
         </div>
 
         {/* Prescription section (Optional toggle) */}
