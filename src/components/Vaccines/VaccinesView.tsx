@@ -11,6 +11,13 @@ import { getRecentOrFilteredPatients } from '../../domain/services/patientServic
 import { AppConfirmModal } from '../Common/AppConfirmModal';
 import { formatDate } from '../../utils/dateUtils';
 
+const getLocalDateString = (): string => {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+};
+
 interface VaccinesViewProps {
   patients?: Patient[];
   selectedPatient: Patient;
@@ -107,14 +114,16 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
 
   // Register dosis state
   const [selectedVacId, setSelectedVacId] = useState(vaccineCatalog[0]?.id || '');
-  const [appDate, setAppDate] = useState(new Date().toISOString().split('T')[0]);
+  const [appDate, setAppDate] = useState(getLocalDateString());
+  const [appDateError, setAppDateError] = useState('');
+  const [doseToDelete, setDoseToDelete] = useState<VaccineDosis | null>(null);
   const [vetName, setVetName] = useState(currentVetName || 'Veterinaria');
   const [batchNum, setBatchNum] = useState('');
 
   const activePatient = selectedPatient;
   const patientDoses = vaccineDoses.filter(d => d.patientId === activePatient.id);
   const dueOrExpiredDosis = patientDoses.find(d => d.status === 'expired' || d.status === 'due_soon');
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
 
   const filteredPatients = useMemo(() => {
     return getRecentOrFilteredPatients(patients || [], patientSearch, activePatient?.id, 15);
@@ -151,6 +160,10 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   const handleRegisterDosis = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedVacId) return;
+    if (appDate > getLocalDateString()) {
+      setAppDateError('La fecha de aplicación no puede ser futura.');
+      return;
+    }
     onRegisterDosis({
       patientId: selectedPatient.id,
       vaccineId: selectedVacId,
@@ -159,6 +172,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
       batch: batchNum || undefined
     });
     setBatchNum('');
+    setAppDateError('');
     setShowRegisterModal(false);
   };
 
@@ -592,6 +606,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       <th className="py-2 px-md">Fecha límite</th>
                       <th className="py-2 px-md">Vencimiento</th>
                       <th className="py-2 px-md">Estado</th>
+                      {onDeleteDosis && <th className="py-2 px-md text-right">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="text-slate-800">
@@ -607,7 +622,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       if (patientDoses.length === 0 && pendingReqs.length === 0 && appliedReqsWithoutDose.length === 0) {
                         return (
                           <tr>
-                            <td colSpan={6} className="py-md text-center text-slate-500 text-xs font-medium">
+                            <td colSpan={7} className="py-md text-center text-slate-500 text-xs font-medium">
                               No hay vacunas registradas para {activePatient.name}.
                             </td>
                           </tr>
@@ -653,6 +668,19 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                                     Aplicada
                                   </span>
                                 </td>
+                                {onDeleteDosis && (
+                                  <td className="py-sm px-md text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => setDoseToDelete(dose)}
+                                      aria-label={`Eliminar dosis de ${dose.vaccineName} del ${formatDate(dose.applicationDate)}`}
+                                      title="Eliminar dosis"
+                                      className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                    >
+                                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                                    </button>
+                                  </td>
+                                )}
                               </tr>
                             );
                           })}
@@ -930,10 +958,14 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 <input
                   type="date"
                   value={appDate}
-                  onChange={(e) => setAppDate(e.target.value)}
+                  max={getLocalDateString()}
+                  onChange={(e) => { setAppDate(e.target.value); setAppDateError(''); }}
                   required
                   className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
                 />
+                {appDateError && (
+                  <p role="alert" className="text-[11px] text-red-600 font-medium mt-1">{appDateError}</p>
+                )}
               </div>
 
               <div>
@@ -983,6 +1015,23 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
           setDeleteConfirm({ isOpen: false, vaccineId: '', vaccineName: '' });
         }}
         onCancel={() => setDeleteConfirm({ isOpen: false, vaccineId: '', vaccineName: '' })}
+      />
+
+      {/* Delete Dose Confirmation Modal */}
+      <AppConfirmModal
+        isOpen={!!doseToDelete}
+        title="Confirmar eliminación de dosis"
+        message={doseToDelete ? `¿Eliminar la dosis de "${doseToDelete.vaccineName}" aplicada el ${formatDate(doseToDelete.applicationDate)} a ${activePatient.name}?` : ''}
+        confirmText="Sí, eliminar"
+        cancelText="Cancelar"
+        isDanger={true}
+        onConfirm={() => {
+          if (onDeleteDosis && doseToDelete) {
+            onDeleteDosis(doseToDelete.id);
+          }
+          setDoseToDelete(null);
+        }}
+        onCancel={() => setDoseToDelete(null)}
       />
     </div>
   );

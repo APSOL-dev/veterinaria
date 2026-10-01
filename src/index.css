@@ -25,6 +25,17 @@
   }
 }
 
+/* Zonas táctiles mínimas de 44px en celular/tablet chica (botones, selects y campos de texto) */
+@media screen and (max-width: 768px) {
+  :where(main, header) :where(button, select, a[role="button"]),
+  :where(main, header) input:where(:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not(.powerbi-range-input)) {
+    min-height: 44px;
+  }
+  :where(main, header) button:where(:not([class*="sr-only"])):where(:empty, :has(> .material-symbols-outlined:only-child)) {
+    min-width: 44px;
+  }
+}
+
 /* Utilidad para scroll horizontal suave en móviles sin mostrar barra de desplazamiento */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

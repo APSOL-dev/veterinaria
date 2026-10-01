@@ -8,6 +8,7 @@ import {
 import { 
   calculateEndTime, 
   calculateDurationMinutes,
+  filterGroomingServicesBySpecies,
   formatTimeRange, 
   isSlotOccupiedByAppointment,
   getWeekDays,
@@ -140,6 +141,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
   // New Medical / Grooming Appointment form state
   const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId || '');
+  const [patientError, setPatientError] = useState('');
   const [vetName, setVetName] = useState(currentVetName || 'Veterinaria');
   const [appDate, setAppDate] = useState(() => formatDateToISO(new Date()));
   const [appTime, setAppTime] = useState('10:00');
@@ -171,6 +173,23 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
     }
   }, [groomingServices, selectedGroomServiceId]);
 
+  // Grooming services filtered by the selected patient's species (services naming the other species are hidden)
+  const { visibleGroomingServices, speciesFallback } = useMemo(() => {
+    const species = patients.find(p => p.id === selectedPatientId)?.species;
+    const res = filterGroomingServicesBySpecies(groomingServices, species);
+    return { visibleGroomingServices: res.services, speciesFallback: res.fallback };
+  }, [groomingServices, patients, selectedPatientId]);
+
+  useEffect(() => {
+    if (!showNewModal) setPatientError('');
+  }, [showNewModal]);
+
+  useEffect(() => {
+    if (visibleGroomingServices.length > 0 && !visibleGroomingServices.some(s => s.id === selectedGroomServiceId)) {
+      setSelectedGroomServiceId(visibleGroomingServices[0].id);
+    }
+  }, [visibleGroomingServices, selectedGroomServiceId]);
+
   const handleSlotClick = (dateStr: string, slotTime: string) => {
     setAppDate(dateStr);
     setAppTime(slotTime);
@@ -187,7 +206,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   const handleAddAppointment = (e: React.FormEvent) => {
     e.preventDefault();
     const patient = patients.find(p => p.id === selectedPatientId);
-    if (!patient) return;
+    if (!patient) {
+      setPatientError('Seleccione un paciente para agendar el turno.');
+      return;
+    }
 
     if (activeMode === 'medica') {
       onAddMedicalAppointment({
@@ -924,9 +946,12 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                 <SearchablePatientSelect
                   patients={patients}
                   selectedPatientId={selectedPatientId}
-                  onSelectPatient={setSelectedPatientId}
+                  onSelectPatient={(id) => { setSelectedPatientId(id); setPatientError(''); }}
                   variant="agenda"
                 />
+                {patientError && (
+                  <p role="alert" className="text-[11px] text-red-600 font-medium mt-1">{patientError}</p>
+                )}
               </div>
 
               {activeMode === 'medica' ? (
@@ -971,12 +996,17 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                       }}
                       className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
                     >
-                      {groomingServices.map(s => (
+                      {visibleGroomingServices.map(s => (
                         <option key={s.id} value={s.id}>
                           {s.name} ({s.durationMinutes} min - ${s.price})
                         </option>
                       ))}
                     </select>
+                    {speciesFallback && (
+                      <p className="text-[11px] text-amber-700 font-medium mt-1">
+                        No hay servicios de estética cargados para esta especie. Se muestran todos; verifique el servicio elegido.
+                      </p>
+                    )}
                   </div>
                 </>
               )}

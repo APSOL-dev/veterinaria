@@ -21,7 +21,8 @@ import {
   formatAppointmentDurationBadge,
   generateTimeSlots,
   ensureTimeInSlots,
-  getEffectiveAppointmentStatus
+  getEffectiveAppointmentStatus,
+  filterGroomingServicesBySpecies
 } from './agendaService';
 
 describe('agendaService', () => {
@@ -394,7 +395,35 @@ describe('agendaService', () => {
       expect(res.status).toBe('cancelled');
     });
   });
+
+  describe('filterGroomingServicesBySpecies', () => {
+    const services = [
+      { id: '1', name: 'Baño Perro chico' },
+      { id: '2', name: 'Baño Gato' },
+      { id: '3', name: 'Corte de uñas' }
+    ];
+
+    it('hides services of the other species for a canine patient', () => {
+      const res = filterGroomingServicesBySpecies(services, 'Canino');
+      expect(res.services.map(s => s.id)).toEqual(['1', '3']);
+      expect(res.fallback).toBe(false);
+    });
+
+    it('hides services of the other species for a feline patient', () => {
+      const res = filterGroomingServicesBySpecies(services, 'Felino');
+      expect(res.services.map(s => s.id)).toEqual(['2', '3']);
+    });
+
+    it('falls back to all services when none match the species', () => {
+      const dogOnly = [{ id: '1', name: 'Baño Perro chico' }, { id: '2', name: 'Corte Perro grande' }];
+      const res = filterGroomingServicesBySpecies(dogOnly, 'Felino');
+      expect(res.services).toHaveLength(2);
+      expect(res.fallback).toBe(true);
+    });
+
+    it('returns everything when the species is unknown or empty', () => {
+      expect(filterGroomingServicesBySpecies(services, undefined).services).toHaveLength(3);
+      expect(filterGroomingServicesBySpecies(services, 'Ave').services).toHaveLength(3);
+    });
+  });
 });
-
-
-

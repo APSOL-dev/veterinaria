@@ -452,6 +452,24 @@ export function getEffectiveAppointmentStatus(
   };
 }
 
-
-
-
+/**
+ * Filters grooming services by patient species: services whose name mentions the other species are hidden.
+ * If nothing matches (e.g. the catalog only has dog services), all services are returned with fallback = true.
+ */
+export function filterGroomingServicesBySpecies<T extends { name: string }>(
+  services: T[],
+  species?: string
+): { services: T[]; fallback: boolean } {
+  const normalized = (species || '').toLowerCase();
+  const isFeline = normalized.includes('felin') || normalized.includes('gato');
+  const isCanine = normalized.includes('canin') || normalized.includes('perro');
+  const otherSpeciesWords = isFeline ? ['perro', 'canino'] : isCanine ? ['gato', 'felino'] : [];
+  if (otherSpeciesWords.length === 0) {
+    return { services, fallback: false };
+  }
+  const matching = services.filter(s => !otherSpeciesWords.some(w => s.name.toLowerCase().includes(w)));
+  if (matching.length === 0) {
+    return { services, fallback: true };
+  }
+  return { services: matching, fallback: false };
+}

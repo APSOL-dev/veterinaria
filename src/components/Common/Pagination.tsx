@@ -62,13 +62,13 @@ export const Pagination: React.FC<PaginationProps> = ({
       </div>
 
       {/* Center: Page Controls */}
-      <div className="flex items-center gap-1.5 order-1 sm:order-2">
+      <div className="flex items-center gap-0.5 sm:gap-1.5 order-1 sm:order-2">
         {/* Previous Page */}
         <button
           type="button"
           onClick={() => safeCurrentPage > 1 && onPageChange(safeCurrentPage - 1)}
           disabled={safeCurrentPage <= 1}
-          className="w-8 h-8 rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+          className="w-9 h-11 sm:w-8 sm:h-8 rounded-xl sm:rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           title="Página anterior"
           aria-label="Página anterior"
         >
@@ -81,7 +81,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             return (
               <span
                 key={`ellipsis-${index}`}
-                className="w-8 h-8 flex items-center justify-center text-slate-400 text-xs font-medium select-none"
+                className="w-6 h-11 sm:w-8 sm:h-8 flex items-center justify-center text-slate-400 text-xs font-medium select-none"
               >
                 ...
               </span>
@@ -96,7 +96,7 @@ export const Pagination: React.FC<PaginationProps> = ({
               key={`page-${pageNum}`}
               type="button"
               onClick={() => onPageChange(pageNum)}
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-colors cursor-pointer ${
+              className={`w-9 h-11 sm:w-8 sm:h-8 rounded-xl sm:rounded-full flex items-center justify-center text-xs font-medium transition-colors cursor-pointer ${
                 isActive
                   ? 'bg-[#0F172A] text-white font-semibold shadow-xs'
                   : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -113,7 +113,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           type="button"
           onClick={() => safeCurrentPage < totalPages && onPageChange(safeCurrentPage + 1)}
           disabled={safeCurrentPage >= totalPages}
-          className="w-8 h-8 rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+          className="w-9 h-11 sm:w-8 sm:h-8 rounded-xl sm:rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           title="Página siguiente"
           aria-label="Página siguiente"
         >

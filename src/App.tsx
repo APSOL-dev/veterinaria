@@ -262,6 +262,20 @@ export const App: React.FC = () => {
     type: 'success'
   });
 
+  // Shows an error notice when a background write to Supabase fails (otherwise the UI would look saved)
+  const reportSyncFailure = useCallback((what: string, request: Promise<{ success: boolean; error?: string }>) => {
+    request.then(res => {
+      if (res && !res.success) {
+        setNotifModal({
+          isOpen: true,
+          type: 'error',
+          title: 'No se pudo guardar',
+          message: `No se pudo guardar ${what} en la base de datos. Los cambios pueden perderse al recargar. ${res.error || 'Intente nuevamente o contacte soporte.'}`
+        });
+      }
+    });
+  }, []);
+
   const handleSetActiveModule = useCallback((mod: ActiveModule) => {
     if (userSession && !canAccessModule(userSession.role, mod)) {
       setNotifModal({
@@ -429,7 +443,7 @@ export const App: React.FC = () => {
       prescription: data.prescription
     };
     setClinicalNotes([newNote, ...clinicalNotes]);
-    insertClinicalNoteToSupabase(newNote);
+    reportSyncFailure("la consulta", insertClinicalNoteToSupabase(newNote));
   };
 
   const handleSaveFullConsultation = (data: {
@@ -453,7 +467,7 @@ export const App: React.FC = () => {
       attachmentUrls: data.attachmentUrls
     };
     setClinicalNotes([newNote, ...clinicalNotes]);
-    insertClinicalNoteToSupabase(newNote);
+    reportSyncFailure("la consulta", insertClinicalNoteToSupabase(newNote));
 
     const pat = patients.find(p => p.id === data.patientId);
     if (pat) {
@@ -465,7 +479,7 @@ export const App: React.FC = () => {
 
   const handleUpdateClinicalNote = (noteId: string, updatedFields: { notes?: string; prescription?: string }) => {
     setClinicalNotes(prev => updateClinicalNoteRecord(prev, noteId, updatedFields));
-    updateClinicalNoteInSupabase(noteId, updatedFields);
+    reportSyncFailure("la consulta", updateClinicalNoteInSupabase(noteId, updatedFields));
   };
 
   const handleDeleteClinicalNote = (noteId: string) => {
@@ -495,6 +509,19 @@ export const App: React.FC = () => {
 
   const handleRegisterDosis = async (data: { patientId?: string; vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => {
     const targetPatientId = data.patientId || selectedPatient.id;
+
+    const nowLocal = new Date();
+    const todayLocal = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
+    if (data.applicationDate > todayLocal) {
+      setNotifModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Fecha inválida',
+        message: 'La fecha de aplicación de una dosis no puede ser futura.'
+      });
+      return;
+    }
+
     let vac = vaccineCatalog.find(v => v.id === data.vaccineId || v.name.toLowerCase() === data.vaccineId.toLowerCase());
 
     if (!vac) {
@@ -548,9 +575,45 @@ export const App: React.FC = () => {
     });
   };
 
-  const handleDeleteDosis = (dosisId: string) => {
+  const handleDeleteDosis = async (dosisId: string) => {
+    const dosisToDelete = vaccineDoses.find(d => d.id === dosisId);
+    const syncRes = await deleteVaccineDosisFromSupabase(dosisId);
+
+    if (!syncRes.success) {
+      setNotifModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Error al eliminar dosis',
+        message: `No se pudo eliminar la dosis en la base de datos. ${syncRes.error || 'Intente nuevamente o contacte soporte.'}`
+      });
+      return;
+    }
+
     setVaccineDoses(prev => prev.filter(d => d.id !== dosisId));
-    deleteVaccineDosisFromSupabase(dosisId);
+
+    // If no other dose of the same vaccine remains, the required vaccine goes back to 'pendiente'
+    if (dosisToDelete) {
+      const remainingSameVaccine = vaccineDoses.some(
+        d => d.id !== dosisId &&
+          d.patientId === dosisToDelete.patientId &&
+          d.vaccineName.toLowerCase() === dosisToDelete.vaccineName.toLowerCase()
+      );
+      if (!remainingSameVaccine) {
+        setPatients(prevPatients => prevPatients.map(p => {
+          if (p.id !== dosisToDelete.patientId || !p.requiredVaccines) return p;
+          const updatedPatient = {
+            ...p,
+            requiredVaccines: p.requiredVaccines.map(req =>
+              req.vaccineName.toLowerCase() === dosisToDelete.vaccineName.toLowerCase() && req.status === 'aplicada'
+                ? { ...req, status: 'pendiente' as const, appliedDate: undefined }
+                : req
+            )
+          };
+          updatePatientInSupabase(updatedPatient);
+          return updatedPatient;
+        }));
+      }
+    }
   };
 
   const handleRemoveDosisByVaccine = (patientId: string, vaccineName: string) => {
@@ -576,12 +639,12 @@ export const App: React.FC = () => {
       id: 'app-' + Date.now()
     };
     setMedicalAppointments([...medicalAppointments, newApp]);
-    insertMedicalAppointmentToSupabase(newApp);
+    reportSyncFailure("el turno", insertMedicalAppointmentToSupabase(newApp));
   };
 
   const handleUpdateMedicalAppointment = (id: string, updates: Partial<MedicalAppointment>) => {
     setMedicalAppointments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
-    updateMedicalAppointmentInSupabase(id, updates);
+    reportSyncFailure("el turno", updateMedicalAppointmentInSupabase(id, updates));
   };
 
   const handleDeleteMedicalAppointment = (id: string) => {
@@ -595,12 +658,12 @@ export const App: React.FC = () => {
       id: 'groom-' + Date.now()
     };
     setGroomingAppointments([...groomingAppointments, newApp]);
-    insertGroomingAppointmentToSupabase(newApp);
+    reportSyncFailure("el turno", insertGroomingAppointmentToSupabase(newApp));
   };
 
   const handleUpdateGroomingAppointment = (id: string, updates: Partial<GroomingAppointment>) => {
     setGroomingAppointments(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
-    updateGroomingAppointmentInSupabase(id, updates);
+    reportSyncFailure("el turno", updateGroomingAppointmentInSupabase(id, updates));
   };
 
   const handleDeleteGroomingAppointment = (id: string) => {
@@ -613,7 +676,7 @@ export const App: React.FC = () => {
     if (!product) return;
     const { updatedProduct } = recordStockEntry(product, quantity, provider);
     setProducts(products.map(p => p.id === productId ? updatedProduct : p));
-    upsertProductToSupabase(updatedProduct);
+    reportSyncFailure("el producto", upsertProductToSupabase(updatedProduct));
   };
 
   const handleAddProduct = async (newProduct: Omit<Product, 'id'>) => {
@@ -642,7 +705,7 @@ export const App: React.FC = () => {
 
   const handleUpdateProduct = (id: string, prodData: Partial<Product>) => {
     setProducts(prev => prev.map(p => p.id === id ? { ...p, ...prodData } : p));
-    updateProductInSupabase(id, prodData);
+    reportSyncFailure("el producto", updateProductInSupabase(id, prodData));
   };
 
   const handleDeleteProduct = (id: string) => {
@@ -698,7 +761,7 @@ export const App: React.FC = () => {
     if (!product) return;
     const { updatedProduct } = recordStockAdjustment(product, newStock, reason);
     setProducts(products.map(p => p.id === productId ? updatedProduct : p));
-    upsertProductToSupabase(updatedProduct);
+    reportSyncFailure("el producto", upsertProductToSupabase(updatedProduct));
   };
 
   const handleBulkUpdateProducts = (updatedProducts: Product[]) => {
@@ -912,7 +975,7 @@ export const App: React.FC = () => {
 
       return updatedPayments;
     });
-    insertSupplierPaymentToSupabase(payment);
+    reportSyncFailure("el pago", insertSupplierPaymentToSupabase(payment));
     setNotifModal({
       isOpen: true,
       title: '¡Pago Registrado!',
@@ -951,7 +1014,7 @@ export const App: React.FC = () => {
     });
     setReceipts(prev => [result.receipt, ...prev]);
     setProducts(result.updatedProducts);
-    insertReceiptToSupabase(result.receipt);
+    reportSyncFailure("el cobro", insertReceiptToSupabase(result.receipt));
 
     // Marcar solo los turnos correspondientes cobrados en la agenda y persistir en Supabase DB
     const { medicalIdsToComplete, groomingIdsToComplete } = determineAppointmentsToComplete(
