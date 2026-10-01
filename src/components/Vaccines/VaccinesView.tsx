@@ -596,11 +596,15 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                   </thead>
                   <tbody className="text-slate-800">
                     {(() => {
+                      const appliedReqsWithoutDose = (activePatient.requiredVaccines || []).filter(
+                        v => v.status === 'aplicada' && !patientDoses.some(d => d.vaccineName.toLowerCase() === v.vaccineName.toLowerCase())
+                      );
+
                       const pendingReqs = (activePatient.requiredVaccines || []).filter(
                         v => v.status === 'pendiente' && !patientDoses.some(d => d.vaccineName.toLowerCase() === v.vaccineName.toLowerCase())
                       );
 
-                      if (patientDoses.length === 0 && pendingReqs.length === 0) {
+                      if (patientDoses.length === 0 && pendingReqs.length === 0 && appliedReqsWithoutDose.length === 0) {
                         return (
                           <tr>
                             <td colSpan={6} className="py-md text-center text-slate-500 text-xs font-medium">
@@ -629,6 +633,51 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                                   isExpired ? 'text-red-700' : 'text-slate-800'
                                 }`}>
                                   {formatDate(dose.expirationDate)}
+                                </td>
+                                <td className="py-sm px-md">
+                                  {isExpired ? (
+                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold text-[10px]">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+                                      Vencida
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                      Al día
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-sm px-md">
+                                  <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                    Aplicada
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+
+                          {/* Vacunas Requeridas Aplicadas sin registro de dosis separado */}
+                          {appliedReqsWithoutDose.map((req) => {
+                            const cat = vaccineCatalog.find(c => c.name.toLowerCase() === req.vaccineName.toLowerCase());
+                            const freqDays = cat?.frequencyDays || 365;
+                            const appDate = req.appliedDate || req.suggestedDate || todayStr;
+                            const expDate = new Date(new Date(appDate).getTime() + freqDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                            const isExpired = expDate < todayStr;
+                            return (
+                              <tr key={req.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                                <td className="py-sm px-md font-medium text-slate-900 text-xs">{req.vaccineName}</td>
+                                <td className="py-sm px-md font-medium text-slate-800">{formatDate(appDate)}</td>
+                                <td className="py-sm px-md flex items-center gap-xs font-medium text-slate-800">
+                                  <div className="w-5 h-5 rounded-full bg-purple-100 text-[#5C3C7B] flex items-center justify-center font-semibold text-[10px]">
+                                    VE
+                                  </div>
+                                  {currentVetName || 'Veterinaria'}
+                                </td>
+                                <td className={`py-sm px-md font-semibold ${
+                                  isExpired ? 'text-red-700' : 'text-slate-800'
+                                }`}>
+                                  {formatDate(expDate)}
                                 </td>
                                 <td className="py-sm px-md">
                                   {isExpired ? (

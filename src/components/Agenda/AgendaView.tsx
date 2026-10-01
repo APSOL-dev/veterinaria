@@ -139,7 +139,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   }, [activeMode, activeDayISO, filteredMedicalAppointments, filteredGroomingAppointments]);
 
   // New Medical / Grooming Appointment form state
-  const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId || patients[0]?.id || '');
+  const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId || '');
   const [vetName, setVetName] = useState(currentVetName || 'Veterinaria');
   const [appDate, setAppDate] = useState(() => formatDateToISO(new Date()));
   const [appTime, setAppTime] = useState('10:00');

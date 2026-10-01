@@ -61,4 +61,8 @@ Hola (Nombre tutor), te recordamos que la vacuna (Nombre vacuna) para (Nombre pa
 **Casos borde conocidos:**
 - **Paciente sin vacunas previas:** No muestra recordatorios ficticios; la tarjeta de próxima aplicación ofrece agendar control preventivo general.
 
+**Garantías de persistencia — Error 7 (corregido 01/10/2026):**
+- `handleRegisterDosis` en `App.tsx` es ahora `async`. Aguarda el resultado de `insertVaccineDosisToSupabase` antes de actualizar el estado local.
+- Si la escritura a Supabase falla, **no se modifica el estado local** (la dosis no aparece en pantalla) y se muestra el modal de error de notificación (`AppNotificationModal` con `type: 'error'`).
+- `insertVaccineDosisToSupabase` en `supabaseService.ts` realiza un **upsert previo** en `vetsoft_catalogo_vacunas` (tabla objetivo del FK) antes de insertar en `vetsoft_dosis_vacunas`. Esto garantiza que la restricción `vetsoft_dosis_vacunas_vaccine_id_fkey` nunca falle por IDs de catálogo no presentes en la tabla legacy, independientemente de si el ID viene del catálogo local o fue generado en runtime.
 

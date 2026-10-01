@@ -755,6 +755,13 @@ export async function deleteVaccineCatalogItemFromSupabase(id: string): Promise<
 
 export async function insertVaccineDosisToSupabase(dosis: VaccineDosis): Promise<SyncResult> {
   try {
+    // Safety net: ensure the vaccine exists in the FK target table before inserting the dosis
+    await supabase.from('vetsoft_catalogo_vacunas').upsert({
+      id: dosis.vaccineId,
+      name: dosis.vaccineName,
+      frequency_days: 365
+    }, { onConflict: 'id', ignoreDuplicates: true });
+
     const { error } = await supabase.from('vetsoft_dosis_vacunas').insert({
       id: dosis.id,
       patient_id: dosis.patientId,

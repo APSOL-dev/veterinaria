@@ -493,7 +493,7 @@ export const App: React.FC = () => {
     deleteVaccineCatalogItemFromSupabase(id);
   };
 
-  const handleRegisterDosis = (data: { patientId?: string; vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => {
+  const handleRegisterDosis = async (data: { patientId?: string; vaccineId: string; applicationDate: string; vetName: string; batch?: string }) => {
     const targetPatientId = data.patientId || selectedPatient.id;
     let vac = vaccineCatalog.find(v => v.id === data.vaccineId || v.name.toLowerCase() === data.vaccineId.toLowerCase());
 
@@ -514,8 +514,19 @@ export const App: React.FC = () => {
       data.batch
     );
 
+    const syncRes = await insertVaccineDosisToSupabase(newDosis);
+
+    if (!syncRes.success) {
+      setNotifModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Error al registrar dosis',
+        message: `No se pudo guardar la dosis en la base de datos. ${syncRes.error || 'Intente nuevamente o contacte soporte.'}`
+      });
+      return;
+    }
+
     setVaccineDoses(prev => [newDosis, ...prev]);
-    insertVaccineDosisToSupabase(newDosis);
 
     // Sync patient's requiredVaccines status to 'aplicada'
     setPatients(prevPatients => {

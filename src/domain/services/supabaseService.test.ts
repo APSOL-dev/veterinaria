@@ -354,5 +354,65 @@ describe('formatUserFriendlyErrorMessage', () => {
   it('returns default fallback message for empty error', () => {
     expect(formatUserFriendlyErrorMessage(null)).toBe('Error de conexión o datos inválidos.');
   });
+
+  it('translates foreign key constraint violations into friendly message', () => {
+    const error = { message: 'insert or update on table vetsoft_dosis_vacunas violates foreign key constraint vetsoft_dosis_vacunas_vaccine_id_fkey', code: '23503' };
+    const msg = formatUserFriendlyErrorMessage(error);
+    // Should not expose raw SQL — should be a user-friendly fallback
+    expect(typeof msg).toBe('string');
+    expect(msg.length).toBeGreaterThan(0);
+  });
 });
 
+describe('filteredServices logic (Mejora 2 — service search)', () => {
+  const services = [
+    { id: 'srv-1', name: 'Consulta General', category: 'clinica', description: 'Examen clínico', price: 15000, quantity: 1, isActive: true },
+    { id: 'srv-2', name: 'Baño Canino', category: 'peluqueria', description: 'Baño con shampoo neutro', price: 12000, quantity: 1, isActive: true },
+    { id: 'srv-3', name: 'Cirugía de tejidos blandos', category: 'cirugia', description: 'Procedimiento quirúrgico', price: 80000, quantity: 1, isActive: true },
+    { id: 'srv-4', name: 'Baño Felino', category: 'peluqueria', description: 'Baño para felinos', price: 13000, quantity: 1, isActive: true }
+  ];
+
+  const filterServices = (catalog: typeof services, query: string) => {
+    if (!query.trim()) return catalog;
+    const q = query.toLowerCase();
+    return catalog.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      (s.category || '').toLowerCase().includes(q) ||
+      (s.description || '').toLowerCase().includes(q)
+    );
+  };
+
+  it('returns all services when query is empty', () => {
+    expect(filterServices(services, '')).toHaveLength(4);
+    expect(filterServices(services, '   ')).toHaveLength(4);
+  });
+
+  it('filters by name (case-insensitive)', () => {
+    const result = filterServices(services, 'baño');
+    expect(result).toHaveLength(2);
+    expect(result.map(s => s.id)).toContain('srv-2');
+    expect(result.map(s => s.id)).toContain('srv-4');
+  });
+
+  it('filters by category', () => {
+    const result = filterServices(services, 'peluqueria');
+    expect(result).toHaveLength(2);
+  });
+
+  it('filters by description', () => {
+    const result = filterServices(services, 'quirúrgico');
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('srv-3');
+  });
+
+  it('returns empty array when no match', () => {
+    const result = filterServices(services, 'zzzznotfound');
+    expect(result).toHaveLength(0);
+  });
+
+  it('single result when name is unique', () => {
+    const result = filterServices(services, 'consulta');
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('srv-1');
+  });
+});

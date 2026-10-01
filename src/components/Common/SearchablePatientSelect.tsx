@@ -31,9 +31,13 @@ export const SearchablePatientSelect: React.FC<SearchablePatientSelectProps> = (
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedPatient = useMemo(
-    () => patients.find(p => p.id === selectedPatientId) || patients[0],
+    () => selectedPatientId ? (patients.find(p => p.id === selectedPatientId) || null) : null,
     [patients, selectedPatientId]
   );
+
+  const currentLabel = selectedPatient
+    ? formatPatientOptionLabel(selectedPatient, variant)
+    : 'Seleccionar paciente...';
 
   const filteredPatients = useMemo(
     () => getRecentOrFilteredPatients(patients, searchQuery, selectedPatientId, 15),
@@ -58,10 +62,6 @@ export const SearchablePatientSelect: React.FC<SearchablePatientSelectProps> = (
       inputRef.current.focus();
     }
   }, [isOpen]);
-
-  const currentLabel = selectedPatient
-    ? formatPatientOptionLabel(selectedPatient, variant)
-    : 'Seleccionar paciente...';
 
   return (
     <div ref={containerRef} className={`relative inline-block text-left w-full ${className}`}>

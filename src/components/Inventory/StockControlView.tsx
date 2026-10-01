@@ -43,6 +43,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [searchQuery, setSearchQuery] = useState('');
+  const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const [productPage, setProductPage] = useState<number>(1);
   const [productPageSize, setProductPageSize] = useState<number>(20);
   const [servicePage, setServicePage] = useState<number>(1);
@@ -229,10 +230,20 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
     return filteredProducts.slice(start, start + productPageSize);
   }, [filteredProducts, productPage, productPageSize]);
 
+  const filteredServices = useMemo(() => {
+    if (!serviceSearchQuery.trim()) return servicesCatalog;
+    const q = serviceSearchQuery.toLowerCase();
+    return servicesCatalog.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      (s.category || '').toLowerCase().includes(q) ||
+      (s.description || '').toLowerCase().includes(q)
+    );
+  }, [servicesCatalog, serviceSearchQuery]);
+
   const paginatedServices = useMemo(() => {
     const start = (servicePage - 1) * servicePageSize;
-    return servicesCatalog.slice(start, start + servicePageSize);
-  }, [servicesCatalog, servicePage, servicePageSize]);
+    return filteredServices.slice(start, start + servicePageSize);
+  }, [filteredServices, servicePage, servicePageSize]);
 
   const isAllServicesOnPageSelected = useMemo(() => {
     if (paginatedServices.length === 0) return false;
@@ -836,6 +847,38 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         ) : (
           /* Services Catalog Table */
           <div className="flex flex-col gap-md">
+            {/* Search Bar for Services */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-sm">
+              <div className="bg-surface-container rounded-xl p-xs flex items-center w-full sm:w-80 border border-outline-variant/30">
+                <span className="material-symbols-outlined text-on-surface-variant ml-sm mr-xs text-[18px]">search</span>
+                <input
+                  type="text"
+                  value={serviceSearchQuery}
+                  onChange={(e) => {
+                    setServiceSearchQuery(e.target.value);
+                    setServicePage(1);
+                  }}
+                  placeholder="Buscar servicio por nombre o categoría..."
+                  className="bg-transparent text-xs text-on-surface outline-none w-full font-medium"
+                />
+                {serviceSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => { setServiceSearchQuery(''); setServicePage(1); }}
+                    className="text-slate-400 hover:text-slate-600 mr-1 shrink-0"
+                    title="Limpiar búsqueda"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                )}
+              </div>
+              {serviceSearchQuery && (
+                <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap">
+                  {filteredServices.length} {filteredServices.length === 1 ? 'resultado' : 'resultados'} de {servicesCatalog.length}
+                </span>
+              )}
+            </div>
+
             {/* Selection Banner for Services */}
             {isServiceSelectionActive && (
               <div className="bg-purple-50/90 border border-purple-200 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-fade-in shadow-xs">
@@ -1097,7 +1140,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
             <Pagination
               currentPage={servicePage}
-              totalItems={servicesCatalog.length}
+              totalItems={filteredServices.length}
               pageSize={servicePageSize}
               pageSizeOptions={[10, 20, 50, 100]}
               onPageChange={setServicePage}
