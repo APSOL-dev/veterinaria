@@ -149,10 +149,10 @@ export function shiftWeek(refDate: Date | string, weeksCount: number): Date {
   return d;
 }
 
-const DAY_NAMES_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+export const DAY_NAMES_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 /**
- * Returns an array of 6 day objects (Monday to Saturday) for the week of refDate.
+ * Returns an array of 7 day objects (Monday to Sunday) for the week of refDate.
  */
 export function getWeekDays(refDate?: Date | string): Array<{
   dateStr: string;
@@ -163,7 +163,7 @@ export function getWeekDays(refDate?: Date | string): Array<{
   const monday = getMondayOfDate(refDate);
   const result = [];
 
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 7; i++) {
     const cur = new Date(monday);
     cur.setDate(monday.getDate() + i);
     const dateStr = formatDateToISO(cur);
@@ -186,23 +186,95 @@ const MONTH_NAMES_CAP = [
 ];
 
 /**
- * Formats header title string for week range (e.g. "Semana del 7 al 12 de Septiembre").
+ * Formats header title string for week range (e.g. "Semana del 7 al 13 de Septiembre").
  */
 export function formatWeekRangeHeader(refDate?: Date | string): string {
   const monday = getMondayOfDate(refDate);
-  const saturday = new Date(monday);
-  saturday.setDate(monday.getDate() + 5);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
 
   const startDay = monday.getDate();
   const startMonth = MONTH_NAMES_CAP[monday.getMonth()];
-  const endDay = saturday.getDate();
-  const endMonth = MONTH_NAMES_CAP[saturday.getMonth()];
+  const endDay = sunday.getDate();
+  const endMonth = MONTH_NAMES_CAP[sunday.getMonth()];
 
   if (startMonth === endMonth) {
     return `Semana del ${startDay} al ${endDay} de ${startMonth}`;
   } else {
     return `Semana del ${startDay} de ${startMonth} al ${endDay} de ${endMonth}`;
   }
+}
+
+/**
+ * Returns an array of day objects for the entire calendar month view (weeks containing the month).
+ */
+export function getMonthDays(refDate?: Date | string): Array<{
+  dateStr: string;
+  dayNumber: number;
+  isCurrentMonth: boolean;
+  isToday: boolean;
+}> {
+  const d = refDate ? (typeof refDate === 'string' ? new Date(refDate.includes('T') ? refDate : refDate + 'T00:00:00') : new Date(refDate)) : new Date();
+  const year = d.getFullYear();
+  const month = d.getMonth();
+
+  const firstDayOfMonth = new Date(year, month, 1);
+  const firstMonday = getMondayOfDate(firstDayOfMonth);
+
+  const todayStr = formatDateToISO(new Date());
+  const days: Array<{
+    dateStr: string;
+    dayNumber: number;
+    isCurrentMonth: boolean;
+    isToday: boolean;
+  }> = [];
+
+  for (let i = 0; i < 42; i++) {
+    const cur = new Date(firstMonday);
+    cur.setDate(firstMonday.getDate() + i);
+    const dateStr = formatDateToISO(cur);
+    const isCurrentMonth = cur.getMonth() === month;
+    days.push({
+      dateStr,
+      dayNumber: cur.getDate(),
+      isCurrentMonth,
+      isToday: dateStr === todayStr
+    });
+    if (i >= 34 && cur.getDay() === 0 && cur.getMonth() !== month) {
+      break;
+    }
+  }
+
+  return days;
+}
+
+export function formatMonthHeader(refDate?: Date | string): string {
+  const d = refDate ? (typeof refDate === 'string' ? new Date(refDate.includes('T') ? refDate : refDate + 'T00:00:00') : new Date(refDate)) : new Date();
+  const monthName = MONTH_NAMES_CAP[d.getMonth()];
+  const year = d.getFullYear();
+  return `${monthName} de ${year}`;
+}
+
+export function formatDayHeader(refDate?: Date | string): string {
+  const d = refDate ? (typeof refDate === 'string' ? new Date(refDate.includes('T') ? refDate : refDate + 'T00:00:00') : new Date(refDate)) : new Date();
+  const dayNamesFull = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const dayName = dayNamesFull[d.getDay()];
+  const day = d.getDate();
+  const month = MONTH_NAMES_CAP[d.getMonth()];
+  const year = d.getFullYear();
+  return `${dayName} ${day} de ${month} de ${year}`;
+}
+
+export function shiftDay(refDate: Date | string, daysCount: number): Date {
+  const d = typeof refDate === 'string' ? new Date(refDate.includes('T') ? refDate : refDate + 'T00:00:00') : new Date(refDate.getTime());
+  d.setDate(d.getDate() + daysCount);
+  return d;
+}
+
+export function shiftMonth(refDate: Date | string, monthsCount: number): Date {
+  const d = typeof refDate === 'string' ? new Date(refDate.includes('T') ? refDate : refDate + 'T00:00:00') : new Date(refDate.getTime());
+  d.setMonth(d.getMonth() + monthsCount);
+  return d;
 }
 
 /**

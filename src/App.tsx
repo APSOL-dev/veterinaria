@@ -59,7 +59,14 @@ import {
 import { MOBILE_TABLE_QUERY, watchResponsiveTables } from './utils/responsiveTables';
 import { dataUrlToFile } from './utils/fileUtils';
 import { createDosisRecord } from './domain/services/vaccineService';
-import { getLowStockAlerts, recordStockEntry, recordStockAdjustment, processStockReceiptFromBill } from './domain/services/inventoryService';
+import { 
+  getLowStockAlerts, 
+  getNewUnacknowledgedLowStockAlerts, 
+  updateAcknowledgedLowStockAlerts, 
+  recordStockEntry, 
+  recordStockAdjustment, 
+  processStockReceiptFromBill 
+} from './domain/services/inventoryService';
 import { processCheckout, determineAppointmentsToComplete, enrichReceiptsWithPatients } from './domain/services/billingService';
 import { createNewPatientRecord, normalizePatientCoat, updateClinicalNoteRecord, deleteClinicalNoteRecord } from './domain/services/patientService';
 import { createSupplierBillRecord, createSupplierQuoteRecord, saveSupplierCreditTerm, filterPaymentsByDeletedBill, formatInvoiceFullNumber } from './domain/services/supplierService';
@@ -121,6 +128,11 @@ import {
   deleteGroomingAppointmentFromSupabase
 } from './domain/services/supabaseService';
 import { deleteAppointmentFromList } from './domain/services/agendaService';
+import { 
+  completeVaccineFromAppointment, 
+  findActiveVaccineAppointment, 
+  matchVaccineNameFromAppointment 
+} from './domain/services/vaccineService';
 
 import { AppNotificationModal } from './components/Common/AppNotificationModal';
 import { LowStockAlertModal } from './components/Inventory/LowStockAlertModal';
@@ -131,18 +143,7 @@ export const App: React.FC = () => {
   const [activeModule, setActiveModuleState] = useState<ActiveModule>('pacientes');
   const [activeSubmodule, setActiveSubmodule] = useState<string>('ficha-pacientes');
 
-  // Schedule appointment prefill state
-  const [schedulePrefill, setSchedulePrefill] = useState<{ patientId?: string; reason?: string; autoOpen?: boolean }>({});
 
-  const handleScheduleAppointmentFromVaccines = useCallback((patientId: string, vaccineName?: string) => {
-    setSchedulePrefill({
-      patientId,
-      reason: vaccineName ? `Vacunación: ${vaccineName}` : 'Vacunación',
-      autoOpen: true
-    });
-    setActiveModuleState('clinica');
-    setActiveSubmodule('calendario-clinica');
-  }, []);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     return typeof window !== 'undefined' ? window.innerWidth < 1280 : false;
   });
@@ -264,14 +265,31 @@ export const App: React.FC = () => {
     setActiveModuleState(nav.module);
     setActiveSubmodule(nav.submodule);
 
-    const lowStock = getLowStockAlerts(products);
-    if (lowStock.length > 0) {
+    let ackMap: Record<string, number> = {};
+    try {
+      const saved = localStorage.getItem('vetsoft_acknowledged_low_stock');
+      if (saved) ackMap = JSON.parse(saved);
+    } catch {}
+
+    const newAlerts = getNewUnacknowledgedLowStockAlerts(products, ackMap);
+    if (newAlerts.length > 0) {
       setShowLowStockModal(true);
     }
   }, [products]);
 
-  const handleGoToInventoryFromAlert = () => {
+  const handleDismissLowStockModal = useCallback(() => {
     setShowLowStockModal(false);
+    try {
+      let ackMap: Record<string, number> = {};
+      const saved = localStorage.getItem('vetsoft_acknowledged_low_stock');
+      if (saved) ackMap = JSON.parse(saved);
+      const updated = updateAcknowledgedLowStockAlerts(products, ackMap);
+      localStorage.setItem('vetsoft_acknowledged_low_stock', JSON.stringify(updated));
+    } catch {}
+  }, [products]);
+
+  const handleGoToInventoryFromAlert = () => {
+    handleDismissLowStockModal();
     if (userSession && canAccessModule(userSession.role, 'inventario')) {
       setActiveModuleState('inventario');
       setActiveSubmodule('productos-fisicos');
@@ -289,6 +307,32 @@ export const App: React.FC = () => {
     message: '',
     type: 'success'
   });
+
+  // Schedule appointment prefill state
+  const [schedulePrefill, setSchedulePrefill] = useState<{ patientId?: string; reason?: string; autoOpen?: boolean }>({});
+
+  const handleScheduleAppointmentFromVaccines = useCallback((patientId: string, vaccineName?: string) => {
+    if (vaccineName) {
+      const activeApp = findActiveVaccineAppointment(patientId, vaccineName, medicalAppointments);
+      if (activeApp) {
+        setNotifModal({
+          isOpen: true,
+          type: 'warning',
+          title: 'Turno ya agendado',
+          message: `Ya existe un turno activo para la vacuna ${vaccineName} (${activeApp.date} a las ${activeApp.time} hs). No es necesario agendar otro.`
+        });
+        return;
+      }
+    }
+
+    setSchedulePrefill({
+      patientId,
+      reason: vaccineName ? `Vacunación: ${vaccineName}` : 'Vacunación',
+      autoOpen: true
+    });
+    setActiveModuleState('clinica');
+    setActiveSubmodule('calendario-clinica');
+  }, [medicalAppointments]);
 
   // Shows an error notice when a background write to Supabase fails (otherwise the UI would look saved)
   const reportSyncFailure = useCallback((what: string, request: Promise<{ success: boolean; error?: string }>) => {
@@ -678,6 +722,33 @@ export const App: React.FC = () => {
   const handleUpdateMedicalAppointment = (id: string, updates: Partial<MedicalAppointment>) => {
     setMedicalAppointments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
     reportSyncFailure("el turno", updateMedicalAppointmentInSupabase(id, updates));
+
+    if (updates.status === 'completed') {
+      const app = medicalAppointments.find(a => a.id === id);
+      if (app) {
+        const effectiveApp = { ...app, ...updates };
+        const targetPatient = patients.find(p => p.id === effectiveApp.patientId);
+        if (targetPatient) {
+          const matchedVac = matchVaccineNameFromAppointment(effectiveApp.reason, targetPatient.requiredVaccines, vaccineCatalog);
+          if (matchedVac) {
+            const appDate = effectiveApp.date || new Date().toISOString().split('T')[0];
+            const vetName = effectiveApp.vetName || (userSession ? userSession.name : 'Veterinaria');
+            const { updatedPatient, newDosis } = completeVaccineFromAppointment(
+              targetPatient,
+              matchedVac,
+              appDate,
+              vetName,
+              vaccineCatalog
+            );
+            setVaccineDoses(prev => [newDosis, ...prev.filter(d => d.id !== newDosis.id)]);
+            insertVaccineDosisToSupabase(newDosis);
+            setPatients(prev => prev.map(p => p.id === updatedPatient.id ? updatedPatient : p));
+            updatePatientInSupabase(updatedPatient);
+            setSelectedPatient(prev => prev?.id === updatedPatient.id ? updatedPatient : prev);
+          }
+        }
+      }
+    }
   };
 
   const handleDeleteMedicalAppointment = (id: string) => {
@@ -1096,6 +1167,29 @@ export const App: React.FC = () => {
       setMedicalAppointments(prev => prev.map(app => {
         if (medicalIdsToComplete.includes(app.id)) {
           updateMedicalAppointmentInSupabase(app.id, { status: 'completed' });
+
+          // Check if appointment is for vaccination
+          const targetPatient = patients.find(p => p.id === app.patientId);
+          if (targetPatient) {
+            const matchedVac = matchVaccineNameFromAppointment(app.reason, targetPatient.requiredVaccines, vaccineCatalog);
+            if (matchedVac) {
+              const appDate = app.date || new Date().toISOString().split('T')[0];
+              const vetName = app.vetName || (userSession ? userSession.name : 'Veterinaria');
+              const { updatedPatient, newDosis } = completeVaccineFromAppointment(
+                targetPatient,
+                matchedVac,
+                appDate,
+                vetName,
+                vaccineCatalog
+              );
+              setVaccineDoses(doses => [newDosis, ...doses.filter(d => d.id !== newDosis.id)]);
+              insertVaccineDosisToSupabase(newDosis);
+              setPatients(pts => pts.map(p => p.id === updatedPatient.id ? updatedPatient : p));
+              updatePatientInSupabase(updatedPatient);
+              setSelectedPatient(prev => prev?.id === updatedPatient.id ? updatedPatient : prev);
+            }
+          }
+
           return { ...app, status: 'completed' as const };
         }
         return app;
@@ -1238,6 +1332,7 @@ export const App: React.FC = () => {
                     onRemoveDosisByVaccine={handleRemoveDosisByVaccine}
                     currentVetName={userSession?.name}
                     onScheduleAppointment={handleScheduleAppointmentFromVaccines}
+                    medicalAppointments={medicalAppointments}
                   />
                 )}
 
@@ -1307,6 +1402,7 @@ export const App: React.FC = () => {
                     currentVetName={userSession?.name}
                     onScheduleAppointment={handleScheduleAppointmentFromVaccines}
                     onUpdatePatients={handleUpdatePatients}
+                    medicalAppointments={medicalAppointments}
                   />
                 )}
 
@@ -1409,7 +1505,7 @@ export const App: React.FC = () => {
       {showLowStockModal && (
         <LowStockAlertModal
           lowStockProducts={getLowStockAlerts(products)}
-          onClose={() => setShowLowStockModal(false)}
+          onClose={handleDismissLowStockModal}
           onGoToInventory={handleGoToInventoryFromAlert}
         />
       )}

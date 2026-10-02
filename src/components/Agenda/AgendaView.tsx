@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   MedicalAppointment, 
   GroomingAppointment, 
@@ -21,7 +21,13 @@ import {
   formatAppointmentDurationBadge,
   generateTimeSlots,
   ensureTimeInSlots,
-  getEffectiveAppointmentStatus
+  getEffectiveAppointmentStatus,
+  getMonthDays,
+  formatMonthHeader,
+  formatDayHeader,
+  shiftDay,
+  shiftMonth,
+  DAY_NAMES_SHORT
 } from '../../domain/services/agendaService';
 import { formatDate } from '../../utils/dateUtils';
 import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
@@ -69,12 +75,70 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   currentVetName = 'Veterinaria'
 }) => {
   const [agendaMode, setAgendaMode] = useState<'medica' | 'peluqueria'>(fixedMode || 'medica');
+  const [viewMode, setViewMode] = useState<'dia' | 'semana' | 'mes'>('semana');
   const [patientFilter, setPatientFilter] = useState('');
   const [tutorFilter, setTutorFilter] = useState('');
+  const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
+  const [isTutorDropdownOpen, setIsTutorDropdownOpen] = useState(false);
+  const patientInputWrapperRef = useRef<HTMLDivElement>(null);
+  const tutorInputWrapperRef = useRef<HTMLDivElement>(null);
+
   const [showNewModal, setShowNewModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [refDate, setRefDate] = useState<Date>(() => new Date());
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (patientInputWrapperRef.current && !patientInputWrapperRef.current.contains(e.target as Node)) {
+        setIsPatientDropdownOpen(false);
+      }
+      if (tutorInputWrapperRef.current && !tutorInputWrapperRef.current.contains(e.target as Node)) {
+        setIsTutorDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Suggestions for autocomplete filters
+  const suggestedPatients = useMemo(() => {
+    const q = patientFilter.trim().toLowerCase();
+    if (!q) return patients.slice(0, 8);
+    return patients.filter(p => 
+      p.name.toLowerCase().includes(q) || 
+      p.species.toLowerCase().includes(q) || 
+      p.breed.toLowerCase().includes(q) ||
+      p.ownerName.toLowerCase().includes(q)
+    ).slice(0, 8);
+  }, [patients, patientFilter]);
+
+  const uniqueTutors = useMemo(() => {
+    const map = new Map<string, { ownerName: string; ownerPhone?: string; pets: string[] }>();
+    for (const p of patients) {
+      const key = (p.ownerName || '').trim();
+      if (!key) continue;
+      const lowerKey = key.toLowerCase();
+      const existing = map.get(lowerKey);
+      if (existing) {
+        if (!existing.pets.includes(p.name)) existing.pets.push(p.name);
+      } else {
+        map.set(lowerKey, { ownerName: key, ownerPhone: p.ownerPhone, pets: [p.name] });
+      }
+    }
+    return Array.from(map.values());
+  }, [patients]);
+
+  const suggestedTutors = useMemo(() => {
+    const q = tutorFilter.trim().toLowerCase();
+    if (!q) return uniqueTutors.slice(0, 8);
+    return uniqueTutors.filter(t => 
+      t.ownerName.toLowerCase().includes(q) || 
+      (t.ownerPhone && t.ownerPhone.includes(q)) ||
+      t.pets.some(pet => pet.toLowerCase().includes(q))
+    ).slice(0, 8);
+  }, [uniqueTutors, tutorFilter]);
 
   // Appointment Detail / Action Modal state
   const [detailModal, setDetailModal] = useState<{
@@ -91,8 +155,31 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
   const activeMode = fixedMode || agendaMode;
   const todayISO = useMemo(() => formatDateToISO(new Date()), []);
+  const refDateISO = useMemo(() => formatDateToISO(refDate), [refDate]);
   const weekDays = useMemo(() => getWeekDays(refDate), [refDate]);
-  const weekHeaderLabel = useMemo(() => formatWeekRangeHeader(refDate), [refDate]);
+  const monthDays = useMemo(() => getMonthDays(refDate), [refDate]);
+
+  const currentHeaderLabel = useMemo(() => {
+    if (viewMode === 'dia') return formatDayHeader(refDate);
+    if (viewMode === 'mes') return formatMonthHeader(refDate);
+    return formatWeekRangeHeader(refDate);
+  }, [viewMode, refDate]);
+
+  const handleNavigatePrev = () => {
+    if (viewMode === 'dia') setRefDate(prev => shiftDay(prev, -1));
+    else if (viewMode === 'mes') setRefDate(prev => shiftMonth(prev, -1));
+    else setRefDate(prev => shiftWeek(prev, -1));
+  };
+
+  const handleNavigateNext = () => {
+    if (viewMode === 'dia') setRefDate(prev => shiftDay(prev, 1));
+    else if (viewMode === 'mes') setRefDate(prev => shiftMonth(prev, 1));
+    else setRefDate(prev => shiftWeek(prev, 1));
+  };
+
+  const handleNavigateToday = () => {
+    setRefDate(new Date());
+  };
 
   // Filter appointments for calendar grid
   const filteredMedicalAppointments = useMemo(() => {
@@ -120,12 +207,13 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   const [selectedDayISO, setSelectedDayISO] = useState<string>('');
 
   const activeDayISO = useMemo(() => {
+    if (viewMode === 'dia') return refDateISO;
     if (selectedDayISO && weekDays.some(d => d.dateStr === selectedDayISO)) {
       return selectedDayISO;
     }
     const todayInWeek = weekDays.find(d => d.dateStr === todayISO);
     return todayInWeek ? todayInWeek.dateStr : weekDays[0]?.dateStr || todayISO;
-  }, [selectedDayISO, weekDays, todayISO]);
+  }, [viewMode, refDateISO, selectedDayISO, weekDays, todayISO]);
 
   const mobileDayAppointments = useMemo(() => {
     if (activeMode === 'medica') {
@@ -355,78 +443,184 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
       {/* Top Controls Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3 sm:px-md rounded-2xl shadow-sm border border-slate-200">
         <div className="flex items-center justify-between sm:justify-start gap-2 flex-wrap">
+          {/* Navigation Controls */}
           <div className="flex items-center gap-xs bg-purple-50/80 p-1 rounded-xl border border-purple-100">
             <button 
-              onClick={() => setRefDate(prev => shiftWeek(prev, -1))}
-              title="Semana anterior"
+              onClick={handleNavigatePrev}
+              title={viewMode === 'dia' ? 'Día anterior' : viewMode === 'mes' ? 'Mes anterior' : 'Semana anterior'}
               className="p-1.5 text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px]"
-              aria-label="Semana anterior"
+              aria-label="Anterior"
             >
               <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_left</span>
             </button>
             <button 
-              onClick={() => setRefDate(new Date())}
-              title="Ir a la semana actual"
+              onClick={handleNavigateToday}
+              title="Ir a hoy"
               className="px-3 py-1 text-slate-800 hover:bg-purple-100 rounded-lg transition-colors font-label-md text-xs font-semibold cursor-pointer min-h-[44px] sm:min-h-[36px]"
             >
               Hoy
             </button>
             <button 
-              onClick={() => setRefDate(prev => shiftWeek(prev, 1))}
-              title="Semana siguiente"
+              onClick={handleNavigateNext}
+              title={viewMode === 'dia' ? 'Día siguiente' : viewMode === 'mes' ? 'Mes siguiente' : 'Semana siguiente'}
               className="p-1.5 text-slate-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px]"
-              aria-label="Semana siguiente"
+              aria-label="Siguiente"
             >
               <span className="material-symbols-outlined text-[18px]" aria-hidden="true">chevron_right</span>
             </button>
           </div>
 
-          <span className="font-headline-sm text-xs sm:text-sm text-slate-900 font-semibold">{weekHeaderLabel}</span>
+          <span className="font-headline-sm text-xs sm:text-sm text-slate-900 font-semibold">{currentHeaderLabel}</span>
+
+          {/* View Mode Toggle: Día | Semana | Mes */}
+          <div className="inline-flex rounded-xl bg-slate-100 p-0.5 border border-slate-200 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setViewMode('dia')}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                viewMode === 'dia'
+                  ? 'bg-white text-[#5C3C7B] shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Día
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('semana')}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                viewMode === 'semana'
+                  ? 'bg-white text-[#5C3C7B] shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Semana
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('mes')}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                viewMode === 'mes'
+                  ? 'bg-white text-[#5C3C7B] shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Mes
+            </button>
+          </div>
         </div>
 
-        {/* Distinct Filters for Patient and Tutor */}
+        {/* Distinct Filters for Patient and Tutor with Autocomplete Suggestion Dropdowns */}
         <div className="flex flex-col sm:flex-row items-center gap-2 flex-1 max-w-lg w-full">
           {/* Patient Filter */}
-          <div className="relative flex items-center w-full sm:flex-1">
+          <div ref={patientInputWrapperRef} className="relative flex items-center w-full sm:flex-1">
             <span className="material-symbols-outlined absolute left-2.5 text-slate-400 text-[16px] pointer-events-none" aria-hidden="true">pets</span>
             <input
               type="text"
               value={patientFilter}
-              onChange={(e) => setPatientFilter(e.target.value)}
+              onFocus={() => setIsPatientDropdownOpen(true)}
+              onChange={(e) => {
+                setPatientFilter(e.target.value);
+                setIsPatientDropdownOpen(true);
+              }}
               placeholder="Buscar paciente..."
               className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-[#9A7DB8] rounded-full pl-8 pr-7 py-2 sm:py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all shadow-2xs"
             />
             {patientFilter && (
               <button
                 type="button"
-                onClick={() => setPatientFilter('')}
+                onClick={() => {
+                  setPatientFilter('');
+                  setIsPatientDropdownOpen(false);
+                }}
                 className="absolute right-2 text-slate-400 hover:text-slate-700 p-1 cursor-pointer rounded-full"
                 title="Limpiar filtro de paciente"
               >
                 <span className="material-symbols-outlined text-[14px]" aria-hidden="true">close</span>
               </button>
             )}
+
+            {/* Patient Dropdown List */}
+            {isPatientDropdownOpen && suggestedPatients.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto py-1 animate-fade-in">
+                <div className="px-3 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                  Sugerencias de pacientes
+                </div>
+                {suggestedPatients.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setPatientFilter(p.name);
+                      setIsPatientDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-purple-50 transition-colors flex items-center justify-between gap-2 border-b border-slate-50 last:border-0 cursor-pointer"
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-xs text-slate-900 truncate">{p.name}</span>
+                      <span className="text-[10px] text-slate-500 truncate">{p.species} • {p.breed} • Tutor: {p.ownerName}</span>
+                    </div>
+                    <span className="material-symbols-outlined text-slate-300 text-[16px] shrink-0">chevron_right</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Tutor Filter */}
-          <div className="relative flex items-center w-full sm:flex-1">
+          <div ref={tutorInputWrapperRef} className="relative flex items-center w-full sm:flex-1">
             <span className="material-symbols-outlined absolute left-2.5 text-slate-400 text-[16px] pointer-events-none" aria-hidden="true">person</span>
             <input
               type="text"
               value={tutorFilter}
-              onChange={(e) => setTutorFilter(e.target.value)}
+              onFocus={() => setIsTutorDropdownOpen(true)}
+              onChange={(e) => {
+                setTutorFilter(e.target.value);
+                setIsTutorDropdownOpen(true);
+              }}
               placeholder="Buscar tutor..."
               className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 focus:border-[#9A7DB8] rounded-full pl-8 pr-7 py-2 sm:py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all shadow-2xs"
             />
             {tutorFilter && (
               <button
                 type="button"
-                onClick={() => setTutorFilter('')}
+                onClick={() => {
+                  setTutorFilter('');
+                  setIsTutorDropdownOpen(false);
+                }}
                 className="absolute right-2 text-slate-400 hover:text-slate-700 p-1 cursor-pointer rounded-full"
                 title="Limpiar filtro de tutor"
               >
                 <span className="material-symbols-outlined text-[14px]" aria-hidden="true">close</span>
               </button>
+            )}
+
+            {/* Tutor Dropdown List */}
+            {isTutorDropdownOpen && suggestedTutors.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto py-1 animate-fade-in">
+                <div className="px-3 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                  Sugerencias de tutores
+                </div>
+                {suggestedTutors.map((t, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setTutorFilter(t.ownerName);
+                      setIsTutorDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-purple-50 transition-colors flex items-center justify-between gap-2 border-b border-slate-50 last:border-0 cursor-pointer"
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-xs text-slate-900 truncate">{t.ownerName}</span>
+                      <span className="text-[10px] text-slate-500 truncate">
+                        {t.pets.length > 0 ? `Mascotas: ${t.pets.join(', ')}` : 'Sin mascotas registradas'}
+                      </span>
+                    </div>
+                    <span className="material-symbols-outlined text-slate-300 text-[16px] shrink-0">chevron_right</span>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         </div>
@@ -663,268 +857,616 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
         </div>
       </div>
 
-      {/* Main Weekly Calendar Grid (Desktop / Tablet) */}
+      {/* Main Calendar Grid (Desktop / Tablet) */}
       <div className="hidden md:flex flex-col bg-white rounded-2xl shadow-sm border border-slate-300 flex-1 overflow-hidden">
-        {/* Days Header Row */}
-        <div className="grid grid-cols-7 border-b-2 border-purple-200/90 text-center bg-[#F9F6FC] font-label-md text-xs py-2 font-semibold">
-          <div className="text-slate-700 font-semibold border-r border-purple-200 flex items-center justify-center">Hora</div>
-          {weekDays.map((dayObj) => {
-            const isToday = dayObj.dateStr === todayISO;
-            return (
-              <div 
-                key={dayObj.dateStr} 
-                className={`font-semibold border-r border-purple-200 flex items-center justify-center gap-1.5 ${
-                  isToday ? 'text-[#5C3C7B] font-semibold bg-purple-100/60 py-0.5 rounded-md' : 'text-slate-800'
-                }`}
-              >
-                <span>{dayObj.fullLabel}</span>
-                {isToday && <span className="w-2 h-2 rounded-full bg-[#8362A5] inline-block" title="Hoy"></span>}
-              </div>
-            );
-          })}
-        </div>
+        {/* VIEW: MES */}
+        {viewMode === 'mes' && (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            {/* Days of Week Header (Lun - Dom) */}
+            <div className="grid grid-cols-7 border-b-2 border-purple-200/90 text-center bg-[#F9F6FC] font-label-md text-xs py-2.5 font-semibold text-slate-800">
+              {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((dayName) => (
+                <div key={dayName} className="border-r border-purple-200 last:border-r-0">
+                  {dayName}
+                </div>
+              ))}
+            </div>
 
-        {/* Calendar Time Slots Grid */}
-        <div className="flex-1 overflow-y-auto">
-          {timeSlots.map((slot) => (
-            <div key={slot} className="grid grid-cols-7 border-b border-dashed border-purple-300/60 min-h-[72px]">
-              {/* Time Label Column */}
-              <div className="p-xs text-center font-mono text-xs font-semibold text-slate-700 border-r border-purple-200 bg-[#FAF8FC]/50 flex items-center justify-center">
-                {slot}
-              </div>
+            {/* Month Days Grid */}
+            <div className="grid grid-cols-7 flex-1 auto-rows-fr overflow-y-auto divide-x divide-y divide-purple-200/70 bg-slate-50/30">
+              {monthDays.map((dayObj) => {
+                const isToday = dayObj.dateStr === todayISO;
+                const isMed = activeMode === 'medica';
+                const dayApps = isMed
+                  ? filteredMedicalAppointments.filter(app => app.date === dayObj.dateStr)
+                  : filteredGroomingAppointments.filter(g => g.date === dayObj.dateStr);
 
-              {/* Days Columns */}
-              {weekDays.map((dayObj) => {
+                return (
+                  <div
+                    key={dayObj.dateStr}
+                    onClick={() => {
+                      setAppDate(dayObj.dateStr);
+                      setShowNewModal(true);
+                    }}
+                    className={`min-h-[105px] p-2 flex flex-col gap-1 transition-colors cursor-pointer hover:bg-purple-50/50 ${
+                      !dayObj.isCurrentMonth ? 'bg-slate-100/60 opacity-60' : 'bg-white'
+                    }`}
+                  >
+                    {/* Day Number Header */}
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
+                          isToday
+                            ? 'bg-[#7B5EA7] text-white shadow-xs'
+                            : dayObj.isCurrentMonth
+                            ? 'text-slate-800'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        {dayObj.dayNumber}
+                      </span>
+                      {dayApps.length > 0 && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-900">
+                          {dayApps.length} {dayApps.length === 1 ? 'turno' : 'turnos'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Compact Appointment Chips */}
+                    <div className="flex flex-col gap-1 overflow-y-auto max-h-[85px] pr-0.5">
+                      {dayApps.map((item) => {
+                        const eff = getEffectiveAppointmentStatus(item.date, item.time, item.status);
+                        const isCompleted = item.status === 'completed';
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDetailModal(item, activeMode);
+                            }}
+                            className={`px-1.5 py-1 rounded-md text-[10px] font-semibold border flex items-center justify-between gap-1 shadow-2xs transition-all hover:scale-[1.01] ${
+                              isCompleted
+                                ? 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
+                                : eff.isExpired
+                                ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                                : 'bg-purple-50 text-[#5C3C7B] border-purple-200 hover:bg-purple-100'
+                            }`}
+                            title={`${item.time} hs - ${item.patientName} (${item.ownerName})`}
+                          >
+                            <div className="flex items-center gap-1 truncate">
+                              <span className="font-mono text-[9px] font-bold shrink-0">{item.time}</span>
+                              <span className="truncate">{item.patientName}</span>
+                            </div>
+                            {isCompleted ? (
+                              <span className="material-symbols-outlined text-[12px] text-emerald-600 shrink-0">check_circle</span>
+                            ) : eff.isExpired ? (
+                              <span className="text-[8px] bg-amber-200 text-amber-800 px-1 rounded font-bold shrink-0">Venc</span>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* VIEW: DÍA */}
+        {viewMode === 'dia' && (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            {/* Day Header Row */}
+            <div className="grid grid-cols-[80px_1fr] border-b-2 border-purple-200/90 text-center bg-[#F9F6FC] font-label-md text-xs py-2 font-semibold">
+              <div className="text-slate-700 font-semibold border-r border-purple-200 flex items-center justify-center">Hora</div>
+              <div className={`font-semibold flex items-center justify-center gap-2 ${refDateISO === todayISO ? 'text-[#5C3C7B]' : 'text-slate-800'}`}>
+                <span>{formatDayHeader(refDate)}</span>
+                {refDateISO === todayISO && (
+                  <span className="text-[10px] font-bold bg-[#8362A5] text-white px-2 py-0.5 rounded-full shadow-2xs">
+                    Hoy
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Day Time Slots Grid */}
+            <div className="flex-1 overflow-y-auto">
+              {timeSlots.map((slot) => {
                 if (activeMode === 'medica') {
-                  const dayApps = filteredMedicalAppointments.filter(app => app.date === dayObj.dateStr);
-                  
-                  // Check if any app occupies this slot
+                  const dayApps = filteredMedicalAppointments.filter(app => app.date === refDateISO);
                   const matchingOccupations = dayApps.map(app => ({
                     app,
                     ...isSlotOccupiedByAppointment(slot, app.time, app.endTime, 45)
                   })).filter(res => res.isOccupied);
 
                   return (
-                    <div 
-                      key={dayObj.dateStr} 
-                      onClick={(e) => {
-                        if (e.target === e.currentTarget) {
-                          handleSlotClick(dayObj.dateStr, slot);
-                        }
-                      }}
-                      className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1 cursor-pointer"
-                    >
-                      {matchingOccupations.map(({ app, isStart }) => {
-                        const timeRangeText = formatTimeRange(app.time, app.endTime, 45);
-                        const durationBadge = formatAppointmentDurationBadge(app.time, app.endTime, 45);
+                    <div key={slot} className="grid grid-cols-[80px_1fr] border-b border-dashed border-purple-300/60 min-h-[76px]">
+                      <div className="p-xs text-center font-mono text-xs font-semibold text-slate-700 border-r border-purple-200 bg-[#FAF8FC]/50 flex items-center justify-center">
+                        {slot}
+                      </div>
+                      <div
+                        onClick={(e) => {
+                          if (e.target === e.currentTarget) {
+                            handleSlotClick(refDateISO, slot);
+                          }
+                        }}
+                        className="p-2 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1.5 cursor-pointer"
+                      >
+                        {matchingOccupations.map(({ app, isStart }) => {
+                          if (isStart) {
+                            const effectiveStatus = getEffectiveAppointmentStatus(app.date, app.time, app.status);
+                            const durationBadge = formatAppointmentDurationBadge(app.time, app.endTime, 45) || '45 min';
+                            return (
+                              <div
+                                key={app.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDetailModal(app, 'medica');
+                                }}
+                                className={`${
+                                  app.status === 'completed'
+                                    ? 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
+                                    : effectiveStatus.isExpired
+                                    ? 'bg-amber-50/50 border-amber-300 hover:border-amber-500'
+                                    : 'bg-white border-purple-300 hover:border-purple-500'
+                                } border rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm text-xs cursor-pointer hover:shadow-md transition-all`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="font-mono text-xs font-bold bg-purple-100 text-purple-900 px-2 py-1 rounded-lg">
+                                    {app.time} - {app.endTime || calculateEndTime(app.time, 45)}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-slate-900 text-sm">{app.patientName}</span>
+                                      <span className="text-[10px] text-slate-500">({app.species} {app.breed ? `- ${app.breed}` : ''})</span>
+                                      {effectiveStatus.isExpired && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded border border-amber-300">
+                                          Vencido
+                                        </span>
+                                      )}
+                                      {app.status === 'completed' && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded">
+                                          Completado
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-slate-600 mt-0.5">
+                                      <strong className="text-slate-800">Motivo:</strong> {app.reason || 'Consulta Médica'} &bull; <strong className="text-slate-800">Dr:</strong> {app.vetName} &bull; <strong className="text-slate-800">Tutor:</strong> {app.ownerName}
+                                    </p>
+                                  </div>
+                                </div>
 
-                        if (isStart) {
-                          const effectiveStatus = getEffectiveAppointmentStatus(app.date, app.time, app.status);
-                          const durationBadge = formatAppointmentDurationBadge(app.time, app.endTime, 45) || '45 min';
-                          return (
-                            <div 
-                              key={app.id} 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenDetailModal(app, 'medica');
-                              }}
-                              className={`${
-                                app.status === 'completed'
-                                  ? 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
-                                  : effectiveStatus.isExpired
-                                  ? 'bg-amber-50/50 border-amber-300 hover:border-amber-500'
-                                  : 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
-                              } border rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs cursor-pointer hover:shadow-md transition-all`}
-                            >
-                              <div className="flex items-center justify-between gap-1 mb-0.5">
-                                <span className="font-bold text-slate-900 text-xs truncate" title={app.patientName}>
-                                  {app.patientName}
-                                </span>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  {effectiveStatus.isExpired && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded border border-amber-300">
-                                      Vencido
-                                    </span>
-                                  )}
-                                  <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded font-mono">
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-[10px] font-bold px-2 py-1 bg-purple-50 text-[#5C3C7B] rounded-lg font-mono border border-purple-200">
                                     {durationBadge}
                                   </span>
+                                  {app.status !== 'completed' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onUpdateMedicalAppointment?.(app.id, { status: 'completed' });
+                                        }}
+                                        className="bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                                      >
+                                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                        Completar
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onNavigateToBilling?.(app.patientId, 'Consulta Médica', 15000);
+                                        }}
+                                        className="bg-emerald-600 text-white hover:bg-emerald-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-xs transition-all cursor-pointer"
+                                      >
+                                        Cobrar
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
-                              <span className="text-[11px] text-slate-700 truncate font-semibold">{app.reason || 'Consulta Médica'}</span>
-                              <span className="text-[10px] text-emerald-800 truncate font-medium">Dr. {app.vetName} &bull; {app.species}</span>
-                              {app.status === 'completed' ? (
-                                <div className="mt-1 bg-emerald-700 text-white px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs">
-                                  Completado
-                                </div>
-                              ) : (
-                                <div className="mt-1 flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onUpdateMedicalAppointment?.(app.id, { status: 'completed' });
-                                    }}
-                                    className="flex-1 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-1 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center transition-all cursor-pointer"
-                                    title="Marcar como completado sin cobrar"
-                                  >
-                                    <span className="material-symbols-outlined text-[12px] mr-0.5">check_circle</span>
-                                    Completar
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onNavigateToBilling?.(app.patientId, 'Consulta Médica', 15000);
-                                    }}
-                                    className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700 px-1 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs transition-all cursor-pointer"
-                                  >
-                                    Cobrar
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        } else {
-                          // Continuation slot
+                            );
+                          }
                           return (
-                            <div 
-                              key={app.id} 
+                            <div
+                              key={app.id}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleOpenDetailModal(app, 'medica');
                               }}
-                              className="bg-[#F0FDF4]/70 border border-dashed border-emerald-300 rounded-xl p-1.5 flex items-center justify-between text-xs cursor-pointer hover:border-emerald-400"
+                              className="bg-purple-50/50 border border-dashed border-purple-300 rounded-xl p-1.5 flex items-center justify-between text-xs cursor-pointer"
                             >
-                              <div className="flex items-center gap-1 text-emerald-950 font-medium truncate text-[11px]">
-                                <span className="material-symbols-outlined text-[12px]">schedule</span>
-                                <span className="font-semibold truncate">↳ {app.patientName}</span>
-                              </div>
-                              <span className="text-[9px] font-mono text-emerald-800 bg-emerald-100/70 px-1 py-0.5 rounded">
-                                hasta {app.endTime || 'fin'}
-                              </span>
+                              <span className="font-semibold text-purple-900 text-[11px]">↳ Continuando: {app.patientName}</span>
+                              <span className="text-[9px] font-mono text-purple-700">hasta {app.endTime || 'fin'}</span>
                             </div>
                           );
-                        }
-                      })}
+                        })}
+                      </div>
                     </div>
                   );
                 } else {
-                  const dayGrooms = filteredGroomingAppointments.filter(g => g.date === dayObj.dateStr);
-
+                  const dayGrooms = filteredGroomingAppointments.filter(g => g.date === refDateISO);
                   const matchingOccupations = dayGrooms.map(g => ({
                     g,
                     ...isSlotOccupiedByAppointment(slot, g.time, g.endTime, g.durationMinutes || 45)
                   })).filter(res => res.isOccupied);
 
                   return (
-                    <div 
-                      key={dayObj.dateStr} 
-                      onClick={(e) => {
-                        if (e.target === e.currentTarget) {
-                          handleSlotClick(dayObj.dateStr, slot);
-                        }
-                      }}
-                      className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1 cursor-pointer"
-                    >
-                      {matchingOccupations.map(({ g, isStart }) => {
-                        const durationBadge = formatAppointmentDurationBadge(g.time, g.endTime, g.durationMinutes || 45) || `${g.durationMinutes || 45} min`;
+                    <div key={slot} className="grid grid-cols-[80px_1fr] border-b border-dashed border-purple-300/60 min-h-[76px]">
+                      <div className="p-xs text-center font-mono text-xs font-semibold text-slate-700 border-r border-purple-200 bg-[#FAF8FC]/50 flex items-center justify-center">
+                        {slot}
+                      </div>
+                      <div
+                        onClick={(e) => {
+                          if (e.target === e.currentTarget) {
+                            handleSlotClick(refDateISO, slot);
+                          }
+                        }}
+                        className="p-2 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1.5 cursor-pointer"
+                      >
+                        {matchingOccupations.map(({ g, isStart }) => {
+                          if (isStart) {
+                            const effectiveStatus = getEffectiveAppointmentStatus(g.date, g.time, g.status);
+                            const durationBadge = formatAppointmentDurationBadge(g.time, g.endTime, g.durationMinutes || 45) || `${g.durationMinutes || 45} min`;
+                            return (
+                              <div
+                                key={g.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDetailModal(g, 'peluqueria');
+                                }}
+                                className={`${
+                                  g.status === 'completed'
+                                    ? 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
+                                    : effectiveStatus.isExpired
+                                    ? 'bg-amber-50/50 border-amber-300 hover:border-amber-500'
+                                    : 'bg-white border-purple-300 hover:border-purple-500'
+                                } border rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm text-xs cursor-pointer hover:shadow-md transition-all`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="font-mono text-xs font-bold bg-purple-100 text-purple-900 px-2 py-1 rounded-lg">
+                                    {g.time} - {g.endTime || calculateEndTime(g.time, g.durationMinutes || 45)}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-slate-900 text-sm">{g.patientName}</span>
+                                      <span className="text-[10px] text-slate-500">({g.species} {g.breed ? `- ${g.breed}` : ''})</span>
+                                      {effectiveStatus.isExpired && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded border border-amber-300">
+                                          Vencido
+                                        </span>
+                                      )}
+                                      {g.status === 'completed' && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded">
+                                          Completado
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-slate-600 mt-0.5">
+                                      <strong className="text-slate-800">Servicio:</strong> {g.serviceName} &bull; <strong className="text-slate-800">Tutor:</strong> {g.ownerName}
+                                    </p>
+                                  </div>
+                                </div>
 
-                        if (isStart) {
-                          const effectiveStatus = getEffectiveAppointmentStatus(g.date, g.time, g.status);
-                          return (
-                            <div 
-                              key={g.id} 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenDetailModal(g, 'peluqueria');
-                              }}
-                              className={`${
-                                g.status === 'completed'
-                                  ? 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
-                                  : effectiveStatus.isExpired
-                                  ? 'bg-amber-50/50 border-amber-300 hover:border-amber-500'
-                                  : 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
-                              } border rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs cursor-pointer hover:shadow-md transition-all`}
-                            >
-                              <div className="flex items-center justify-between gap-1 mb-0.5">
-                                <span className="font-bold text-slate-900 text-xs truncate" title={g.patientName}>
-                                  {g.patientName}
-                                </span>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  {effectiveStatus.isExpired && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded border border-amber-300">
-                                      Vencido
-                                    </span>
-                                  )}
-                                  <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded font-mono">
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-[10px] font-bold px-2 py-1 bg-purple-50 text-[#5C3C7B] rounded-lg font-mono border border-purple-200">
                                     {durationBadge}
                                   </span>
+                                  {g.status !== 'completed' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onUpdateGroomingAppointment?.(g.id, { status: 'completed' });
+                                        }}
+                                        className="bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                                      >
+                                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                        Completar
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onNavigateToBilling?.(g.patientId, g.serviceName, g.price || 12000);
+                                        }}
+                                        className="bg-emerald-600 text-white hover:bg-emerald-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-xs transition-all cursor-pointer"
+                                      >
+                                        Cobrar
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
-                              <span className="text-[11px] text-slate-700 truncate font-semibold">{g.serviceName}</span>
-                              <span className="text-[10px] text-emerald-800 truncate font-medium">Propietario: {g.ownerName}</span>
-                              {g.status === 'completed' ? (
-                                <div className="mt-1 bg-emerald-700 text-white px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs">
-                                  Completado
-                                </div>
-                              ) : (
-                                <div className="mt-1 flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onUpdateGroomingAppointment?.(g.id, { status: 'completed' });
-                                    }}
-                                    className="flex-1 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-1 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center transition-all cursor-pointer"
-                                    title="Marcar como completado sin cobrar"
-                                  >
-                                    <span className="material-symbols-outlined text-[12px] mr-0.5">check_circle</span>
-                                    Completar
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onNavigateToBilling?.(g.patientId, g.serviceName, g.price || 12000);
-                                    }}
-                                    className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700 px-1 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs transition-all cursor-pointer"
-                                  >
-                                    Cobrar
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        } else {
-                          // Continuation slot
+                            );
+                          }
                           return (
-                            <div 
-                              key={g.id} 
+                            <div
+                              key={g.id}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleOpenDetailModal(g, 'peluqueria');
                               }}
-                              className="bg-[#F0FDF4]/70 border border-dashed border-emerald-300 rounded-xl p-1.5 flex items-center justify-between text-xs cursor-pointer hover:border-emerald-400"
+                              className="bg-purple-50/50 border border-dashed border-purple-300 rounded-xl p-1.5 flex items-center justify-between text-xs cursor-pointer"
                             >
-                              <div className="flex items-center gap-1 text-emerald-950 font-medium truncate text-[11px]">
-                                <span className="material-symbols-outlined text-[12px]">schedule</span>
-                                <span className="font-semibold truncate">↳ {g.patientName}</span>
-                              </div>
-                              <span className="text-[9px] font-mono text-emerald-800 bg-emerald-100/70 px-1 py-0.5 rounded">
-                                hasta {g.endTime || 'fin'}
-                              </span>
+                              <span className="font-semibold text-purple-900 text-[11px]">↳ Continuando: {g.patientName}</span>
+                              <span className="text-[9px] font-mono text-purple-700">hasta {g.endTime || 'fin'}</span>
                             </div>
                           );
-                        }
-                      })}
+                        })}
+                      </div>
                     </div>
                   );
                 }
               })}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {/* VIEW: SEMANA (7 días: Lun - Dom) */}
+        {viewMode === 'semana' && (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            {/* Days Header Row (8 columns: 1 time + 7 days) */}
+            <div className="grid grid-cols-8 border-b-2 border-purple-200/90 text-center bg-[#F9F6FC] font-label-md text-xs py-2 font-semibold">
+              <div className="text-slate-700 font-semibold border-r border-purple-200 flex items-center justify-center">Hora</div>
+              {weekDays.map((dayObj) => {
+                const isToday = dayObj.dateStr === todayISO;
+                return (
+                  <div 
+                    key={dayObj.dateStr} 
+                    className={`font-semibold border-r border-purple-200 flex items-center justify-center gap-1.5 ${
+                      isToday ? 'text-[#5C3C7B] font-semibold bg-purple-100/60 py-0.5 rounded-md' : 'text-slate-800'
+                    }`}
+                  >
+                    <span>{dayObj.fullLabel}</span>
+                    {isToday && <span className="w-2 h-2 rounded-full bg-[#8362A5] inline-block" title="Hoy"></span>}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Calendar Time Slots Grid */}
+            <div className="flex-1 overflow-y-auto">
+              {timeSlots.map((slot) => (
+                <div key={slot} className="grid grid-cols-8 border-b border-dashed border-purple-300/60 min-h-[72px]">
+                  {/* Time Label Column */}
+                  <div className="p-xs text-center font-mono text-xs font-semibold text-slate-700 border-r border-purple-200 bg-[#FAF8FC]/50 flex items-center justify-center">
+                    {slot}
+                  </div>
+
+                  {/* Days Columns */}
+                  {weekDays.map((dayObj) => {
+                    if (activeMode === 'medica') {
+                      const dayApps = filteredMedicalAppointments.filter(app => app.date === dayObj.dateStr);
+                      
+                      // Check if any app occupies this slot
+                      const matchingOccupations = dayApps.map(app => ({
+                        app,
+                        ...isSlotOccupiedByAppointment(slot, app.time, app.endTime, 45)
+                      })).filter(res => res.isOccupied);
+
+                      return (
+                        <div 
+                          key={dayObj.dateStr} 
+                          onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                              handleSlotClick(dayObj.dateStr, slot);
+                            }
+                          }}
+                          className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1 cursor-pointer"
+                        >
+                          {matchingOccupations.map(({ app, isStart }) => {
+                            if (isStart) {
+                              const effectiveStatus = getEffectiveAppointmentStatus(app.date, app.time, app.status);
+                              const durationBadge = formatAppointmentDurationBadge(app.time, app.endTime, 45) || '45 min';
+                              return (
+                                <div 
+                                  key={app.id} 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenDetailModal(app, 'medica');
+                                  }}
+                                  className={`${
+                                    app.status === 'completed'
+                                      ? 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
+                                      : effectiveStatus.isExpired
+                                      ? 'bg-amber-50/50 border-amber-300 hover:border-amber-500'
+                                      : 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
+                                  } border rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs cursor-pointer hover:shadow-md transition-all`}
+                                >
+                                  <div className="flex items-center justify-between gap-1 mb-0.5">
+                                    <span className="font-bold text-slate-900 text-xs truncate" title={app.patientName}>
+                                      {app.patientName}
+                                    </span>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {effectiveStatus.isExpired && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded border border-amber-300">
+                                          Vencido
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded font-mono">
+                                        {durationBadge}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <span className="text-[11px] text-slate-700 truncate font-semibold">{app.reason || 'Consulta Médica'}</span>
+                                  <span className="text-[10px] text-emerald-800 truncate font-medium">Dr. {app.vetName} &bull; {app.species}</span>
+                                  {app.status === 'completed' ? (
+                                    <div className="mt-1 bg-emerald-700 text-white px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs">
+                                      Completado
+                                    </div>
+                                  ) : (
+                                    <div className="mt-1 flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onUpdateMedicalAppointment?.(app.id, { status: 'completed' });
+                                        }}
+                                        className="flex-1 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-1 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center transition-all cursor-pointer"
+                                        title="Marcar como completado sin cobrar"
+                                      >
+                                        <span className="material-symbols-outlined text-[12px] mr-0.5">check_circle</span>
+                                        Completar
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onNavigateToBilling?.(app.patientId, 'Consulta Médica', 15000);
+                                        }}
+                                        className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700 px-1 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs transition-all cursor-pointer"
+                                      >
+                                        Cobrar
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            } else {
+                              // Continuation slot
+                              return (
+                                <div 
+                                  key={app.id} 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenDetailModal(app, 'medica');
+                                  }}
+                                  className="bg-[#F0FDF4]/70 border border-dashed border-emerald-300 rounded-xl p-1.5 flex items-center justify-between text-xs cursor-pointer hover:border-emerald-400"
+                                >
+                                  <div className="flex items-center gap-1 text-emerald-950 font-medium truncate text-[11px]">
+                                    <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                    <span className="font-semibold truncate">↳ {app.patientName}</span>
+                                  </div>
+                                  <span className="text-[9px] font-mono text-emerald-800 bg-emerald-100/70 px-1 py-0.5 rounded">
+                                    hasta {app.endTime || 'fin'}
+                                  </span>
+                                </div>
+                              );
+                            }
+                          })}
+                        </div>
+                      );
+                    } else {
+                      const dayGrooms = filteredGroomingAppointments.filter(g => g.date === dayObj.dateStr);
+
+                      const matchingOccupations = dayGrooms.map(g => ({
+                        g,
+                        ...isSlotOccupiedByAppointment(slot, g.time, g.endTime, g.durationMinutes || 45)
+                      })).filter(res => res.isOccupied);
+
+                      return (
+                        <div 
+                          key={dayObj.dateStr} 
+                          onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                              handleSlotClick(dayObj.dateStr, slot);
+                            }
+                          }}
+                          className="p-xs border-r border-purple-200 hover:bg-purple-50/40 transition-colors relative flex flex-col gap-1 cursor-pointer"
+                        >
+                          {matchingOccupations.map(({ g, isStart }) => {
+                            const durationBadge = formatAppointmentDurationBadge(g.time, g.endTime, g.durationMinutes || 45) || `${g.durationMinutes || 45} min`;
+
+                            if (isStart) {
+                              const effectiveStatus = getEffectiveAppointmentStatus(g.date, g.time, g.status);
+                              return (
+                                <div 
+                                  key={g.id} 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenDetailModal(g, 'peluqueria');
+                                  }}
+                                  className={`${
+                                    g.status === 'completed'
+                                      ? 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
+                                      : effectiveStatus.isExpired
+                                      ? 'bg-amber-50/50 border-amber-300 hover:border-amber-500'
+                                      : 'bg-[#F0FDF4] border-emerald-300 hover:border-emerald-500'
+                                  } border rounded-xl p-2 flex flex-col gap-0.5 shadow-sm text-xs cursor-pointer hover:shadow-md transition-all`}
+                                >
+                                  <div className="flex items-center justify-between gap-1 mb-0.5">
+                                    <span className="font-bold text-slate-900 text-xs truncate" title={g.patientName}>
+                                      {g.patientName}
+                                    </span>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {effectiveStatus.isExpired && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded border border-amber-300">
+                                          Vencido
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-900 rounded font-mono">
+                                        {durationBadge}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <span className="text-[11px] text-slate-700 truncate font-semibold">{g.serviceName}</span>
+                                  <span className="text-[10px] text-emerald-800 truncate font-medium">Propietario: {g.ownerName}</span>
+                                  {g.status === 'completed' ? (
+                                    <div className="mt-1 bg-emerald-700 text-white px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs">
+                                      Completado
+                                    </div>
+                                  ) : (
+                                    <div className="mt-1 flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onUpdateGroomingAppointment?.(g.id, { status: 'completed' });
+                                        }}
+                                        className="flex-1 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-1 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center transition-all cursor-pointer"
+                                        title="Marcar como completado sin cobrar"
+                                      >
+                                        <span className="material-symbols-outlined text-[12px] mr-0.5">check_circle</span>
+                                        Completar
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onNavigateToBilling?.(g.patientId, g.serviceName, g.price || 12000);
+                                        }}
+                                        className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700 px-1 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-center shadow-xs transition-all cursor-pointer"
+                                      >
+                                        Cobrar
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            } else {
+                              // Continuation slot
+                              return (
+                                <div 
+                                  key={g.id} 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenDetailModal(g, 'peluqueria');
+                                  }}
+                                  className="bg-[#F0FDF4]/70 border border-dashed border-emerald-300 rounded-xl p-1.5 flex items-center justify-between text-xs cursor-pointer hover:border-emerald-400"
+                                >
+                                  <div className="flex items-center gap-1 text-emerald-950 font-medium truncate text-[11px]">
+                                    <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                    <span className="font-semibold truncate">↳ {g.patientName}</span>
+                                  </div>
+                                  <span className="text-[9px] font-mono text-emerald-800 bg-emerald-100/70 px-1 py-0.5 rounded">
+                                    hasta {g.endTime || 'fin'}
+                                  </span>
+                                </div>
+                              );
+                            }
+                          })}
+                        </div>
+                      );
+                    }
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* New Appointment Modal */}
@@ -1187,46 +1729,53 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
             )}
 
             {/* Action Tabs Header */}
-            <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200">
-              <button
-                type="button"
-                onClick={() => setModalTab('anotaciones')}
-                className={`flex-1 py-2 px-3 rounded-lg font-label-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  modalTab === 'anotaciones'
-                    ? 'bg-white text-[#5C3C7B] shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">edit_note</span>
-                Registrar anotaciones
-              </button>
+            {detailModal.appointment.status === 'completed' ? (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2.5 text-emerald-900 text-xs">
+                <span className="material-symbols-outlined text-emerald-600 text-[20px]">check_circle</span>
+                <span>Este turno ya fue <strong>completado</strong>. No se puede reprogramar ni cancelar para preservar el registro histórico. Puede consultar o editar anotaciones.</span>
+              </div>
+            ) : (
+              <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setModalTab('anotaciones')}
+                  className={`flex-1 py-2 px-3 rounded-lg font-label-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    modalTab === 'anotaciones'
+                      ? 'bg-white text-[#5C3C7B] shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                  Registrar anotaciones
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setModalTab('cambiar-turno')}
-                className={`flex-1 py-2 px-3 rounded-lg font-label-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  modalTab === 'cambiar-turno'
-                    ? 'bg-white text-[#5C3C7B] shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">edit_calendar</span>
-                Cambiar turno
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('cambiar-turno')}
+                  className={`flex-1 py-2 px-3 rounded-lg font-label-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    modalTab === 'cambiar-turno'
+                      ? 'bg-white text-[#5C3C7B] shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">edit_calendar</span>
+                  Cambiar turno
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setModalTab('cancelar')}
-                className={`flex-1 py-2 px-3 rounded-lg font-label-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  modalTab === 'cancelar'
-                    ? 'bg-white text-rose-700 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">cancel</span>
-                Cancelar turno
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('cancelar')}
+                  className={`flex-1 py-2 px-3 rounded-lg font-label-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    modalTab === 'cancelar'
+                      ? 'bg-white text-rose-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">cancel</span>
+                  Cancelar turno
+                </button>
+              </div>
+            )}
 
             {/* Tab 1 Content: Registrar anotaciones */}
             {modalTab === 'anotaciones' && (

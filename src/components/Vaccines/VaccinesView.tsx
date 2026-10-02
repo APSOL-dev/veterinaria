@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Patient, VaccineCatalogItem, VaccineDosis } from '../../domain/types';
+import { MedicalAppointment, Patient, VaccineCatalogItem, VaccineDosis } from '../../domain/types';
 import { 
   formatVaccineReminderMessage, 
   getEffectiveVaccineNextDueDate, 
   getPendingOrDueVaccine, 
   calculatePatientVaccineCoverage,
-  getPatientVaccineGlobalStatus
+  getPatientVaccineGlobalStatus,
+  findActiveVaccineAppointment
 } from '../../domain/services/vaccineService';
 import { getRecentOrFilteredPatients } from '../../domain/services/patientService';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
@@ -35,6 +36,7 @@ interface VaccinesViewProps {
   currentVetName?: string;
   isGeneralCatalog?: boolean;
   onUpdatePatients?: (updatedPatients: Patient[]) => void;
+  medicalAppointments?: MedicalAppointment[];
 }
 
 export const VaccinesView: React.FC<VaccinesViewProps> = ({
@@ -53,7 +55,8 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   onRemoveDosisByVaccine,
   currentVetName = 'Veterinaria',
   isGeneralCatalog = false,
-  onUpdatePatients
+  onUpdatePatients,
+  medicalAppointments = []
 }) => {
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -526,6 +529,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 <div className="flex flex-col gap-xs mt-1 w-full">
                   {activePatient.requiredVaccines.map(vac => {
                     const isExpired = vac.status !== 'aplicada' && vac.suggestedDate < todayStr;
+                    const activeApp = findActiveVaccineAppointment(activePatient.id, vac.vaccineName, medicalAppointments);
                     return (
                       <div
                         key={vac.id}
@@ -546,6 +550,12 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-semibold">Vencida</span>
                             ) : (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-600 text-white text-[9px] font-semibold">Pendiente</span>
+                            )}
+                            {activeApp && vac.status !== 'aplicada' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-[#5C3C7B] border border-purple-200 text-[9px] font-bold">
+                                <span className="material-symbols-outlined text-[12px]">event_available</span>
+                                Turno agendado ({formatDate(activeApp.date)} {activeApp.time} hs)
+                              </span>
                             )}
                           </div>
                           <span className={`text-[11px] font-medium ${
@@ -569,19 +579,21 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                           )}
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleToggleVaccineAppliedInVaccinesView(vac.id)}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-medium shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
-                            vac.status === 'aplicada'
-                              ? 'bg-emerald-800 text-white hover:bg-emerald-900'
-                              : isExpired
-                              ? 'bg-red-600 text-white hover:bg-red-700'
-                              : 'bg-amber-600 text-white hover:bg-amber-700'
-                          }`}
-                        >
-                          {vac.status === 'aplicada' ? '✓ Aplicada' : 'Marcar aplicada'}
-                        </button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleVaccineAppliedInVaccinesView(vac.id)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-medium shadow-2xs cursor-pointer whitespace-nowrap transition-all ${
+                              vac.status === 'aplicada'
+                                ? 'bg-emerald-800 text-white hover:bg-emerald-900'
+                                : isExpired
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : 'bg-amber-600 text-white hover:bg-amber-700'
+                            }`}
+                          >
+                            {vac.status === 'aplicada' ? '✓ Aplicada' : 'Marcar aplicada'}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -600,13 +612,12 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 <table className="w-full text-left font-body-md text-xs whitespace-nowrap">
                   <thead>
                     <tr className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 text-[11px]">
-                      <th className="py-2 px-md">Vacuna</th>
-                      <th className="py-2 px-md">Fecha aplicación</th>
-                      <th className="py-2 px-md">Profesional</th>
-                      <th className="py-2 px-md">Fecha límite</th>
-                      <th className="py-2 px-md">Vencimiento</th>
-                      <th className="py-2 px-md">Estado</th>
-                      {onDeleteDosis && <th className="py-2 px-md text-right">Acciones</th>}
+                      <th className="py-2.5 px-md">Vacuna</th>
+                      <th className="py-2.5 px-md">Fecha aplicación</th>
+                      <th className="py-2.5 px-md">Profesional</th>
+                      <th className="py-2.5 px-md">Vencimiento / Refuerzo</th>
+                      <th className="py-2.5 px-md">Estado</th>
+                      {onDeleteDosis && <th className="py-2.5 px-md text-right">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="text-slate-800">
@@ -622,7 +633,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       if (patientDoses.length === 0 && pendingReqs.length === 0 && appliedReqsWithoutDose.length === 0) {
                         return (
                           <tr>
-                            <td colSpan={7} className="py-md text-center text-slate-500 text-xs font-medium">
+                            <td colSpan={onDeleteDosis ? 6 : 5} className="py-md text-center text-slate-500 text-xs font-medium">
                               No hay vacunas registradas para {activePatient.name}.
                             </td>
                           </tr>
@@ -661,12 +672,6 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                                       Al día
                                     </span>
                                   )}
-                                </td>
-                                <td className="py-sm px-md">
-                                  <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                                    Aplicada
-                                  </span>
                                 </td>
                                 {onDeleteDosis && (
                                   <td className="py-sm px-md text-right">
@@ -720,12 +725,9 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                                     </span>
                                   )}
                                 </td>
-                                <td className="py-sm px-md">
-                                  <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                                    Aplicada
-                                  </span>
-                                </td>
+                                {onDeleteDosis && (
+                                  <td className="py-sm px-md text-right text-slate-400">-</td>
+                                )}
                               </tr>
                             );
                           })}
@@ -756,12 +758,9 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                                     </span>
                                   )}
                                 </td>
-                                <td className="py-sm px-md">
-                                  <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-semibold text-[10px]">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
-                                    Pendiente
-                                  </span>
-                                </td>
+                                {onDeleteDosis && (
+                                  <td className="py-sm px-md text-right text-slate-400">-</td>
+                                )}
                               </tr>
                             );
                           })}
@@ -779,6 +778,9 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
               {(() => {
                 const pendingVaccine = getPendingOrDueVaccine(activePatient, vaccineDoses, todayStr);
                 const hasAnyVaccines = (activePatient.requiredVaccines && activePatient.requiredVaccines.length > 0) || patientDoses.length > 0;
+                const activeVaccineApp = pendingVaccine 
+                  ? findActiveVaccineAppointment(activePatient.id, pendingVaccine.vaccineName, medicalAppointments) 
+                  : undefined;
                 
                 return (
                   <div className="bg-[#7B5EA7] text-white rounded-2xl p-md shadow-sm relative overflow-hidden flex flex-col justify-between">
@@ -793,9 +795,11 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       </p>
                       <p className="font-body-md text-purple-100 text-xs flex items-center gap-xs mb-md font-medium">
                         <span className="material-symbols-outlined text-[14px]">
-                          {!hasAnyVaccines ? 'info' : pendingVaccine ? 'warning' : 'check_circle'}
+                          {activeVaccineApp ? 'event_available' : !hasAnyVaccines ? 'info' : pendingVaccine ? 'warning' : 'check_circle'}
                         </span>
-                        {!hasAnyVaccines
+                        {activeVaccineApp
+                          ? `Turno agendado: ${formatDate(activeVaccineApp.date)} a las ${activeVaccineApp.time} hs`
+                          : !hasAnyVaccines
                           ? 'Paciente sin esquema de vacunación cargado'
                           : pendingVaccine 
                           ? `${pendingVaccine.isExpired ? 'Vencida desde el' : 'Próxima a vencer el'} ${formatDate(pendingVaccine.expirationDate)}`
@@ -803,14 +807,30 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       </p>
                     </div>
                     <button
+                      disabled={Boolean(activeVaccineApp)}
                       onClick={() => {
+                        if (activeVaccineApp) return;
                         const vacName = pendingVaccine ? pendingVaccine.vaccineName : undefined;
                         onScheduleAppointment(activePatient.id, vacName);
                       }}
-                      className="w-full bg-white text-[#5C3C7B] hover:bg-purple-50 py-2.5 rounded-xl font-label-md text-xs transition-colors font-semibold shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                      className={`w-full py-2.5 rounded-xl font-label-md text-xs transition-colors font-semibold shadow-xs flex items-center justify-center gap-1.5 ${
+                        activeVaccineApp
+                          ? 'bg-purple-300/30 text-purple-200 cursor-not-allowed border border-purple-300/30'
+                          : 'bg-white text-[#5C3C7B] hover:bg-purple-50 cursor-pointer'
+                      }`}
                     >
-                      <span className="material-symbols-outlined text-[16px]">calendar_month</span>
-                      <span>{!hasAnyVaccines ? 'Agendar primera dosis' : pendingVaccine ? 'Agendar turno' : 'Agendar control'}</span>
+                      <span className="material-symbols-outlined text-[16px]">
+                        {activeVaccineApp ? 'event_available' : 'calendar_month'}
+                      </span>
+                      <span>
+                        {activeVaccineApp 
+                          ? 'Turno ya agendado' 
+                          : !hasAnyVaccines 
+                          ? 'Agendar primera dosis' 
+                          : pendingVaccine 
+                          ? 'Agendar turno' 
+                          : 'Agendar control'}
+                      </span>
                     </button>
                   </div>
                 );

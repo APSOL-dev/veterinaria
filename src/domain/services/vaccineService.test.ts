@@ -9,9 +9,12 @@ import {
   getEffectiveVaccineNextDueDate,
   getPendingOrDueVaccine,
   calculatePatientVaccineCoverage,
-  getPatientVaccineGlobalStatus
+  getPatientVaccineGlobalStatus,
+  findActiveVaccineAppointment,
+  matchVaccineNameFromAppointment,
+  completeVaccineFromAppointment
 } from './vaccineService';
-import { VaccineCatalogItem } from '../types';
+import { MedicalAppointment, VaccineCatalogItem } from '../types';
 
 describe('vaccineService', () => {
   describe('calculateExpirationDate', () => {
@@ -460,5 +463,126 @@ describe('vaccineService', () => {
       expect(status.badgeClass).toContain('text-emerald-700');
     });
   });
+
+  describe('findActiveVaccineAppointment', () => {
+    const apps: MedicalAppointment[] = [
+      {
+        id: 'app-1',
+        patientId: 'p-1',
+        date: '2026-10-10',
+        time: '10:00',
+        reason: 'Vacunación: Antirrábica',
+        status: 'pending',
+        patientName: 'Firulais',
+        species: 'Canino',
+        breed: 'Mestizo',
+        ownerName: 'Juan',
+        vetName: 'Dr. Test'
+      },
+      {
+        id: 'app-2',
+        patientId: 'p-1',
+        date: '2026-10-01',
+        time: '11:00',
+        reason: 'Vacunación: Séxtuple Canina',
+        status: 'completed',
+        patientName: 'Firulais',
+        species: 'Canino',
+        breed: 'Mestizo',
+        ownerName: 'Juan',
+        vetName: 'Dr. Test'
+      },
+      {
+        id: 'app-3',
+        patientId: 'p-2',
+        date: '2026-10-12',
+        time: '12:00',
+        reason: 'Vacunación: Antirrábica',
+        status: 'confirmed',
+        patientName: 'Mona',
+        species: 'Canino',
+        breed: 'Mestizo',
+        ownerName: 'Pedro',
+        vetName: 'Dr. Test'
+      }
+    ];
+
+    it('returns the active appointment if patient has a scheduled/confirmed appointment for the vaccine', () => {
+      const found = findActiveVaccineAppointment('p-1', 'Antirrábica', apps);
+      expect(found).toBeDefined();
+      expect(found?.id).toBe('app-1');
+    });
+
+    it('returns undefined if matching appointment is completed or cancelled', () => {
+      const found = findActiveVaccineAppointment('p-1', 'Séxtuple Canina', apps);
+      expect(found).toBeUndefined();
+    });
+
+    it('returns undefined if patient does not match', () => {
+      const found = findActiveVaccineAppointment('p-3', 'Antirrábica', apps);
+      expect(found).toBeUndefined();
+    });
+  });
+
+  describe('matchVaccineNameFromAppointment', () => {
+    const reqs = [
+      { id: 'req-1', vaccineName: 'Antirrábica', suggestedDate: '2026-10-15', status: 'pendiente' as const },
+      { id: 'req-2', vaccineName: 'Séxtuple Canina', suggestedDate: '2026-11-01', status: 'pendiente' as const }
+    ];
+
+    it('extracts vaccine name from standard prefix "Vacunación: <name>"', () => {
+      expect(matchVaccineNameFromAppointment('Vacunación: Antirrábica', reqs)).toBe('Antirrábica');
+      expect(matchVaccineNameFromAppointment('Vacunacion: Sextuple Canina', reqs)).toBe('Séxtuple Canina');
+    });
+
+    it('matches required vaccine name inside reason text', () => {
+      expect(matchVaccineNameFromAppointment('Aplicar antirrábica anual', reqs)).toBe('Antirrábica');
+    });
+
+    it('returns undefined if no vaccine can be matched', () => {
+      expect(matchVaccineNameFromAppointment('Control clínico general', reqs)).toBeUndefined();
+    });
+  });
+
+  describe('completeVaccineFromAppointment', () => {
+    const patient = {
+      id: 'p-1',
+      ownerId: 'own-1',
+      name: 'Firulais',
+      species: 'Canino' as const,
+      breed: 'Mestizo',
+      sex: 'Macho' as const,
+      birthDate: '2020-01-01',
+      ownerName: 'Juan',
+      status: 'active' as const,
+      weightKg: 15,
+      requiredVaccines: [
+        { id: 'req-1', vaccineName: 'Antirrábica', suggestedDate: '2026-10-10', status: 'pendiente' as const }
+      ]
+    };
+
+    const catalog: VaccineCatalogItem[] = [
+      { id: 'vac-antirrabica', name: 'Antirrábica', frequencyDays: 365 }
+    ];
+
+    it('updates patient requiredVaccine status to aplicada and generates a new dosis record', () => {
+      const { updatedPatient, newDosis } = completeVaccineFromAppointment(
+        patient,
+        'Antirrábica',
+        '2026-10-10',
+        'Dr. Vet',
+        catalog
+      );
+
+      expect(updatedPatient.requiredVaccines?.[0].status).toBe('aplicada');
+      expect(updatedPatient.requiredVaccines?.[0].appliedDate).toBe('2026-10-10');
+      expect(newDosis.patientId).toBe('p-1');
+      expect(newDosis.vaccineName).toBe('Antirrábica');
+      expect(newDosis.applicationDate).toBe('2026-10-10');
+      expect(newDosis.expirationDate).toBe('2027-10-10');
+      expect(newDosis.vetName).toBe('Dr. Vet');
+    });
+  });
 });
+
 

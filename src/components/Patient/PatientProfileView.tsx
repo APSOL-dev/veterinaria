@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import html2pdf from 'html2pdf.js';
 import { Patient, ClinicalNote, VaccineDosis, Species, Sex, PatientRequiredVaccine, VaccineCatalogItem, MedicalAppointment, GroomingAppointment } from '../../domain/types';
 import { filterPatients, calculateWeightTrend, updatePatientRecord, toggleAlertItem } from '../../domain/services/patientService';
-import { getEffectiveVaccineNextDueDate } from '../../domain/services/vaccineService';
+import { getEffectiveVaccineNextDueDate, findActiveVaccineAppointment } from '../../domain/services/vaccineService';
 import { getEffectiveAppointmentStatus } from '../../domain/services/agendaService';
 import { NewPatientModal } from './NewPatientModal';
 import { PrescriptionModal } from './PrescriptionModal';
@@ -117,10 +117,17 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   const [showAddVaccineModal, setShowAddVaccineModal] = useState(false);
   const [reqVaccineSource, setReqVaccineSource] = useState<'catalog' | 'new'>(vaccineCatalog.length > 0 ? 'catalog' : 'new');
   const [selectedCatalogVacId, setSelectedCatalogVacId] = useState<string>(vaccineCatalog[0]?.id || '');
+  const [catalogVacSearch, setCatalogVacSearch] = useState('');
   const [reqVaccineName, setReqVaccineName] = useState('');
   const [reqVaccineDate, setReqVaccineDate] = useState('2026-10-15');
   const [reqVaccineNotes, setReqVaccineNotes] = useState('');
   const todayStr = new Date().toISOString().split('T')[0];
+
+  const filteredCatalogVaccines = useMemo(() => {
+    const q = catalogVacSearch.trim().toLowerCase();
+    if (!q) return vaccineCatalog;
+    return vaccineCatalog.filter(v => v.name.toLowerCase().includes(q));
+  }, [vaccineCatalog, catalogVacSearch]);
 
   // Edit Pet Modal state
   const [showEditPetModal, setShowEditPetModal] = useState(false);
@@ -924,17 +931,29 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        {onScheduleAppointment && vac.status !== 'aplicada' && (
-                          <button
-                            type="button"
-                            onClick={() => onScheduleAppointment(selectedPatient.id, vac.vaccineName)}
-                            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#5C3C7B] text-white hover:bg-[#4A2F66] shadow-2xs cursor-pointer whitespace-nowrap transition-all flex items-center gap-1"
-                          >
-                            <span className="material-symbols-outlined text-[15px]">calendar_month</span>
-                            <span>Agendar turno</span>
-                          </button>
-                        )}
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                        {(() => {
+                          if (vac.status === 'aplicada' || !onScheduleAppointment) return null;
+                          const activeApp = findActiveVaccineAppointment(selectedPatient.id, vac.vaccineName, medicalAppointments);
+                          if (activeApp) {
+                            return (
+                              <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-100 text-[#5C3C7B] border border-purple-200 flex items-center gap-1 shadow-2xs">
+                                <span className="material-symbols-outlined text-[15px]">event_available</span>
+                                <span>Turno agendado ({formatDate(activeApp.date)} {activeApp.time} hs)</span>
+                              </span>
+                            );
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => onScheduleAppointment(selectedPatient.id, vac.vaccineName)}
+                              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#5C3C7B] text-white hover:bg-[#4A2F66] shadow-2xs cursor-pointer whitespace-nowrap transition-all flex items-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">calendar_month</span>
+                              <span>Agendar turno</span>
+                            </button>
+                          );
+                        })()}
 
                         <button
                           type="button"
@@ -1259,23 +1278,51 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 </div>
 
                 {reqVaccineSource === 'catalog' ? (
-                  <select
-                    value={selectedCatalogVacId}
-                    onChange={(e) => setSelectedCatalogVacId(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-xs focus:border-[#9A7DB8] shadow-xs cursor-pointer"
-                  >
-                    {vaccineCatalog.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.name} ({item.frequencyDays} días)
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex flex-col gap-1.5">
+                    <div className="relative flex items-center">
+                      <span className="material-symbols-outlined absolute left-2.5 text-slate-400 text-[16px] pointer-events-none">search</span>
+                      <input
+                        type="text"
+                        value={catalogVacSearch}
+                        onChange={(e) => setCatalogVacSearch(e.target.value)}
+                        placeholder="Buscar vacuna en el catálogo..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-7 py-2 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#9A7DB8] focus:bg-white"
+                      />
+                      {catalogVacSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setCatalogVacSearch('')}
+                          className="absolute right-2 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">close</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {filteredCatalogVaccines.length > 0 ? (
+                      <select
+                        value={selectedCatalogVacId}
+                        onChange={(e) => setSelectedCatalogVacId(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-xs focus:border-[#9A7DB8] shadow-xs cursor-pointer"
+                      >
+                        {filteredCatalogVaccines.map(item => (
+                          <option key={item.id} value={item.id}>
+                            {item.name} ({item.frequencyDays} días)
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="p-2.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-xl text-xs font-medium text-center">
+                        No se encontraron vacunas que coincidan con "{catalogVacSearch}".
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <input
                     type="text"
                     value={reqVaccineName}
                     onChange={(e) => setReqVaccineName(e.target.value)}
-                    placeholder=""
+                    placeholder="Nombre de la vacuna..."
                     required={reqVaccineSource === 'new'}
                     className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-xs focus:border-[#9A7DB8] placeholder:text-slate-400 shadow-xs"
                   />

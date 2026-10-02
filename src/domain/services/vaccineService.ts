@@ -1,4 +1,4 @@
-import { Patient, PatientRequiredVaccine, VaccineCatalogItem, VaccineDosis } from '../types';
+import { MedicalAppointment, Patient, PatientRequiredVaccine, VaccineCatalogItem, VaccineDosis } from '../types';
 
 export function calculateExpirationDate(applicationDate: string, frequencyDays: number): string {
   const date = new Date(applicationDate + 'T00:00:00');
@@ -294,5 +294,110 @@ export function getPatientVaccineGlobalStatus(
     badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200'
   };
 }
+
+export function findActiveVaccineAppointment(
+  patientId: string,
+  vaccineName: string,
+  medicalAppointments: MedicalAppointment[] = []
+): MedicalAppointment | undefined {
+  const normVac = vaccineName.trim().toLowerCase();
+  return medicalAppointments.find(app => {
+    if (app.patientId !== patientId) return false;
+    if (app.status === 'completed' || app.status === 'cancelled') return false;
+    const reason = (app.reason || '').toLowerCase();
+    return reason.includes(normVac);
+  });
+}
+
+export function matchVaccineNameFromAppointment(
+  reason: string,
+  requiredVaccines: PatientRequiredVaccine[] = [],
+  vaccineCatalog: VaccineCatalogItem[] = []
+): string | undefined {
+  if (!reason) return undefined;
+  const trimmed = reason.trim();
+
+  const stripAccents = (str: string) =>
+    str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+  // Pattern: "Vacunación: <VaccineName>" or "Vacunacion: <VaccineName>"
+  const prefixMatch = trimmed.match(/^vacunaci[oó]n:\s*(.+)$/i);
+  if (prefixMatch && prefixMatch[1]) {
+    const rawTarget = stripAccents(prefixMatch[1]);
+    // Try to find exact or accent-insensitive match in requiredVaccines
+    const matchReq = requiredVaccines.find(r => stripAccents(r.vaccineName) === rawTarget);
+    if (matchReq) return matchReq.vaccineName;
+
+    // Try in catalog
+    const matchCat = vaccineCatalog.find(c => stripAccents(c.name) === rawTarget);
+    if (matchCat) return matchCat.name;
+
+    return prefixMatch[1].trim();
+  }
+
+  const normalizedReason = stripAccents(trimmed);
+
+  // Check if reason contains any required vaccine name
+  for (const req of requiredVaccines) {
+    if (normalizedReason.includes(stripAccents(req.vaccineName))) {
+      return req.vaccineName;
+    }
+  }
+
+  // Check if reason contains any catalog vaccine name
+  for (const cat of vaccineCatalog) {
+    if (normalizedReason.includes(stripAccents(cat.name))) {
+      return cat.name;
+    }
+  }
+
+  return undefined;
+}
+
+export function completeVaccineFromAppointment(
+  patient: Patient,
+  vaccineName: string,
+  applicationDate: string,
+  vetName: string,
+  vaccineCatalog: VaccineCatalogItem[] = []
+): { updatedPatient: Patient; newDosis: VaccineDosis } {
+  let vacItem = vaccineCatalog.find(
+    v => v.name.toLowerCase() === vaccineName.toLowerCase() || v.id === vaccineName
+  );
+
+  if (!vacItem) {
+    vacItem = {
+      id: `vac-${Date.now()}`,
+      name: vaccineName,
+      frequencyDays: 365
+    };
+  }
+
+  const newDosis = createDosisRecord(
+    patient.id,
+    vacItem,
+    applicationDate,
+    vetName || 'Veterinaria'
+  );
+
+  const updatedReqs = (patient.requiredVaccines || []).map(req => {
+    if (req.vaccineName.toLowerCase() === vaccineName.toLowerCase()) {
+      return {
+        ...req,
+        status: 'aplicada' as const,
+        appliedDate: applicationDate
+      };
+    }
+    return req;
+  });
+
+  const updatedPatient: Patient = {
+    ...patient,
+    requiredVaccines: updatedReqs
+  };
+
+  return { updatedPatient, newDosis };
+}
+
 
 

@@ -22,7 +22,12 @@ import {
   generateTimeSlots,
   ensureTimeInSlots,
   getEffectiveAppointmentStatus,
-  filterGroomingServicesBySpecies
+  filterGroomingServicesBySpecies,
+  getMonthDays,
+  formatMonthHeader,
+  formatDayHeader,
+  shiftDay,
+  shiftMonth
 } from './agendaService';
 
 describe('agendaService', () => {
@@ -158,27 +163,28 @@ describe('agendaService', () => {
       expect(monSelf.getDate()).toBe(7);
     });
 
-    it('getWeekDays should return 6 days from Monday to Saturday with dateStr and labels', () => {
+    it('getWeekDays should return 7 days from Monday to Sunday with dateStr and labels', () => {
       const wed = new Date(2026, 8, 9); // Sept 9, 2026
       const days = getWeekDays(wed);
 
-      expect(days.length).toBe(6);
+      expect(days.length).toBe(7);
       expect(days[0]).toEqual({ dateStr: '2026-09-07', dayName: 'Lun', dayNumber: 7, fullLabel: 'Lun 7' });
       expect(days[1]).toEqual({ dateStr: '2026-09-08', dayName: 'Mar', dayNumber: 8, fullLabel: 'Mar 8' });
       expect(days[2]).toEqual({ dateStr: '2026-09-09', dayName: 'Mié', dayNumber: 9, fullLabel: 'Mié 9' });
       expect(days[3]).toEqual({ dateStr: '2026-09-10', dayName: 'Jue', dayNumber: 10, fullLabel: 'Jue 10' });
       expect(days[4]).toEqual({ dateStr: '2026-09-11', dayName: 'Vie', dayNumber: 11, fullLabel: 'Vie 11' });
       expect(days[5]).toEqual({ dateStr: '2026-09-12', dayName: 'Sáb', dayNumber: 12, fullLabel: 'Sáb 12' });
+      expect(days[6]).toEqual({ dateStr: '2026-09-13', dayName: 'Dom', dayNumber: 13, fullLabel: 'Dom 13' });
     });
 
-    it('formatWeekRangeHeader should format single month and cross month week ranges', () => {
-      // Same month: Sept 7 to Sept 12
+    it('formatWeekRangeHeader should format single month and cross month week ranges through Sunday', () => {
+      // Same month: Sept 7 to Sept 13
       const septWeek = new Date(2026, 8, 9);
-      expect(formatWeekRangeHeader(septWeek)).toBe('Semana del 7 al 12 de Septiembre');
+      expect(formatWeekRangeHeader(septWeek)).toBe('Semana del 7 al 13 de Septiembre');
 
-      // Cross month: Aug 31 to Sept 5, 2026
+      // Cross month: Aug 31 to Sept 6, 2026
       const crossMonthWeek = new Date(2026, 8, 2); // Wednesday Sept 2, 2026 -> Monday is Aug 31
-      expect(formatWeekRangeHeader(crossMonthWeek)).toBe('Semana del 31 de Agosto al 5 de Septiembre');
+      expect(formatWeekRangeHeader(crossMonthWeek)).toBe('Semana del 31 de Agosto al 6 de Septiembre');
     });
 
     it('shiftWeek should add or subtract 7 days correctly', () => {
@@ -188,6 +194,20 @@ describe('agendaService', () => {
 
       const prevWeek = shiftWeek(initial, -1);
       expect(formatDateToISO(prevWeek)).toBe('2026-09-02');
+    });
+
+    it('getMonthDays and formatMonthHeader should format full month grid', () => {
+      const sept = new Date(2026, 8, 15);
+      const mDays = getMonthDays(sept);
+      expect(mDays.length).toBeGreaterThanOrEqual(35);
+      expect(formatMonthHeader(sept)).toBe('Septiembre de 2026');
+      expect(formatDayHeader(new Date(2026, 8, 9))).toBe('Miércoles 9 de Septiembre de 2026');
+
+      const nextMonth = shiftMonth(sept, 1);
+      expect(formatDateToISO(nextMonth)).toBe('2026-10-15');
+
+      const nextDay = shiftDay(sept, 1);
+      expect(formatDateToISO(nextDay)).toBe('2026-09-16');
     });
 
     it('getWednesdayOfCurrentWeek should return YYYY-MM-DD for Wednesday of the current week', () => {

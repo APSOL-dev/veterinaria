@@ -102,6 +102,40 @@ export function getLowStockAlerts(products: Product[]): Product[] {
   return products.filter(p => (Number(p.currentStock) || 0) <= (Number(p.minStock) || 0));
 }
 
+/**
+ * Returns only products with low stock that have not been shown/acknowledged before,
+ * or whose stock has dropped further since the last alert acknowledgment.
+ */
+export function getNewUnacknowledgedLowStockAlerts(
+  products: Product[],
+  acknowledgedMap: Record<string, number> = {}
+): Product[] {
+  const lowStock = getLowStockAlerts(products);
+  return lowStock.filter(p => {
+    const lastAcknowledgedStock = acknowledgedMap[p.id];
+    if (lastAcknowledgedStock === undefined) {
+      return true; // Nuevo producto con bajo stock
+    }
+    // Si el stock bajó aún más desde la última vez que se mostró la alerta
+    return Number(p.currentStock) < lastAcknowledgedStock;
+  });
+}
+
+/**
+ * Updates the acknowledged map with the current stock of all given low stock products.
+ */
+export function updateAcknowledgedLowStockAlerts(
+  products: Product[],
+  currentMap: Record<string, number> = {}
+): Record<string, number> {
+  const updated = { ...currentMap };
+  const lowStock = getLowStockAlerts(products);
+  lowStock.forEach(p => {
+    updated[p.id] = Number(p.currentStock) || 0;
+  });
+  return updated;
+}
+
 export function processStockReceiptFromBill(bill: SupplierBill, products: Product[]): Product[] {
   if (!bill.items || bill.items.length === 0) {
     return products;

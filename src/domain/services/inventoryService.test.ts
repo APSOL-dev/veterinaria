@@ -6,6 +6,8 @@ import {
   recordStockAdjustment, 
   findProductByBarcode, 
   getLowStockAlerts,
+  getNewUnacknowledgedLowStockAlerts,
+  updateAcknowledgedLowStockAlerts,
   processStockReceiptFromBill,
   createNewProductRecord,
   applyBulkInflationToProducts
@@ -110,6 +112,33 @@ describe('inventoryService', () => {
       const alerts = getLowStockAlerts(catalog);
       expect(alerts).toHaveLength(2);
       expect(alerts.map(p => p.id)).toEqual(['prod-2', 'prod-3']);
+    });
+
+    it('returns only new unacknowledged alerts or products whose stock decreased further', () => {
+      const catalog: Product[] = [
+        { id: 'prod-1', sku: 'A', name: 'Prod 1', category: 'Medicamentos', currentStock: 10, minStock: 5, price: 10 },
+        { id: 'prod-2', sku: 'B', name: 'Prod 2', category: 'Medicamentos', currentStock: 3, minStock: 5, price: 10 },
+        { id: 'prod-3', sku: 'C', name: 'Prod 3', category: 'Medicamentos', currentStock: 0, minStock: 2, price: 10 }
+      ];
+
+      // Initial check: no acknowledged products -> all low stock returned
+      const initialAlerts = getNewUnacknowledgedLowStockAlerts(catalog, {});
+      expect(initialAlerts).toHaveLength(2);
+      expect(initialAlerts.map(p => p.id)).toEqual(['prod-2', 'prod-3']);
+
+      // Acknowledge current alerts
+      const ackMap = updateAcknowledgedLowStockAlerts(catalog, {});
+      expect(ackMap).toEqual({ 'prod-2': 3, 'prod-3': 0 });
+
+      // Check again without stock changes -> 0 new alerts
+      const afterAckAlerts = getNewUnacknowledgedLowStockAlerts(catalog, ackMap);
+      expect(afterAckAlerts).toHaveLength(0);
+
+      // Stock of prod-2 drops from 3 to 1 -> triggers new alert for prod-2
+      const updatedCatalog = catalog.map(p => p.id === 'prod-2' ? { ...p, currentStock: 1 } : p);
+      const droppedAlerts = getNewUnacknowledgedLowStockAlerts(updatedCatalog, ackMap);
+      expect(droppedAlerts).toHaveLength(1);
+      expect(droppedAlerts[0].id).toBe('prod-2');
     });
   });
 

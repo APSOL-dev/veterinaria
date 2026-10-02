@@ -50,7 +50,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
   const [species, setSpecies] = useState<Species>('Canino');
   const [breed, setBreed] = useState('');
   const [sex, setSex] = useState<Sex>('Macho');
-  const [birthDate, setBirthDate] = useState('2022-01-01');
+  const [birthDate, setBirthDate] = useState(() => `${new Date().getFullYear()}-01-01`);
 
   // Tutor selection mode
   const [tutorMode, setTutorMode] = useState<'existing' | 'new'>(existingTutores.length > 0 ? 'existing' : 'new');
