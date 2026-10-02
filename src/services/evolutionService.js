@@ -105,11 +105,31 @@ export const evolutionService = {
   },
   async getQrCode() {
     const instance = await getInstanceName();
-    const data = await apiRequest('GET', `/instance/connect/${encodeURIComponent(instance)}`);
+    let data;
+    try {
+      data = await apiRequest('GET', `/instance/connect/${encodeURIComponent(instance)}`);
+    } catch (err) {
+      // Si la instancia no existe en el servidor, intentamos darla de alta automáticamente
+      if (err.message?.toLowerCase().includes('not found') || err.message?.includes('404')) {
+        try {
+          data = await apiRequest('POST', '/instance/create', {
+            instanceName: instance,
+            qrcode: true,
+            integration: 'WHATSAPP-BAILEYS'
+          });
+        } catch (createErr) {
+          console.warn('Error al intentar crear instancia de WhatsApp:', createErr);
+          throw err;
+        }
+      } else {
+        throw err;
+      }
+    }
     
     let rawBase64 = data?.base64 || 
                     data?.code?.base64 || 
                     data?.qrcode?.base64 || 
+                    data?.instance?.qrcode?.base64 ||
                     (typeof data?.qrcode === 'string' ? data.qrcode : '') ||
                     (typeof data?.code === 'string' && data.code.includes('base64') ? data.code : '');
 

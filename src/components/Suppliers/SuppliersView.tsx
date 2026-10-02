@@ -145,8 +145,59 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
     }
   };
 
-  const totals = useMemo(() => calculateSupplierTotals(bills, quotes, payments, undefined, expenses, creditTerms), [bills, quotes, payments, expenses, creditTerms]);
-  const projections = useMemo(() => calculateMonthlyExpenditureProjections(bills, monthlyBudgets, payments, filterStartDate, filterEndDate, creditTerms, expenses), [bills, monthlyBudgets, payments, filterStartDate, filterEndDate, creditTerms, expenses]);
+  const totals = useMemo(() => {
+    const targetBills = billFilterSupplier ? bills.filter(b => b.supplierName?.toLowerCase().includes(billFilterSupplier.toLowerCase())) : bills;
+    const targetPayments = billFilterSupplier ? payments.filter(p => p.supplierName?.toLowerCase().includes(billFilterSupplier.toLowerCase())) : payments;
+    return calculateSupplierTotals(targetBills, quotes, targetPayments, undefined, expenses, creditTerms, filterStartDate, filterEndDate);
+  }, [bills, billFilterSupplier, quotes, payments, expenses, creditTerms, filterStartDate, filterEndDate]);
+
+  const applyDatePreset = (preset: 'este_mes' | 'proximos_3_meses' | 'proximos_6_meses') => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+
+    const startStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    let end: Date;
+    if (preset === 'este_mes') {
+      end = new Date(year, month + 1, 0);
+    } else if (preset === 'proximos_3_meses') {
+      end = new Date(year, month + 3, 0);
+    } else {
+      end = new Date(year, month + 6, 0);
+    }
+
+    const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+    setFilterStartDate(startStr);
+    setFilterEndDate(endStr);
+  };
+
+  const currentPreset = useMemo<'este_mes' | 'proximos_3_meses' | 'proximos_6_meses' | null>(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const startStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    if (filterStartDate !== startStr) return null;
+
+    const end1 = new Date(year, month + 1, 0);
+    const end1Str = `${end1.getFullYear()}-${String(end1.getMonth() + 1).padStart(2, '0')}-${String(end1.getDate()).padStart(2, '0')}`;
+    if (filterEndDate === end1Str) return 'este_mes';
+
+    const end3 = new Date(year, month + 3, 0);
+    const end3Str = `${end3.getFullYear()}-${String(end3.getMonth() + 1).padStart(2, '0')}-${String(end3.getDate()).padStart(2, '0')}`;
+    if (filterEndDate === end3Str) return 'proximos_3_meses';
+
+    const end6 = new Date(year, month + 6, 0);
+    const end6Str = `${end6.getFullYear()}-${String(end6.getMonth() + 1).padStart(2, '0')}-${String(end6.getDate()).padStart(2, '0')}`;
+    if (filterEndDate === end6Str) return 'proximos_6_meses';
+
+    return null;
+  }, [filterStartDate, filterEndDate]);
+
+  const projections = useMemo(() => {
+    const targetBills = billFilterSupplier ? bills.filter(b => b.supplierName?.toLowerCase().includes(billFilterSupplier.toLowerCase())) : bills;
+    const targetPayments = billFilterSupplier ? payments.filter(p => p.supplierName?.toLowerCase().includes(billFilterSupplier.toLowerCase())) : payments;
+    return calculateMonthlyExpenditureProjections(targetBills, monthlyBudgets, targetPayments, filterStartDate, filterEndDate, creditTerms, expenses);
+  }, [bills, billFilterSupplier, monthlyBudgets, payments, filterStartDate, filterEndDate, creditTerms, expenses]);
 
   const yearlyProjections = useMemo(() => {
     return groupProjectionsByYear(projections);
@@ -453,7 +504,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full flex-1 gap-md font-body-md text-on-surface h-full overflow-y-auto p-md lg:p-0 lg:overflow-hidden">
+    <div className="flex flex-col w-full flex-1 gap-md font-body-md text-on-surface h-full overflow-y-auto p-md lg:p-0">
       {activeSubModule === 'cuentas' ? (
         <SupplierCurrentAccountView
           bills={bills}
@@ -502,20 +553,57 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
             <div className="flex items-center gap-sm flex-wrap">
               {activeSubModule === 'facturas' && (
-                <PowerBIDateRangeFilter
-                  minDate={default6MonthsRange.startDate}
-                  maxDate={default6MonthsRange.endDate}
-                  startDate={filterStartDate}
-                  endDate={filterEndDate}
-                  onChange={(s, e) => {
-                    setFilterStartDate(s);
-                    setFilterEndDate(e);
-                  }}
-                  onReset={() => {
-                    setFilterStartDate(default6MonthsRange.startDate);
-                    setFilterEndDate(default6MonthsRange.endDate);
-                  }}
-                />
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <PowerBIDateRangeFilter
+                    minDate={default6MonthsRange.startDate}
+                    maxDate={default6MonthsRange.endDate}
+                    startDate={filterStartDate}
+                    endDate={filterEndDate}
+                    onChange={(s, e) => {
+                      setFilterStartDate(s);
+                      setFilterEndDate(e);
+                    }}
+                    onReset={() => {
+                      setFilterStartDate(default6MonthsRange.startDate);
+                      setFilterEndDate(default6MonthsRange.endDate);
+                    }}
+                  />
+                  <div className="inline-flex items-center bg-white border border-slate-200 rounded-xl p-1 gap-1 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset('este_mes')}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        currentPreset === 'este_mes'
+                          ? 'bg-[#5C3C7B] text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      Este mes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset('proximos_3_meses')}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        currentPreset === 'proximos_3_meses'
+                          ? 'bg-[#5C3C7B] text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      Próximos 3 meses
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset('proximos_6_meses')}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        currentPreset === 'proximos_6_meses'
+                          ? 'bg-[#5C3C7B] text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      Próximos 6 meses
+                    </button>
+                  </div>
+                </div>
               )}
 
               {activeSubModule === 'presupuestos' && (
@@ -556,7 +644,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           {/* KPI Cards Summary for Facturas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-md">
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
-              <span className="font-label-md text-[11px] text-on-surface-variant font-semibold">Comprado este mes</span>
+              <span className="font-label-md text-[11px] text-on-surface-variant font-semibold">
+                {currentPreset === 'este_mes' ? 'Comprado este mes' : 'Total comprado'}
+              </span>
               <span className="font-display-lg text-2xl font-semibold text-primary mt-xs">${totals.purchasedThisMonthTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
@@ -568,7 +658,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
               <span className="font-display-lg text-2xl font-semibold text-error mt-xs">${totals.pendingBillsTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div className="bg-surface-container-lowest p-md rounded-2xl border border-outline-variant/30 shadow-sm flex flex-col justify-between">
-              <span className="font-label-md text-[11px] text-on-surface-variant font-semibold">Comprometido a 30 días</span>
+              <span className="font-label-md text-[11px] text-on-surface-variant font-semibold">
+                {currentPreset === 'este_mes' ? 'Gastos del mes' : 'Gastos operativos'}
+              </span>
               <span className="font-display-lg text-2xl font-semibold text-amber-600 mt-xs">${totals.committed30DaysTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           </div>
@@ -1020,8 +1112,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                         return (
                           <tr
                             key={bill.id}
-                            onClick={() => handleOpenEditBill(bill)}
-                            className="border-b border-surface-container-low hover:bg-surface-container transition-colors cursor-pointer"
+                            onClick={() => !isPaid && handleOpenEditBill(bill)}
+                            className={`border-b border-surface-container-low hover:bg-surface-container transition-colors ${!isPaid ? 'cursor-pointer' : ''}`}
                           >
                             <td className="p-sm px-md font-normal text-slate-700">{formatDate(bill.date)}</td>
                             <td className="p-sm px-md font-normal text-slate-700">{formatDate(bill.paymentDate || bill.date)}</td>
@@ -1032,8 +1124,8 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             <td className="p-sm px-md text-right font-semibold text-error whitespace-nowrap">
                               {remaining > 0 ? `$${remaining.toLocaleString('es-AR')}` : <span className="text-[#27AE60]">$0</span>}
                             </td>
-                            <td className="p-sm px-md text-center">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${badgeClass}`}>
+                            <td className="p-sm px-md text-center whitespace-nowrap min-w-[100px]">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap inline-block ${badgeClass}`}>
                                 {badgeLabel}
                               </span>
                             </td>
@@ -1061,22 +1153,33 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             </td>
                             <td className="p-sm px-md text-center" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1.5">
-                                <button
-                                  type="button"
-                                  title="Registrar pago"
-                                  onClick={(e) => { e.stopPropagation(); handleOpenPaymentModal(bill); }}
-                                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-emerald-700 transition-colors rounded-lg hover:bg-emerald-50 cursor-pointer"
-                                >
-                                  <span className="material-symbols-outlined text-[20px]">wallet</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  title="Editar factura"
-                                  onClick={(e) => { e.stopPropagation(); handleOpenEditBill(bill); }}
-                                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-primary transition-colors rounded-lg hover:bg-purple-50 cursor-pointer"
-                                >
-                                  <span className="material-symbols-outlined text-[20px]">edit</span>
-                                </button>
+                                {!isPaid && (
+                                  <button
+                                    type="button"
+                                    title="Registrar pago"
+                                    onClick={(e) => { e.stopPropagation(); handleOpenPaymentModal(bill); }}
+                                    className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-emerald-700 transition-colors rounded-lg hover:bg-emerald-50 cursor-pointer"
+                                  >
+                                    <span className="material-symbols-outlined text-[20px]">wallet</span>
+                                  </button>
+                                )}
+                                {!isPaid ? (
+                                  <button
+                                    type="button"
+                                    title="Editar factura"
+                                    onClick={(e) => { e.stopPropagation(); handleOpenEditBill(bill); }}
+                                    className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-primary transition-colors rounded-lg hover:bg-purple-50 cursor-pointer"
+                                  >
+                                    <span className="material-symbols-outlined text-[20px]">edit</span>
+                                  </button>
+                                ) : (
+                                  <span
+                                    title="Las facturas pagadas no se pueden editar"
+                                    className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-300"
+                                  >
+                                    <span className="material-symbols-outlined text-[20px]">lock</span>
+                                  </span>
+                                )}
                                 <button
                                   type="button"
                                   title="Eliminar factura"

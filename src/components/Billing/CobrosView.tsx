@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import html2pdf from 'html2pdf.js';
-import { Patient, BillReceipt, DocumentType, PaymentMethod, BillItem, Product, ServiceCatalogItem } from '../../domain/types';
+import { Patient, BillReceipt, DocumentType, PaymentMethod, BillItem, Product, ServiceCatalogItem, TutorAccountMovement } from '../../domain/types';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
 import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
 import { formatPriceInputDisplay, parsePriceInput } from '../../domain/services/billingService';
+import { filterAndSortReceipts, BillingHistoryDatePreset } from '../../domain/services/billingHistoryService';
+import { ComprobanteDetailModal } from './ComprobanteDetailModal';
 import { formatDate } from '../../utils/dateUtils';
 
 interface CobrosViewProps {
@@ -181,6 +183,22 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
       return;
     }
 
+    if (!customInvoiceNumber || !customInvoiceNumber.trim()) {
+      setNotifModal({
+        isOpen: true,
+        message: 'Debe ingresar el número de factura/comprobante antes de emitir.'
+      });
+      return;
+    }
+
+    if (!voucherUrl) {
+      setNotifModal({
+        isOpen: true,
+        message: 'Debe adjuntar el archivo del comprobante o factura (PDF o imagen).'
+      });
+      return;
+    }
+
     onCheckout({
       documentType,
       paymentMethod,
@@ -192,7 +210,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
       voucherName: voucherName || undefined,
       voucherUrl: voucherUrl || undefined,
       posNumber: posNumber || '0001',
-      customInvoiceNumber: customInvoiceNumber || undefined
+      customInvoiceNumber: customInvoiceNumber.trim() || undefined
     });
 
     setItems([]);
@@ -205,91 +223,371 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
     }
   };
 
+  // Historial de cobros state
+  const [historialSearchQuery, setHistorialSearchQuery] = useState('');
+  const [historialDocType, setHistorialDocType] = useState<DocumentType | 'all'>('all');
+  const [historialPaymentMethod, setHistorialPaymentMethod] = useState<PaymentMethod | 'all'>('all');
+  const [historialDatePreset, setHistorialDatePreset] = useState<BillingHistoryDatePreset>('all');
+  const [historialSortBy, setHistorialSortBy] = useState<'receiptNumber' | 'date' | 'ownerName' | 'documentType' | 'paymentMethod' | 'total' | 'itemsCount'>('date');
+  const [historialSortDir, setHistorialSortDir] = useState<'asc' | 'desc'>('desc');
+  const [selectedMovementForDetail, setSelectedMovementForDetail] = useState<TutorAccountMovement | null>(null);
+
+  const filteredAndSortedReceipts = useMemo(() => {
+    return filterAndSortReceipts(receipts, {
+      searchQuery: historialSearchQuery,
+      documentType: historialDocType,
+      paymentMethod: historialPaymentMethod,
+      datePreset: historialDatePreset,
+      sortBy: historialSortBy,
+      sortDirection: historialSortDir
+    });
+  }, [receipts, historialSearchQuery, historialDocType, historialPaymentMethod, historialDatePreset, historialSortBy, historialSortDir]);
+
+  // Historial metrics
+  const totalFacturado = useMemo(() => {
+    return filteredAndSortedReceipts.reduce((acc, r) => acc + (r.totalAmount ?? r.total ?? 0), 0);
+  }, [filteredAndSortedReceipts]);
+
+  const hasActiveHistorialFilters = historialSearchQuery !== '' || historialDocType !== 'all' || historialPaymentMethod !== 'all' || historialDatePreset !== 'all';
+
+  const handleClearHistorialFilters = () => {
+    setHistorialSearchQuery('');
+    setHistorialDocType('all');
+    setHistorialPaymentMethod('all');
+    setHistorialDatePreset('all');
+  };
+
+  const handleToggleSort = (field: 'receiptNumber' | 'date' | 'ownerName' | 'documentType' | 'paymentMethod' | 'total' | 'itemsCount') => {
+    if (historialSortBy === field) {
+      setHistorialSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setHistorialSortBy(field);
+      setHistorialSortDir(field === 'total' || field === 'date' ? 'desc' : 'asc');
+    }
+  };
+
+  const handleOpenReceiptDetail = (rec: BillReceipt) => {
+    const mov: TutorAccountMovement = {
+      id: rec.id,
+      date: rec.date,
+      tutorName: rec.ownerName || rec.clientName || 'Sin tutor',
+      concept: `Comprobante ${rec.receiptNumber || rec.id}`,
+      detail: rec.items && rec.items.length > 0
+        ? rec.items.map(i => `${i.quantity}x ${i.description}`).join(', ')
+        : 'Cobro registrado',
+      debe: rec.totalAmount ?? rec.total ?? 0,
+      haber: 0,
+      saldo: 0,
+      type: 'receipt',
+      receipt: rec,
+      voucherName: rec.voucherName,
+      voucherUrl: rec.voucherUrl
+    };
+    setSelectedMovementForDetail(mov);
+  };
+
   if (activeSubmodule === 'historial-cobros') {
     return (
       <div className="flex flex-col w-full flex-1 gap-md font-body-md text-slate-800 h-full overflow-y-auto p-md lg:p-0">
-        <div className="flex items-center justify-between">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-sm">
           <div>
             <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 font-semibold leading-tight">
-              {activeSubmodule === 'historial-cobros' ? 'Cobros — Historial de Facturación y Recibos' : 'Cobros — Punto de Venta y Facturación'}
+              Cobros — Historial de Facturación y Recibos
             </h1>
             <p className="font-body-md text-xs text-slate-600 font-normal mt-0.5">
-              {activeSubmodule === 'historial-cobros'
-                ? 'Consulta de comprobantes emitidos, facturas A/B y tickets X de cobranza'
-                : 'Emisión de recibos oficiales, liquidación de turnos médicos y venta en mostrador'}
+              Consulta, filtrado avanzado y ordenamiento de comprobantes emitidos, facturas y recibos
             </p>
           </div>
+          <div className="flex items-center gap-sm flex-wrap">
+            <div className="bg-white rounded-2xl px-4 py-2 border border-purple-200 shadow-2xs flex items-center gap-2.5">
+              <span className="material-symbols-outlined text-[#7B5EA7] text-[20px]">payments</span>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Total Facturado</span>
+                <span className="text-base lg:text-lg font-bold text-[#5C3C7B] leading-tight">
+                  $ {totalFacturado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+            {hasActiveHistorialFilters && (
+              <button
+                onClick={handleClearHistorialFilters}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">filter_alt_off</span>
+                <span>Limpiar filtros</span>
+              </button>
+            )}
+          </div>
         </div>
-        <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 lg:flex-1 lg:overflow-hidden">
-          <div className="w-full overflow-x-auto border border-slate-200 rounded-xl">
+
+        {/* Filter and Search Controls */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Search query */}
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
+                search
+              </span>
+              <input
+                type="text"
+                value={historialSearchQuery}
+                onChange={(e) => setHistorialSearchQuery(e.target.value)}
+                placeholder="Buscar por Nº, tutor, mascota, concepto..."
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 outline-none transition-all"
+              />
+              {historialSearchQuery && (
+                <button
+                  onClick={() => setHistorialSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              )}
+            </div>
+
+            {/* Document type filter */}
+            <div>
+              <select
+                value={historialDocType}
+                onChange={(e) => setHistorialDocType(e.target.value as any)}
+                aria-label="Filtrar por tipo de comprobante"
+                className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 outline-none transition-all cursor-pointer"
+              >
+                <option value="all">Todos los comprobantes</option>
+                <option value="factura-a">Factura A</option>
+                <option value="factura-b">Factura B</option>
+                <option value="factura-c">Factura C</option>
+                <option value="remito">Remito</option>
+              </select>
+            </div>
+
+            {/* Payment method filter */}
+            <div>
+              <select
+                value={historialPaymentMethod}
+                onChange={(e) => setHistorialPaymentMethod(e.target.value as any)}
+                aria-label="Filtrar por medio de pago"
+                className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 outline-none transition-all cursor-pointer"
+              >
+                <option value="all">Todos los medios de pago</option>
+                <option value="efectivo">Efectivo</option>
+                <option value="tarjeta">Tarjeta (Débito/Crédito)</option>
+                <option value="transferencia">Transferencia bancaria</option>
+                <option value="cuenta-corriente">Cuenta corriente</option>
+              </select>
+            </div>
+
+            {/* Date range preset */}
+            <div>
+              <select
+                value={historialDatePreset}
+                onChange={(e) => setHistorialDatePreset(e.target.value as any)}
+                aria-label="Filtrar por período de fecha"
+                className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 outline-none transition-all cursor-pointer"
+              >
+                <option value="all">Todos los períodos</option>
+                <option value="today">Hoy</option>
+                <option value="last_7_days">Últimos 7 días</option>
+                <option value="this_month">Este mes</option>
+                <option value="this_year">Este año</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Table */}
+        <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200">
+          <div className="w-full overflow-x-auto border border-slate-200 rounded-xl max-h-[580px] overflow-y-auto">
             <table className="w-full text-left font-body-md text-xs whitespace-nowrap border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 text-[11px]">
-                  <th className="p-sm px-md">Comprobante Nº</th>
-                  <th className="p-sm px-md">Fecha</th>
-                  <th className="p-sm px-md">Tutor / Paciente</th>
-                  <th className="p-sm px-md">Tipo doc</th>
-                  <th className="p-sm px-md">Medio pago</th>
-                  <th className="p-sm px-md text-right">Total</th>
-                  <th className="p-sm px-md text-center">Comprobante</th>
+              <thead className="sticky top-0 bg-slate-100 z-10">
+                <tr className="text-slate-700 font-semibold border-b border-slate-200 text-[11px]">
+                  <th
+                    onClick={() => handleToggleSort('receiptNumber')}
+                    className="p-sm px-md cursor-pointer hover:bg-slate-200/70 select-none transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Comprobante Nº</span>
+                      <span className="text-[12px] text-slate-400">
+                        {historialSortBy === 'receiptNumber' ? (historialSortDir === 'asc' ? '▲' : '▼') : '↕'}
+                      </span>
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleToggleSort('date')}
+                    className="p-sm px-md cursor-pointer hover:bg-slate-200/70 select-none transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Fecha</span>
+                      <span className="text-[12px] text-slate-400">
+                        {historialSortBy === 'date' ? (historialSortDir === 'asc' ? '▲' : '▼') : '↕'}
+                      </span>
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleToggleSort('ownerName')}
+                    className="p-sm px-md cursor-pointer hover:bg-slate-200/70 select-none transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Tutor / Paciente</span>
+                      <span className="text-[12px] text-slate-400">
+                        {historialSortBy === 'ownerName' ? (historialSortDir === 'asc' ? '▲' : '▼') : '↕'}
+                      </span>
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleToggleSort('documentType')}
+                    className="p-sm px-md cursor-pointer hover:bg-slate-200/70 select-none transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Tipo doc</span>
+                      <span className="text-[12px] text-slate-400">
+                        {historialSortBy === 'documentType' ? (historialSortDir === 'asc' ? '▲' : '▼') : '↕'}
+                      </span>
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleToggleSort('paymentMethod')}
+                    className="p-sm px-md cursor-pointer hover:bg-slate-200/70 select-none transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Medio pago</span>
+                      <span className="text-[12px] text-slate-400">
+                        {historialSortBy === 'paymentMethod' ? (historialSortDir === 'asc' ? '▲' : '▼') : '↕'}
+                      </span>
+                    </div>
+                  </th>
+                  <th className="p-sm px-md">
+                    <span>Conceptos / Ítems</span>
+                  </th>
+                  <th
+                    onClick={() => handleToggleSort('total')}
+                    className="p-sm px-md text-right cursor-pointer hover:bg-slate-200/70 select-none transition-colors"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Total</span>
+                      <span className="text-[12px] text-slate-400">
+                        {historialSortBy === 'total' ? (historialSortDir === 'asc' ? '▲' : '▼') : '↕'}
+                      </span>
+                    </div>
+                  </th>
+                  <th className="p-sm px-md text-center">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="text-slate-800">
-                {receipts.length === 0 ? (
+              <tbody className="text-slate-800 divide-y divide-slate-100">
+                {filteredAndSortedReceipts.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-xl text-center text-slate-500 text-xs font-medium">
-                      <div className="flex flex-col items-center justify-center gap-2 py-6">
-                        <span className="material-symbols-outlined text-slate-400 text-[32px]">receipt_long</span>
-                        <span className="font-semibold text-slate-700">No hay cobros registrados en el historial.</span>
-                        <span className="text-slate-500 text-[11px]">Los comprobantes emitidos desde "Nueva facturación" aparecerán listados aquí.</span>
+                    <td colSpan={8} className="p-xl text-center text-slate-500 text-xs font-medium">
+                      <div className="flex flex-col items-center justify-center gap-2 py-8">
+                        <span className="material-symbols-outlined text-slate-400 text-[36px]">receipt_long</span>
+                        <span className="font-semibold text-slate-700">No se encontraron cobros registrados con los criterios seleccionados.</span>
+                        {hasActiveHistorialFilters ? (
+                          <button
+                            onClick={handleClearHistorialFilters}
+                            className="mt-1 text-xs text-[#5C3C7B] hover:underline font-semibold cursor-pointer"
+                          >
+                            Limpiar filtros de búsqueda
+                          </button>
+                        ) : (
+                          <span className="text-slate-500 text-[11px]">Los comprobantes emitidos desde "Nueva facturación" aparecerán listados aquí.</span>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  receipts.map((rec) => (
-                    <tr key={rec.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                      <td className="p-sm px-md font-medium text-slate-900">{rec.receiptNumber}</td>
-                      <td className="p-sm px-md text-slate-700">{formatDate(rec.date)}</td>
-                      <td className="p-sm px-md font-medium text-slate-900">
+                  filteredAndSortedReceipts.map((rec) => (
+                    <tr
+                      key={rec.id}
+                      onClick={() => handleOpenReceiptDetail(rec)}
+                      className="hover:bg-purple-50/40 transition-colors cursor-pointer group"
+                    >
+                      <td className="p-sm px-md font-semibold text-slate-900">
                         <div className="flex flex-col">
-                          <span className="font-semibold text-slate-900">{rec.ownerName || 'Sin tutor'}</span>
-                          {rec.patientName && (
-                            <span className="text-slate-500 font-normal text-[11px]">
-                              Mascota: {rec.patientName}
+                          <span className="text-slate-900 font-semibold">{rec.receiptNumber}</span>
+                          {rec.afipCae && (
+                            <span className="text-[10px] text-emerald-700 font-medium flex items-center gap-0.5">
+                              <span className="material-symbols-outlined text-[11px]">verified</span>
+                              CAE: {rec.afipCae}
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="p-sm px-md font-semibold text-[#5C3C7B]">{rec.documentType}</td>
-                      <td className="p-sm px-md capitalize text-slate-800">{rec.paymentMethod}</td>
-                      <td className="p-sm px-md text-right font-semibold text-slate-900">$ {rec.totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
-                      <td className="p-sm px-md text-center">
-                        {rec.voucherUrl ? (
-                          <a
-                            href={rec.voucherUrl}
-                            download={rec.voucherName || `Factura_${rec.receiptNumber || rec.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => {
-                              if (rec.voucherUrl?.startsWith('data:')) {
-                                e.preventDefault();
-                                const link = document.createElement('a');
-                                link.href = rec.voucherUrl;
-                                link.download = rec.voucherName || `Factura_${rec.receiptNumber || rec.id}`;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }
-                            }}
-                            className="bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer text-decoration-none shadow-2xs"
-                            title={`Descargar comprobante adjunto: ${rec.voucherName || 'Factura'}`}
-                          >
-                            <span className="material-symbols-outlined text-[15px]">description</span>
-                            <span className="max-w-[140px] truncate">{rec.voucherName || 'Factura'}</span>
-                          </a>
+                      <td className="p-sm px-md text-slate-700">{formatDate(rec.date)}</td>
+                      <td className="p-sm px-md font-medium text-slate-900">
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-900">{rec.ownerName || rec.clientName || 'Sin tutor'}</span>
+                          {rec.patientName && (
+                            <span className="text-slate-500 font-normal text-[11px] flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[13px] text-slate-400">pets</span>
+                              {rec.patientName}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-sm px-md">
+                        <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-purple-50 text-[#5C3C7B] border border-purple-200 uppercase">
+                          {rec.documentType.replace('-', ' ')}
+                        </span>
+                      </td>
+                      <td className="p-sm px-md capitalize text-slate-800">
+                        <span className="inline-flex items-center gap-1 text-xs">
+                          {rec.paymentMethod === 'efectivo' && <span className="material-symbols-outlined text-[14px] text-emerald-600">payments</span>}
+                          {rec.paymentMethod === 'tarjeta' && <span className="material-symbols-outlined text-[14px] text-blue-600">credit_card</span>}
+                          {rec.paymentMethod === 'transferencia' && <span className="material-symbols-outlined text-[14px] text-indigo-600">account_balance</span>}
+                          {rec.paymentMethod === 'cuenta-corriente' && <span className="material-symbols-outlined text-[14px] text-amber-600">account_balance_wallet</span>}
+                          {rec.paymentMethod.replace('-', ' ')}
+                        </span>
+                      </td>
+                      <td className="p-sm px-md max-w-[220px] truncate text-slate-600" title={rec.items?.map(i => `${i.quantity}x ${i.description}`).join(', ')}>
+                        {rec.items && rec.items.length > 0 ? (
+                          <span className="text-[11px]">
+                            {rec.items[0].description}
+                            {rec.items.length > 1 && ` (+${rec.items.length - 1} más)`}
+                          </span>
                         ) : (
-                          <span className="text-slate-400 text-[11px] font-normal italic">Sin adjunto</span>
+                          <span className="italic text-slate-400 text-[11px]">-</span>
                         )}
+                      </td>
+                      <td className="p-sm px-md text-right font-bold text-slate-900">
+                        $ {(rec.totalAmount ?? rec.total ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="p-sm px-md text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleOpenReceiptDetail(rec)}
+                            className="p-1.5 text-slate-600 hover:text-[#5C3C7B] hover:bg-purple-100/60 rounded-lg transition-colors cursor-pointer"
+                            title="Ver detalle del comprobante"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">visibility</span>
+                          </button>
+                          {rec.voucherUrl ? (
+                            <a
+                              href={rec.voucherUrl}
+                              download={rec.voucherName || `Factura_${rec.receiptNumber || rec.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => {
+                                if (rec.voucherUrl?.startsWith('data:')) {
+                                  e.preventDefault();
+                                  const link = document.createElement('a');
+                                  link.href = rec.voucherUrl;
+                                  link.download = rec.voucherName || `Factura_${rec.receiptNumber || rec.id}`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }
+                              }}
+                              className="p-1.5 text-[#5C3C7B] hover:bg-purple-100/60 rounded-lg transition-colors inline-flex items-center cursor-pointer"
+                              title={`Descargar adjunto: ${rec.voucherName || 'Factura'}`}
+                            >
+                              <span className="material-symbols-outlined text-[18px]">download</span>
+                            </a>
+                          ) : (
+                            <span className="p-1.5 text-slate-300">
+                              <span className="material-symbols-outlined text-[18px]">attachment</span>
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -298,6 +596,15 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
             </table>
           </div>
         </div>
+
+        {/* Modal Detail */}
+        {selectedMovementForDetail && (
+          <ComprobanteDetailModal
+            isOpen={!!selectedMovementForDetail}
+            movement={selectedMovementForDetail}
+            onClose={() => setSelectedMovementForDetail(null)}
+          />
+        )}
       </div>
     );
   }
@@ -540,8 +847,9 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-xs">
-                  <label className="font-label-md text-slate-700 text-[11px] font-medium">
-                    Número de factura
+                  <label className="font-label-md text-slate-700 text-[11px] font-semibold flex items-center justify-between">
+                    <span>Número de factura</span>
+                    <span className="text-red-500 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -549,7 +857,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                     pattern="[0-9]*"
                     value={customInvoiceNumber}
                     onChange={(e) => setCustomInvoiceNumber(e.target.value)}
-                    placeholder=""
+                    placeholder="Ej. 00004521"
                     className="w-full bg-white border border-slate-300 rounded-xl py-2 px-md text-slate-900 font-semibold text-base sm:text-xs outline-none focus:ring-2 focus:ring-[#9A7DB8]"
                   />
                 </div>
@@ -625,9 +933,12 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
 
               {/* Insertar Comprobante (La Factura) */}
               <div className="pt-xs border-t border-slate-200 flex flex-col gap-xs">
-                <label className="font-label-md text-slate-700 text-[11px] font-semibold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px] text-[#9A7DB8]">attach_file</span>
-                  Comprobante / Factura adjunta
+                <label className="font-label-md text-slate-700 text-[11px] font-semibold flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px] text-[#9A7DB8]">attach_file</span>
+                    <span>Comprobante / Factura adjunta</span>
+                  </div>
+                  <span className="text-red-500 font-bold">* Obligatorio</span>
                 </label>
 
                 {voucherName ? (

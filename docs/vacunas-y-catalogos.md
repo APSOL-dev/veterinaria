@@ -58,8 +58,15 @@ Hola (Nombre tutor), te recordamos que la vacuna (Nombre vacuna) para (Nombre pa
   - `ANTICONCEPTIVA` (150 días / 5 meses)
   - `ANTITETÁNICA` (365 días / 12 meses)
 
+- **Buscador y Filtros en Tiempo Real en Historial y Catálogo:**
+  - **Buscador integrado:** Permite buscar vacunas por nombre, profesional y lote tanto en el historial del paciente como en el catálogo general.
+  - **Pills de Filtrado por Estado:** Permite filtrar el historial entre: **Todas**, **Al día**, **Vencidas** y **Pendientes**, visualizando contadores dinámicos actualizados.
+  - **Ordenamiento Multicolumna:** Permite ordenar la tabla por Vacuna, Fecha de Aplicación, Profesional, Vencimiento y Estado con flechas indicadoras (`arrow_upward` / `arrow_downward`).
+  - **Scroll Fluido e Integral:** Se eliminó la restricción `overflow-hidden` rígida para garantizar un desplazamiento natural del viewport en pantallas reducidas y móviles.
+
 **Casos borde conocidos:**
 - **Paciente sin vacunas previas:** No muestra recordatorios ficticios; la tarjeta de próxima aplicación ofrece agendar control preventivo general.
+- **Vacunas requeridas y dosis unificadas:** Si una vacuna requerida aún no fue aplicada, figura listada como "Pendiente" con fecha límite calculada.
 
 **Garantías de persistencia — Error 7 (corregido 01/10/2026):**
 - `handleRegisterDosis` en `App.tsx` es ahora `async`. Aguarda el resultado de `insertVaccineDosisToSupabase` antes de actualizar el estado local.

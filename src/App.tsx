@@ -257,6 +257,29 @@ export const App: React.FC = () => {
   // Los comprobantes guardan solo patient_id: se completa el nombre de la mascota y del tutor al mostrarlos
   const receiptsWithPatients = useMemo(() => enrichReceiptsWithPatients(receipts, patients), [receipts, patients]);
 
+  const [acknowledgedStockMap, setAcknowledgedStockMap] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('vetsoft_acknowledged_low_stock');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const newLowStockAlerts = useMemo(() => {
+    return getNewUnacknowledgedLowStockAlerts(products, acknowledgedStockMap);
+  }, [products, acknowledgedStockMap]);
+
+  const hasShownStartupStockAlertRef = useRef(false);
+
+  useEffect(() => {
+    if (!userSession) return;
+    if (!hasShownStartupStockAlertRef.current && newLowStockAlerts.length > 0) {
+      hasShownStartupStockAlertRef.current = true;
+      setShowLowStockModal(true);
+    }
+  }, [userSession, newLowStockAlerts.length]);
+
   const handleLoginSuccess = useCallback((session: UserSession) => {
     saveUserSession(session);
     setUserSession(session);
@@ -265,28 +288,20 @@ export const App: React.FC = () => {
     setActiveModuleState(nav.module);
     setActiveSubmodule(nav.submodule);
 
-    let ackMap: Record<string, number> = {};
-    try {
-      const saved = localStorage.getItem('vetsoft_acknowledged_low_stock');
-      if (saved) ackMap = JSON.parse(saved);
-    } catch {}
-
-    const newAlerts = getNewUnacknowledgedLowStockAlerts(products, ackMap);
+    const newAlerts = getNewUnacknowledgedLowStockAlerts(products, acknowledgedStockMap);
     if (newAlerts.length > 0) {
       setShowLowStockModal(true);
     }
-  }, [products]);
+  }, [products, acknowledgedStockMap]);
 
   const handleDismissLowStockModal = useCallback(() => {
     setShowLowStockModal(false);
     try {
-      let ackMap: Record<string, number> = {};
-      const saved = localStorage.getItem('vetsoft_acknowledged_low_stock');
-      if (saved) ackMap = JSON.parse(saved);
-      const updated = updateAcknowledgedLowStockAlerts(products, ackMap);
+      const updated = updateAcknowledgedLowStockAlerts(products, acknowledgedStockMap);
+      setAcknowledgedStockMap(updated);
       localStorage.setItem('vetsoft_acknowledged_low_stock', JSON.stringify(updated));
     } catch {}
-  }, [products]);
+  }, [products, acknowledgedStockMap]);
 
   const handleGoToInventoryFromAlert = () => {
     handleDismissLowStockModal();
@@ -1237,8 +1252,14 @@ export const App: React.FC = () => {
         isSidebarCollapsed={isSidebarCollapsed}
         isMobile={isMobile}
         onOpenMobileNav={() => setIsMobileNavOpen(true)}
-        lowStockCount={getLowStockAlerts(products).length}
-        onToggleAlerts={() => setShowLowStockModal(prev => !prev)}
+        lowStockCount={newLowStockAlerts.length}
+        onToggleAlerts={() => {
+          if (showLowStockModal) {
+            handleDismissLowStockModal();
+          } else {
+            setShowLowStockModal(true);
+          }
+        }}
       />
 
       {/* Fixed Left Sidebar with Main Modules (off-canvas drawer on mobile) */}
@@ -1453,6 +1474,7 @@ export const App: React.FC = () => {
               <StockControlView
                 products={products}
                 servicesCatalog={servicesCatalog}
+                receipts={receiptsWithPatients}
                 activeSubmodule={activeSubmodule === 'servicios-catalogo' ? 'servicios-catalogo' : 'productos-fisicos'}
                 onAddStockEntry={handleAddStockEntry}
                 onAddProduct={handleAddProduct}
@@ -1504,7 +1526,7 @@ export const App: React.FC = () => {
       {/* Low Stock Automatic Alert Modal on Entry */}
       {showLowStockModal && (
         <LowStockAlertModal
-          lowStockProducts={getLowStockAlerts(products)}
+          lowStockProducts={newLowStockAlerts.length > 0 ? newLowStockAlerts : getLowStockAlerts(products)}
           onClose={handleDismissLowStockModal}
           onGoToInventory={handleGoToInventoryFromAlert}
         />

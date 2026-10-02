@@ -78,6 +78,8 @@ export interface TutorAccountMovement {
   debe: number;
   haber: number;
   saldo: number;
+  voucherName?: string;
+  voucherUrl?: string;
 }
 
 export interface VaccineCatalogItem {
@@ -173,6 +175,8 @@ export interface Product {
   barcode?: string;
   priceLastUpdated?: string; // YYYY-MM-DD
   updateFrequencyDays?: number; // Frecuencia de actualización recomendada en días
+  isActive?: boolean;
+  lastSoldAt?: string;
 }
 
 export interface ServiceCatalogItem {

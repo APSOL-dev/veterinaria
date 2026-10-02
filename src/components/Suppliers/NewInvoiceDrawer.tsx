@@ -117,15 +117,14 @@ export const NewInvoiceDrawer: React.FC<NewInvoiceDrawerProps> = ({
   };
 
   const handleAddBillItem = () => {
-    const defaultProduct = availableProducts.length > 0 ? availableProducts[0] : null;
     const newItem: SupplierBillItem = {
       id: 'item-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
-      productId: defaultProduct?.id || '',
-      productName: defaultProduct?.name || '',
-      category: defaultProduct?.category,
+      productId: '',
+      productName: '',
+      category: undefined,
       quantity: 1,
-      unitCost: defaultProduct?.price || 0,
-      subtotal: defaultProduct?.price || 0,
+      unitCost: 0,
+      subtotal: 0,
       updateCatalogPrice: false
     };
     const updated = [...billItems, newItem];

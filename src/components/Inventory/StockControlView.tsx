@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Product, ProductCategory, ServiceCatalogItem, SupplierBill } from '../../domain/types';
+import { Product, ProductCategory, ServiceCatalogItem, SupplierBill, BillReceipt } from '../../domain/types';
+import { formatDate } from '../../utils/dateUtils';
 
 import { updateServicePrice, toggleServiceStatus, getPriceUpdateStatusInfo, applyBulkInflationToServices } from '../../domain/services/serviceCatalogService';
 import { applyBulkInflationToProducts } from '../../domain/services/inventoryService';
@@ -11,6 +12,7 @@ import { Pagination } from '../Common/Pagination';
 interface StockControlViewProps {
   products: Product[];
   servicesCatalog: ServiceCatalogItem[];
+  receipts?: BillReceipt[];
   activeSubmodule: 'productos-fisicos' | 'servicios-catalogo';
   onAddStockEntry: (productId: string, quantity: number, provider?: string) => void;
   onAddProduct: (product: Omit<Product, 'id'>) => void;
@@ -28,6 +30,7 @@ interface StockControlViewProps {
 export const StockControlView: React.FC<StockControlViewProps> = ({
   products,
   servicesCatalog,
+  receipts = [],
   activeSubmodule,
   onAddStockEntry,
   onAddProduct,
@@ -42,6 +45,18 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   onBulkUpdateProducts
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'ok' | 'low_stock' | 'out_of_stock' | 'disabled'>('todos');
+  const [showDisabledProducts, setShowDisabledProducts] = useState(false);
+  const [showDisabledServices, setShowDisabledServices] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+
+  // Sorting states
+  const [productSortField, setProductSortField] = useState<'sku' | 'name' | 'category' | 'currentStock' | 'minStock' | 'price' | 'lastUpdated' | 'lastSale' | 'status'>('name');
+  const [productSortDirection, setProductSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const [serviceSortField, setServiceSortField] = useState<'name' | 'category' | 'price' | 'lastUpdated' | 'lastSale' | 'status' | 'updateFrequencyDays'>('name');
+  const [serviceSortDirection, setServiceSortDirection] = useState<'asc' | 'desc'>('asc');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const [productPage, setProductPage] = useState<number>(1);
@@ -216,34 +231,171 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
 
   const categories = ['Todos', 'Medicamentos', 'Alimentación', 'Accesorios', 'Insumos Clínicos'];
 
-  const filteredProducts = products.filter(p => {
-    const matchesCategory = selectedCategory === 'Todos' || p.category === selectedCategory;
-    const matchesQuery = 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.barcode && p.barcode.includes(searchQuery));
-    return matchesCategory && matchesQuery;
-  });
+  const getLastSaleDate = useMemo(() => {
+    return (id: string, name: string): string | null => {
+      if (!receipts || receipts.length === 0) return null;
+      let lastDate: string | null = null;
+      const lowerName = name.toLowerCase();
+
+      for (const rec of receipts) {
+        if (!rec.items) continue;
+        const match = rec.items.some(it =>
+          (it.referenceId && it.referenceId === id) ||
+          (it.description && it.description.toLowerCase() === lowerName)
+        );
+        if (match && rec.date) {
+          if (!lastDate || new Date(rec.date).getTime() > new Date(lastDate).getTime()) {
+            lastDate = rec.date;
+          }
+        }
+      }
+      return lastDate;
+    };
+  }, [receipts]);
+
+  const disabledProductsCount = useMemo(() => {
+    return products.filter(p => p.isActive === false).length;
+  }, [products]);
+
+  const disabledServicesCount = useMemo(() => {
+    return servicesCatalog.filter(s => s.isActive === false).length;
+  }, [servicesCatalog]);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const isProductDisabled = p.isActive === false;
+      if (statusFilter === 'disabled') {
+        if (!isProductDisabled) return false;
+      } else if (!showDisabledProducts && isProductDisabled) {
+        return false;
+      }
+
+      if (statusFilter === 'ok') {
+        if (p.currentStock <= p.minStock || isProductDisabled) return false;
+      } else if (statusFilter === 'low_stock') {
+        if (p.currentStock <= 0 || p.currentStock > p.minStock || isProductDisabled) return false;
+      } else if (statusFilter === 'out_of_stock') {
+        if (p.currentStock !== 0 || isProductDisabled) return false;
+      }
+
+      const matchesCategory = selectedCategory === 'Todos' || p.category === selectedCategory;
+      const q = searchQuery.toLowerCase().trim();
+      const matchesQuery = !q ||
+        p.name.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
+        (p.barcode && p.barcode.includes(q));
+
+      return matchesCategory && matchesQuery;
+    });
+  }, [products, selectedCategory, searchQuery, statusFilter, showDisabledProducts]);
+
+  const sortedProducts = useMemo(() => {
+    const list = [...filteredProducts];
+    list.sort((a, b) => {
+      let valA: any = '';
+      let valB: any = '';
+
+      if (productSortField === 'sku') {
+        valA = (a.sku || '').toLowerCase();
+        valB = (b.sku || '').toLowerCase();
+      } else if (productSortField === 'name') {
+        valA = a.name.toLowerCase();
+        valB = b.name.toLowerCase();
+      } else if (productSortField === 'category') {
+        valA = a.category.toLowerCase();
+        valB = b.category.toLowerCase();
+      } else if (productSortField === 'currentStock') {
+        valA = a.currentStock;
+        valB = b.currentStock;
+      } else if (productSortField === 'minStock') {
+        valA = a.minStock;
+        valB = b.minStock;
+      } else if (productSortField === 'price') {
+        valA = a.price;
+        valB = b.price;
+      } else if (productSortField === 'lastUpdated') {
+        valA = a.priceLastUpdated || '';
+        valB = b.priceLastUpdated || '';
+      } else if (productSortField === 'lastSale') {
+        valA = getLastSaleDate(a.id, a.name) || '';
+        valB = getLastSaleDate(b.id, b.name) || '';
+      } else if (productSortField === 'status') {
+        valA = a.isActive === false ? 'deshabilitado' : a.currentStock === 0 ? 'sin_stock' : a.currentStock <= a.minStock ? 'stock_bajo' : 'ok';
+        valB = b.isActive === false ? 'deshabilitado' : b.currentStock === 0 ? 'sin_stock' : b.currentStock <= b.minStock ? 'stock_bajo' : 'ok';
+      }
+
+      if (valA < valB) return productSortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return productSortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return list;
+  }, [filteredProducts, productSortField, productSortDirection, getLastSaleDate]);
 
   const paginatedProducts = useMemo(() => {
     const start = (productPage - 1) * productPageSize;
-    return filteredProducts.slice(start, start + productPageSize);
-  }, [filteredProducts, productPage, productPageSize]);
+    return sortedProducts.slice(start, start + productPageSize);
+  }, [sortedProducts, productPage, productPageSize]);
 
   const filteredServices = useMemo(() => {
-    if (!serviceSearchQuery.trim()) return servicesCatalog;
-    const q = serviceSearchQuery.toLowerCase();
-    return servicesCatalog.filter(s =>
-      s.name.toLowerCase().includes(q) ||
-      (s.category || '').toLowerCase().includes(q) ||
-      (s.description || '').toLowerCase().includes(q)
-    );
-  }, [servicesCatalog, serviceSearchQuery]);
+    return servicesCatalog.filter(s => {
+      const isServiceDisabled = s.isActive === false;
+      if (statusFilter === 'disabled') {
+        if (!isServiceDisabled) return false;
+      } else if (!showDisabledServices && isServiceDisabled) {
+        return false;
+      }
+
+      const matchesCategory = selectedCategory === 'Todos' || s.category === selectedCategory;
+      const q = serviceSearchQuery.toLowerCase().trim();
+      const matchesQuery = !q ||
+        s.name.toLowerCase().includes(q) ||
+        (s.category || '').toLowerCase().includes(q) ||
+        (s.description || '').toLowerCase().includes(q);
+
+      return matchesCategory && matchesQuery;
+    });
+  }, [servicesCatalog, selectedCategory, serviceSearchQuery, statusFilter, showDisabledServices]);
+
+  const sortedServices = useMemo(() => {
+    const list = [...filteredServices];
+    list.sort((a, b) => {
+      let valA: any = '';
+      let valB: any = '';
+
+      if (serviceSortField === 'name') {
+        valA = a.name.toLowerCase();
+        valB = b.name.toLowerCase();
+      } else if (serviceSortField === 'category') {
+        valA = (a.category || '').toLowerCase();
+        valB = (b.category || '').toLowerCase();
+      } else if (serviceSortField === 'price') {
+        valA = a.price;
+        valB = b.price;
+      } else if (serviceSortField === 'lastUpdated') {
+        valA = a.priceLastUpdated || '';
+        valB = b.priceLastUpdated || '';
+      } else if (serviceSortField === 'lastSale') {
+        valA = getLastSaleDate(a.id, a.name) || '';
+        valB = getLastSaleDate(b.id, b.name) || '';
+      } else if (serviceSortField === 'updateFrequencyDays') {
+        valA = a.updateFrequencyDays || 30;
+        valB = b.updateFrequencyDays || 30;
+      } else if (serviceSortField === 'status') {
+        valA = a.isActive === false ? 'deshabilitado' : 'activo';
+        valB = b.isActive === false ? 'deshabilitado' : 'activo';
+      }
+
+      if (valA < valB) return serviceSortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return serviceSortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return list;
+  }, [filteredServices, serviceSortField, serviceSortDirection, getLastSaleDate]);
 
   const paginatedServices = useMemo(() => {
     const start = (servicePage - 1) * servicePageSize;
-    return filteredServices.slice(start, start + servicePageSize);
-  }, [filteredServices, servicePage, servicePageSize]);
+    return sortedServices.slice(start, start + servicePageSize);
+  }, [sortedServices, servicePage, servicePageSize]);
 
   const isAllServicesOnPageSelected = useMemo(() => {
     if (paginatedServices.length === 0) return false;
@@ -483,9 +635,18 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                     setSearchQuery(e.target.value);
                     setProductPage(1);
                   }}
-                  placeholder="Buscar por nombre..."
+                  placeholder="Buscar por nombre, SKU o código..."
                   className="bg-transparent text-xs text-on-surface outline-none w-full font-medium"
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => { setSearchQuery(''); setProductPage(1); }}
+                    className="text-slate-400 hover:text-slate-600 mr-1"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-xs w-full sm:w-auto">
@@ -508,6 +669,81 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Status filters & View Disabled Toggle Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-sm border-t border-slate-200/80 pt-2">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter('todos'); setProductPage(1); }}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    statusFilter === 'todos' ? 'bg-[#7B5EA7] text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Todos ({products.filter(p => showDisabledProducts || p.isActive !== false).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter('ok'); setProductPage(1); }}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    statusFilter === 'ok' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Normal (OK)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter('low_stock'); setProductPage(1); }}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    statusFilter === 'low_stock' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  Stock bajo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter('out_of_stock'); setProductPage(1); }}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    statusFilter === 'out_of_stock' ? 'bg-red-600 text-white shadow-xs' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                  Sin stock
+                </button>
+                {disabledProductsCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setStatusFilter('disabled'); setProductPage(1); }}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                      statusFilter === 'disabled' ? 'bg-slate-700 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-300'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">visibility_off</span>
+                    Deshabilitados ({disabledProductsCount})
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDisabledProducts(prev => !prev)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                    showDisabledProducts
+                      ? 'bg-purple-100 text-[#5C3C7B] border-purple-300 shadow-2xs font-bold'
+                      : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                  }`}
+                  title="Mostrar u ocultar productos deshabilitados"
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {showDisabledProducts ? 'visibility' : 'visibility_off'}
+                  </span>
+                  <span>{showDisabledProducts ? 'Ocultar deshabilitados' : `Ver deshabilitados (${disabledProductsCount})`}</span>
+                </button>
               </div>
             </div>
 
@@ -563,12 +799,14 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   p.updateFrequencyDays || 30
                 );
                 const isSelected = selectedProductIds.includes(p.id);
+                const isProductDisabled = p.isActive === false;
+                const lastSaleDate = getLastSaleDate(p.id, p.name);
 
                 return (
                   <div
                     key={p.id}
                     className={`p-4 rounded-2xl border transition-all shadow-sm flex flex-col gap-3 ${
-                      isSelected ? 'bg-purple-50/80 border-[#9A7DB8] ring-1 ring-[#9A7DB8]/30' : 'bg-white border-slate-300 hover:border-purple-300'
+                      isSelected ? 'bg-purple-50/80 border-[#9A7DB8] ring-1 ring-[#9A7DB8]/30' : isProductDisabled ? 'bg-slate-50/80 border-slate-300 opacity-75' : 'bg-white border-slate-300 hover:border-purple-300'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -596,7 +834,11 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                             <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border border-slate-200">
                               {p.category}
                             </span>
-                            {priceUpdateInfo.isExpired ? (
+                            {isProductDisabled ? (
+                              <span className="px-2 py-0.5 bg-slate-200 text-slate-700 border border-slate-300 rounded-full text-[10px] font-semibold">
+                                Deshabilitado
+                              </span>
+                            ) : priceUpdateInfo.isExpired ? (
                               <span className="px-2 py-0.5 bg-[#FDEDEC] text-[#C0392B] border border-red-200 rounded-full text-[10px] font-semibold">
                                 Precio vencido
                               </span>
@@ -627,22 +869,31 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                         <span className="text-slate-400 text-[11px]">(Mín: {p.minStock})</span>
                       </div>
 
-                      <div>
-                        {!isLowStock && !isOutOfStock && (
-                          <span className="inline-flex px-2.5 py-1 bg-[#E8F5E9] text-[#1B5E20] border border-emerald-200 rounded-full text-[11px] font-bold">
-                            OK
+                      <div className="flex items-center gap-2">
+                        {lastSaleDate && (
+                          <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">
+                            Últ. venta: {formatDate(lastSaleDate)}
                           </span>
                         )}
-                        {isLowStock && (
-                          <span className="inline-flex px-2.5 py-1 bg-[#FFF3E0] text-[#E65100] border border-amber-200 rounded-full text-[11px] font-bold">
-                            Stock bajo
-                          </span>
-                        )}
-                        {isOutOfStock && (
-                          <span className="inline-flex px-2.5 py-1 bg-red-100 text-red-700 border border-red-200 rounded-full text-[11px] font-bold">
-                            Sin stock
-                          </span>
-                        )}
+                        <div>
+                          {isProductDisabled ? (
+                            <span className="inline-flex px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-300 rounded-full text-[11px] font-bold">
+                              Inactivo
+                            </span>
+                          ) : !isLowStock && !isOutOfStock ? (
+                            <span className="inline-flex px-2.5 py-1 bg-[#E8F5E9] text-[#1B5E20] border border-emerald-200 rounded-full text-[11px] font-bold">
+                              OK
+                            </span>
+                          ) : isLowStock ? (
+                            <span className="inline-flex px-2.5 py-1 bg-[#FFF3E0] text-[#E65100] border border-amber-200 rounded-full text-[11px] font-bold">
+                              Stock bajo
+                            </span>
+                          ) : (
+                            <span className="inline-flex px-2.5 py-1 bg-red-100 text-red-700 border border-red-200 rounded-full text-[11px] font-bold">
+                              Sin stock
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -664,30 +915,38 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                         <span className="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span>
                         <span>Editar</span>
                       </button>
-                      {onDeleteProduct && (
-                        <button
-                          type="button"
-                          onClick={() => setDeleteConfirm({ isOpen: true, type: 'product', id: p.id, name: p.name })}
-                          className="min-h-[44px] min-w-[44px] bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer ml-1 shadow-2xs"
-                          title="Eliminar producto"
-                          aria-label={`Eliminar ${p.name}`}
-                        >
-                          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onUpdateProduct) {
+                            onUpdateProduct(p.id, { isActive: isProductDisabled ? true : false });
+                          }
+                        }}
+                        className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs ${
+                          isProductDisabled
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100'
+                            : 'bg-amber-50 text-amber-700 border border-amber-300 hover:bg-amber-100'
+                        }`}
+                        title={isProductDisabled ? 'Habilitar producto' : 'Deshabilitar producto'}
+                      >
+                        <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
+                          {isProductDisabled ? 'check_circle' : 'visibility_off'}
+                        </span>
+                        <span>{isProductDisabled ? 'Habilitar' : 'Deshabilitar'}</span>
+                      </button>
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Desktop Products Table */}
-            <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-xl">
+            {/* Desktop Products Table with Internal Scroll to prevent page overflow */}
+            <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[580px] border border-slate-200 rounded-xl relative">
               <table className="w-full text-left border-collapse font-body-md text-xs">
                 <thead>
-                  <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
+                  <tr className="sticky top-0 bg-slate-100 text-slate-700 font-label-sm text-[11px] font-semibold border-b border-slate-200 z-10 shadow-2xs">
                     {isProductSelectionActive && (
-                      <th className="p-sm px-2 text-center w-10 rounded-tl-lg">
+                      <th className="p-sm px-2 text-center w-10">
                         <input
                           type="checkbox"
                           checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedProductIds.includes(p.id))}
@@ -706,130 +965,291 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                         />
                       </th>
                     )}
-                    <th className="p-sm px-md">Producto</th>
-                    <th className="p-sm px-md">Categoría</th>
-                    <th className="p-sm px-md text-right">Stock actual</th>
+                    <th
+                      className="p-sm px-md cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (productSortField === 'name') {
+                          setProductSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setProductSortField('name');
+                          setProductSortDirection('asc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Producto</span>
+                        {productSortField === 'name' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {productSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="p-sm px-md cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (productSortField === 'category') {
+                          setProductSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setProductSortField('category');
+                          setProductSortDirection('asc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Categoría</span>
+                        {productSortField === 'category' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {productSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="p-sm px-md text-right cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (productSortField === 'currentStock') {
+                          setProductSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setProductSortField('currentStock');
+                          setProductSortDirection('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Stock actual</span>
+                        {productSortField === 'currentStock' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {productSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
                     <th className="p-sm px-md text-right">Min.</th>
-                    <th className="p-sm px-md text-right">Precio</th>
-                    <th className="p-sm px-md text-center">Última actualización</th>
+                    <th
+                      className="p-sm px-md text-right cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (productSortField === 'price') {
+                          setProductSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setProductSortField('price');
+                          setProductSortDirection('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Precio</span>
+                        {productSortField === 'price' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {productSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="p-sm px-md text-center cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (productSortField === 'lastUpdated') {
+                          setProductSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setProductSortField('lastUpdated');
+                          setProductSortDirection('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Última actualización</span>
+                        {productSortField === 'lastUpdated' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {productSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
                     <th className="p-sm px-md text-center">Frecuencia / Vencimiento</th>
-                    <th className="p-sm px-md text-center">Estado</th>
-                    <th className="p-sm px-md rounded-tr-lg text-right">Acciones</th>
+                    <th
+                      className="p-sm px-md text-center cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (productSortField === 'lastSale') {
+                          setProductSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setProductSortField('lastSale');
+                          setProductSortDirection('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Última venta</span>
+                        {productSortField === 'lastSale' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {productSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="p-sm px-md text-center cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (productSortField === 'status') {
+                          setProductSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setProductSortField('status');
+                          setProductSortDirection('asc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Estado</span>
+                        {productSortField === 'status' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {productSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th className="p-sm px-md text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="text-on-surface">
-                  {paginatedProducts.map((p) => {
+                  {paginatedProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="py-8 text-center text-slate-500 text-xs font-medium">
+                        No se encontraron productos con los filtros aplicados.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedProducts.map((p) => {
+                      const isOutOfStock = p.currentStock === 0;
+                      const isLowStock = p.currentStock > 0 && p.currentStock <= p.minStock;
+                      const isProductDisabled = p.isActive === false;
+                      const lastSaleDate = getLastSaleDate(p.id, p.name);
+                      const priceUpdateInfo = getPriceUpdateStatusInfo(
+                        p.priceLastUpdated || new Date().toISOString().substring(0, 10),
+                        p.updateFrequencyDays || 30
+                      );
 
-                    const isOutOfStock = p.currentStock === 0;
-                    const isLowStock = p.currentStock > 0 && p.currentStock <= p.minStock;
-                    const priceUpdateInfo = getPriceUpdateStatusInfo(
-                      p.priceLastUpdated || new Date().toISOString().substring(0, 10),
-                      p.updateFrequencyDays || 30
-                    );
-
-                    return (
-                      <tr key={p.id} className={`hover:bg-surface-container transition-colors group border-b border-surface-container-low ${
-                        selectedProductIds.includes(p.id) ? 'bg-purple-50/60' : 'bg-surface-container-lowest'
-                      }`}>
-                        {isProductSelectionActive && (
-                          <td className="p-sm px-2 text-center">
-                            <input
-                              type="checkbox"
-                              checked={selectedProductIds.includes(p.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedProductIds(prev => [...prev, p.id]);
-                                } else {
-                                  setSelectedProductIds(prev => prev.filter(id => id !== p.id));
-                                }
-                              }}
-                              className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-[#5C3C7B]"
-                              aria-label={`Seleccionar ${p.name}`}
-                            />
-                          </td>
-                        )}
-                        <td className="p-sm px-md font-semibold text-primary">
-                          {p.name}
-                        </td>
-                        <td className="p-sm px-md">
-                          <span className="inline-flex items-center gap-1 bg-surface-container-high text-on-surface px-2 py-0.5 rounded text-[11px] font-medium">
-                            {p.category}
-                          </span>
-                        </td>
-                        <td className={`p-sm px-md text-right font-semibold ${
-                          isOutOfStock ? 'text-error' : isLowStock ? 'text-[#E65100]' : 'text-on-surface'
+                      return (
+                        <tr key={p.id} className={`hover:bg-slate-50 transition-colors group border-b border-slate-200 ${
+                          selectedProductIds.includes(p.id) ? 'bg-purple-50/60' : isProductDisabled ? 'bg-slate-50/60 text-slate-400' : 'bg-white'
                         }`}>
-                          {p.currentStock}
-                        </td>
-                        <td className="p-sm px-md text-right text-on-surface-variant">{p.minStock}</td>
-                        <td className="p-sm px-md text-right font-medium">${p.price.toLocaleString('es-AR')}</td>
-                        <td className="p-sm px-md text-center text-on-surface-variant">{p.priceLastUpdated || 'Sin registro'}</td>
-                        <td className="p-sm px-md text-center">
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className="text-[10px] text-slate-500 font-medium">
-                              Cada {p.updateFrequencyDays || 30} días
+                          {isProductSelectionActive && (
+                            <td className="p-sm px-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedProductIds.includes(p.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedProductIds(prev => [...prev, p.id]);
+                                  } else {
+                                    setSelectedProductIds(prev => prev.filter(id => id !== p.id));
+                                  }
+                                }}
+                                className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-[#5C3C7B]"
+                                aria-label={`Seleccionar ${p.name}`}
+                              />
+                            </td>
+                          )}
+                          <td className={`p-sm px-md font-semibold ${isProductDisabled ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
+                            {p.name}
+                          </td>
+                          <td className="p-sm px-md">
+                            <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] font-medium border border-slate-200">
+                              {p.category}
                             </span>
-                            {priceUpdateInfo.isExpired ? (
-                              <span className="inline-flex px-2 py-0.5 bg-[#FDEDEC] text-[#C0392B] border border-red-200 rounded-full text-[10px] font-semibold" title={`Vencido (hoy > última actualización + ${p.updateFrequencyDays || 30} días)`}>
-                                Vencido ({priceUpdateInfo.daysDifference}d)
+                          </td>
+                          <td className={`p-sm px-md text-right font-semibold ${
+                            isOutOfStock ? 'text-red-600' : isLowStock ? 'text-[#E65100]' : 'text-slate-900'
+                          }`}>
+                            {p.currentStock}
+                          </td>
+                          <td className="p-sm px-md text-right text-slate-500">{p.minStock}</td>
+                          <td className="p-sm px-md text-right font-semibold text-slate-900">${p.price.toLocaleString('es-AR')}</td>
+                          <td className="p-sm px-md text-center text-slate-600">{p.priceLastUpdated || 'Sin registro'}</td>
+                          <td className="p-sm px-md text-center">
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-[10px] text-slate-500 font-medium">
+                                Cada {p.updateFrequencyDays || 30} días
+                              </span>
+                              {priceUpdateInfo.isExpired ? (
+                                <span className="inline-flex px-2 py-0.5 bg-[#FDEDEC] text-[#C0392B] border border-red-200 rounded-full text-[10px] font-semibold" title={`Vencido (hoy > última actualización + ${p.updateFrequencyDays || 30} días)`}>
+                                  Vencido ({priceUpdateInfo.daysDifference}d)
+                                </span>
+                              ) : (
+                                <span className="inline-flex px-2 py-0.5 bg-[#E8F5E9] text-[#27AE60] border border-green-200 rounded-full text-[10px] font-semibold" title="Precio actualizado dentro de la frecuencia recomendada">
+                                  Vigente
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-sm px-md text-center text-slate-700 font-medium">
+                            {lastSaleDate ? (
+                              <span className="text-slate-900 font-semibold">{formatDate(lastSaleDate)}</span>
+                            ) : (
+                              <span className="text-slate-400 italic text-[11px]">Sin ventas</span>
+                            )}
+                          </td>
+                          <td className="p-sm px-md text-center">
+                            {isProductDisabled ? (
+                              <span className="inline-flex px-2.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-300 rounded-full text-[10px] font-semibold">
+                                Deshabilitado
+                              </span>
+                            ) : !isLowStock && !isOutOfStock ? (
+                              <span className="inline-flex px-2.5 py-0.5 bg-[#E8F5E9] text-[#1B5E20] border border-emerald-200 rounded-full text-[10px] font-semibold">
+                                OK
+                              </span>
+                            ) : isLowStock ? (
+                              <span className="inline-flex px-2.5 py-0.5 bg-[#FFF3E0] text-[#E65100] border border-amber-200 rounded-full text-[10px] font-semibold">
+                                Stock bajo
                               </span>
                             ) : (
-                              <span className="inline-flex px-2 py-0.5 bg-[#E8F5E9] text-[#27AE60] border border-green-200 rounded-full text-[10px] font-semibold" title="Precio actualizado dentro de la frecuencia recomendada">
-                                Vigente
+                              <span className="inline-flex px-2.5 py-0.5 bg-red-100 text-red-700 border border-red-200 rounded-full text-[10px] font-semibold">
+                                Sin stock
                               </span>
                             )}
-                          </div>
-                        </td>
-                        <td className="p-sm px-md text-center">
-                          {!isLowStock && !isOutOfStock && (
-                            <span className="inline-flex px-2.5 py-0.5 bg-[#E8F5E9] text-[#1B5E20] rounded-full text-[10px] font-semibold">
-                              OK
-                            </span>
-                          )}
-                          {isLowStock && (
-                            <span className="inline-flex px-2.5 py-0.5 bg-[#FFF3E0] text-[#E65100] rounded-full text-[10px] font-semibold">
-                              Stock bajo
-                            </span>
-                          )}
-                          {isOutOfStock && (
-                            <span className="inline-flex px-2.5 py-0.5 bg-error-container text-on-error-container rounded-full text-[10px] font-semibold">
-                              Sin stock
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-sm px-md text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => { setSelectedProduct(p); setAdjustNewStock(p.currentStock); setShowAdjustModal(true); }}
-                              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-xl transition-colors cursor-pointer"
-                              title="Ajustar Stock"
-                              aria-label={`Ajustar stock de ${p.name}`}
-                            >
-                              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">tune</span>
-                            </button>
-                            <button
-                              onClick={() => handleOpenEditProduct(p)}
-                              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-xl transition-colors cursor-pointer"
-                              title="Editar Producto"
-                              aria-label={`Editar ${p.name}`}
-                            >
-                              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span>
-                            </button>
-                            {onDeleteProduct && (
+                          </td>
+                          <td className="p-sm px-md text-right">
+                            <div className="flex items-center justify-end gap-1.5">
                               <button
-                                onClick={() => setDeleteConfirm({ isOpen: true, type: 'product', id: p.id, name: p.name })}
-                                className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-on-surface-variant hover:text-error hover:bg-red-50 rounded-xl transition-colors cursor-pointer ml-1"
-                                title="Eliminar Producto del Catálogo"
-                                aria-label={`Eliminar ${p.name}`}
+                                onClick={() => { setSelectedProduct(p); setAdjustNewStock(p.currentStock); setShowAdjustModal(true); }}
+                                className="min-h-[38px] min-w-[38px] flex items-center justify-center p-2 text-slate-600 hover:text-[#5C3C7B] hover:bg-purple-50 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                                title="Ajustar Stock"
+                                aria-label={`Ajustar stock de ${p.name}`}
                               >
-                                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
+                                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">tune</span>
                               </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                              <button
+                                onClick={() => handleOpenEditProduct(p)}
+                                className="min-h-[38px] min-w-[38px] flex items-center justify-center p-2 text-slate-600 hover:text-[#5C3C7B] hover:bg-purple-50 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                                title="Editar Producto"
+                                aria-label={`Editar ${p.name}`}
+                              >
+                                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (onUpdateProduct) {
+                                    onUpdateProduct(p.id, { isActive: isProductDisabled ? true : false });
+                                  }
+                                }}
+                                className={`min-h-[38px] px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer border shadow-2xs ${
+                                  isProductDisabled
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                    : 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-300'
+                                }`}
+                                title={isProductDisabled ? 'Habilitar producto' : 'Deshabilitar producto (no se borrará)'}
+                                aria-label={isProductDisabled ? `Habilitar ${p.name}` : `Deshabilitar ${p.name}`}
+                              >
+                                <span className="material-symbols-outlined text-[16px]">
+                                  {isProductDisabled ? 'check_circle' : 'visibility_off'}
+                                </span>
+                                <span>{isProductDisabled ? 'Habilitar' : 'Deshabilitar'}</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -847,7 +1267,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
         ) : (
           /* Services Catalog Table */
           <div className="flex flex-col gap-md">
-            {/* Search Bar for Services */}
+            {/* Search Bar & Category/Disabled Filters for Services */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-sm">
               <div className="bg-surface-container rounded-xl p-xs flex items-center w-full sm:w-80 border border-outline-variant/30">
                 <span className="material-symbols-outlined text-on-surface-variant ml-sm mr-xs text-[18px]">search</span>
@@ -872,11 +1292,83 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                   </button>
                 )}
               </div>
-              {serviceSearchQuery && (
-                <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap">
-                  {filteredServices.length} {filteredServices.length === 1 ? 'resultado' : 'resultados'} de {servicesCatalog.length}
-                </span>
-              )}
+
+              <div className="flex flex-wrap items-center gap-xs w-full sm:w-auto">
+                {serviceCategories.map((cat) => {
+                  const isSelected = selectedCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        setServicePage(1);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer capitalize ${
+                        isSelected
+                          ? 'bg-primary text-on-primary shadow-xs'
+                          : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Status filters & View Disabled Toggle Bar for Services */}
+            <div className="flex flex-wrap items-center justify-between gap-sm border-t border-slate-200/80 pt-2">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter('todos'); setServicePage(1); }}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    statusFilter === 'todos' ? 'bg-[#7B5EA7] text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Todos ({servicesCatalog.filter(s => showDisabledServices || s.isActive !== false).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter('ok'); setServicePage(1); }}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    statusFilter === 'ok' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Activos
+                </button>
+                {disabledServicesCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setStatusFilter('disabled'); setServicePage(1); }}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                      statusFilter === 'disabled' ? 'bg-slate-700 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-300'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">visibility_off</span>
+                    Deshabilitados ({disabledServicesCount})
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDisabledServices(prev => !prev)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                    showDisabledServices
+                      ? 'bg-purple-100 text-[#5C3C7B] border-purple-300 shadow-2xs font-bold'
+                      : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                  }`}
+                  title="Mostrar u ocultar servicios deshabilitados"
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {showDisabledServices ? 'visibility' : 'visibility_off'}
+                  </span>
+                  <span>{showDisabledServices ? 'Ocultar deshabilitados' : `Ver deshabilitados (${disabledServicesCount})`}</span>
+                </button>
+              </div>
             </div>
 
             {/* Selection Banner for Services */}
@@ -926,12 +1418,14 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
               {paginatedServices.map((srv) => {
                 const statusInfo = getPriceUpdateStatusInfo(srv.priceLastUpdated, srv.updateFrequencyDays || 30);
                 const isSelected = selectedServiceIds.includes(srv.id);
+                const isServiceDisabled = srv.isActive === false;
+                const lastSaleDate = getLastSaleDate(srv.id, srv.name);
 
                 return (
                   <div
                     key={srv.id}
                     className={`p-4 rounded-2xl border transition-all shadow-sm flex flex-col gap-3 ${
-                      isSelected ? 'bg-purple-50/80 border-[#9A7DB8] ring-1 ring-[#9A7DB8]/30' : 'bg-white border-slate-300 hover:border-purple-300'
+                      isSelected ? 'bg-purple-50/80 border-[#9A7DB8] ring-1 ring-[#9A7DB8]/30' : isServiceDisabled ? 'bg-slate-50/80 border-slate-300 opacity-75' : 'bg-white border-slate-300 hover:border-purple-300'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -953,7 +1447,11 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                             <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md text-[11px] font-semibold capitalize border border-slate-200">
                               {srv.category}
                             </span>
-                            {statusInfo.isExpired ? (
+                            {isServiceDisabled ? (
+                              <span className="px-2 py-0.5 bg-slate-200 text-slate-700 border border-slate-300 rounded-full text-[10px] font-semibold">
+                                Deshabilitado
+                              </span>
+                            ) : statusInfo.isExpired ? (
                               <span className="px-2 py-0.5 bg-[#FDEDEC] text-[#C0392B] border border-red-200 rounded-full text-[10px] font-semibold">
                                 Vencido ({statusInfo.daysDifference}d)
                               </span>
@@ -982,20 +1480,22 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                       </p>
                     )}
 
-                    {/* Status Toggle Row */}
+                    {/* Status & Last Sale Row */}
                     <div className="flex items-center justify-between bg-slate-50/90 p-2 px-3 rounded-xl border border-slate-200 text-xs">
-                      <span className="text-slate-600 font-medium">Estado del servicio:</span>
+                      <span className="text-slate-600 font-medium">
+                        {lastSaleDate ? `Última venta: ${formatDate(lastSaleDate)}` : 'Sin ventas'}
+                      </span>
                       <button
                         type="button"
                         onClick={() => handleToggleService(srv)}
-                        className={`px-3 py-1 min-h-[44px] sm:min-h-[36px] rounded-full text-xs font-bold cursor-pointer transition-all border ${
-                          srv.isActive 
+                        className={`px-3 py-1 min-h-[36px] rounded-full text-xs font-bold cursor-pointer transition-all border ${
+                          srv.isActive !== false
                             ? 'bg-[#E8F5E9] text-[#1B5E20] border-emerald-300 hover:bg-emerald-200' 
                             : 'bg-[#FDEDEC] text-[#C0392B] border-red-300 hover:bg-red-200'
                         }`}
-                        title="Tocar para cambiar estado Activo/Inactivo"
+                        title="Tocar para cambiar estado Activo/Deshabilitado"
                       >
-                        {srv.isActive ? '✓ Activo' : '✕ Inactivo'}
+                        {srv.isActive !== false ? '✓ Activo' : '✕ Deshabilitado'}
                       </button>
                     </div>
 
@@ -1009,28 +1509,32 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                         <span className="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span>
                         <span>Editar</span>
                       </button>
-                      {onDeleteServiceCatalogItem && (
-                        <button
-                          type="button"
-                          onClick={() => setDeleteConfirm({ isOpen: true, type: 'service', id: srv.id, name: srv.name })}
-                          className="min-h-[44px] min-w-[44px] bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer ml-1 shadow-2xs"
-                          title="Eliminar servicio"
-                          aria-label={`Eliminar ${srv.name}`}
-                        >
-                          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleService(srv)}
+                        className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs ${
+                          srv.isActive === false
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100'
+                            : 'bg-amber-50 text-amber-700 border border-amber-300 hover:bg-amber-100'
+                        }`}
+                        title={srv.isActive === false ? 'Habilitar servicio' : 'Deshabilitar servicio (no se borrará)'}
+                      >
+                        <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
+                          {srv.isActive === false ? 'check_circle' : 'visibility_off'}
+                        </span>
+                        <span>{srv.isActive === false ? 'Habilitar' : 'Deshabilitar'}</span>
+                      </button>
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Desktop Services Table */}
-            <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-xl">
+            {/* Desktop Services Table with Internal Scroll to prevent page overflow */}
+            <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[580px] border border-slate-200 rounded-xl relative">
               <table className="w-full text-left border-collapse font-body-md text-xs">
                 <thead>
-                  <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-[11px] font-semibold">
+                  <tr className="sticky top-0 bg-slate-100 text-slate-700 font-label-sm text-[11px] font-semibold border-b border-slate-200 z-10 shadow-2xs">
                     {isServiceSelectionActive && (
                       <th className="p-sm px-md w-10 text-center">
                         <input
@@ -1043,97 +1547,254 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                         />
                       </th>
                     )}
-                    <th className="p-sm px-md">Categoría</th>
-                    <th className="p-sm px-md">Servicio</th>
+                    <th
+                      className="p-sm px-md cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (serviceSortField === 'category') {
+                          setServiceSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setServiceSortField('category');
+                          setServiceSortDirection('asc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Categoría</span>
+                        {serviceSortField === 'category' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {serviceSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="p-sm px-md cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (serviceSortField === 'name') {
+                          setServiceSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setServiceSortField('name');
+                          setServiceSortDirection('asc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Servicio</span>
+                        {serviceSortField === 'name' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {serviceSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
                     <th className="p-sm px-md">Descripción</th>
                     <th className="p-sm px-md text-center">Cantidad</th>
-                    <th className="p-sm px-md text-center">Estado</th>
-                    <th className="p-sm px-md text-right">Precio actual</th>
-                    <th className="p-sm px-md text-center">Última actualización</th>
-                    <th className="p-sm px-md text-center">Frecuencia / Vencimiento</th>
-                    <th className="p-sm px-md text-center">Última venta</th>
+                    <th
+                      className="p-sm px-md text-center cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (serviceSortField === 'status') {
+                          setServiceSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setServiceSortField('status');
+                          setServiceSortDirection('asc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Estado</span>
+                        {serviceSortField === 'status' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {serviceSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="p-sm px-md text-right cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (serviceSortField === 'price') {
+                          setServiceSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setServiceSortField('price');
+                          setServiceSortDirection('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Precio actual</span>
+                        {serviceSortField === 'price' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {serviceSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="p-sm px-md text-center cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (serviceSortField === 'lastUpdated') {
+                          setServiceSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setServiceSortField('lastUpdated');
+                          setServiceSortDirection('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Última actualización</span>
+                        {serviceSortField === 'lastUpdated' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {serviceSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="p-sm px-md text-center cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (serviceSortField === 'updateFrequencyDays') {
+                          setServiceSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setServiceSortField('updateFrequencyDays');
+                          setServiceSortDirection('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Frecuencia / Vencimiento</span>
+                        {serviceSortField === 'updateFrequencyDays' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {serviceSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="p-sm px-md text-center cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                      onClick={() => {
+                        if (serviceSortField === 'lastSale') {
+                          setServiceSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setServiceSortField('lastSale');
+                          setServiceSortDirection('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Última venta</span>
+                        {serviceSortField === 'lastSale' && (
+                          <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                            {serviceSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
                     <th className="p-sm px-md text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="text-on-surface">
-                  {paginatedServices.map((srv) => {
-                    const statusInfo = getPriceUpdateStatusInfo(srv.priceLastUpdated, srv.updateFrequencyDays || 30);
-                    const isSelected = selectedServiceIds.includes(srv.id);
-                    return (
-                      <tr key={srv.id} className={`transition-colors group border-b border-surface-container-low ${
-                        isSelected ? 'bg-purple-50/70' : 'bg-surface-container-lowest hover:bg-surface-container'
-                      }`}>
-                        {isServiceSelectionActive && (
-                          <td className="p-sm px-md text-center">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => handleToggleServiceSelect(srv.id)}
-                              className="rounded border-slate-300 text-[#5C3C7B] focus:ring-[#5C3C7B] cursor-pointer"
-                              aria-label={`Seleccionar ${srv.name}`}
-                            />
-                          </td>
-                        )}
-                        <td className="p-sm px-md font-medium text-primary capitalize">{srv.category}</td>
-                        <td className="p-sm px-md font-semibold text-on-surface">{srv.name}</td>
-                        <td className="p-sm px-md text-on-surface-variant max-w-xs truncate">{srv.description}</td>
-                        <td className="p-sm px-md text-center font-medium">{srv.quantity}</td>
-                        <td className="p-sm px-md text-center">
-                          <button
-                            onClick={() => handleToggleService(srv)}
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-all ${
-                              srv.isActive ? 'bg-[#E8F5E9] text-[#27AE60]' : 'bg-[#FDEDEC] text-[#C0392B]'
-                            }`}
-                            title="Clic para cambiar estado Activo/Inactivo"
-                          >
-                            {srv.isActive ? 'Activo' : 'Inactivo'}
-                          </button>
-                        </td>
-                        <td className="p-sm px-md text-right font-semibold text-primary">${srv.price.toLocaleString('es-AR')}</td>
-                        <td className="p-sm px-md text-center text-on-surface-variant">{srv.priceLastUpdated}</td>
-                        <td className="p-sm px-md text-center">
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className="text-[10px] text-slate-500 font-medium">
-                              Cada {srv.updateFrequencyDays || 30} días
-                            </span>
-                            {statusInfo.isExpired ? (
-                              <span className="inline-flex px-2 py-0.5 bg-[#FDEDEC] text-[#C0392B] border border-red-200 rounded-full text-[10px] font-semibold" title={`Vencido (hoy > última actualización + ${srv.updateFrequencyDays || 30} días)`}>
-                                Vencido ({statusInfo.daysDifference}d)
-                              </span>
-                            ) : (
-                              <span className="inline-flex px-2 py-0.5 bg-[#E8F5E9] text-[#27AE60] border border-green-200 rounded-full text-[10px] font-semibold" title="Precio actualizado dentro de la frecuencia recomendada">
-                                Vigente
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      <td className="p-sm px-md text-center text-on-surface-variant">{srv.lastSoldAt || 'Sin ventas'}</td>
-                      <td className="p-sm px-md text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleOpenEditService(srv)}
-                            className="min-h-[44px] px-3 py-2 bg-surface-container-high hover:bg-primary hover:text-white rounded-xl text-xs font-semibold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                            title="Editar servicio / precio"
-                            aria-label={`Editar ${srv.name}`}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">edit</span>
-                            <span>Editar</span>
-                          </button>
-                          {onDeleteServiceCatalogItem && (
-                            <button
-                              onClick={() => setDeleteConfirm({ isOpen: true, type: 'service', id: srv.id, name: srv.name })}
-                              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 bg-red-50 text-error hover:bg-red-100 rounded-xl text-xs font-semibold transition-all shadow-2xs cursor-pointer ml-1"
-                              title="Eliminar servicio del catálogo"
-                              aria-label={`Eliminar ${srv.name}`}
-                            >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
-                          )}
-                        </div>
+                  {paginatedServices.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="py-8 text-center text-slate-500 text-xs font-medium">
+                        No se encontraron servicios con los filtros aplicados.
                       </td>
                     </tr>
-                  );
-                })}
+                  ) : (
+                    paginatedServices.map((srv) => {
+                      const statusInfo = getPriceUpdateStatusInfo(srv.priceLastUpdated, srv.updateFrequencyDays || 30);
+                      const isSelected = selectedServiceIds.includes(srv.id);
+                      const isServiceDisabled = srv.isActive === false;
+                      const lastSaleDate = getLastSaleDate(srv.id, srv.name);
+
+                      return (
+                        <tr key={srv.id} className={`transition-colors group border-b border-slate-200 ${
+                          isSelected ? 'bg-purple-50/70' : isServiceDisabled ? 'bg-slate-50/60 text-slate-400' : 'bg-white hover:bg-slate-50'
+                        }`}>
+                          {isServiceSelectionActive && (
+                            <td className="p-sm px-md text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleServiceSelect(srv.id)}
+                                className="rounded border-slate-300 text-[#5C3C7B] focus:ring-[#5C3C7B] cursor-pointer"
+                                aria-label={`Seleccionar ${srv.name}`}
+                              />
+                            </td>
+                          )}
+                          <td className="p-sm px-md font-medium text-slate-700 capitalize">{srv.category}</td>
+                          <td className={`p-sm px-md font-semibold ${isServiceDisabled ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{srv.name}</td>
+                          <td className="p-sm px-md text-slate-500 max-w-xs truncate">{srv.description || '-'}</td>
+                          <td className="p-sm px-md text-center font-medium text-slate-700">{srv.quantity}</td>
+                          <td className="p-sm px-md text-center">
+                            <button
+                              onClick={() => handleToggleService(srv)}
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-all border ${
+                                srv.isActive !== false
+                                  ? 'bg-[#E8F5E9] text-[#1B5E20] border-emerald-200 hover:bg-emerald-100'
+                                  : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
+                              }`}
+                              title="Clic para habilitar/deshabilitar servicio"
+                            >
+                              {srv.isActive !== false ? 'Activo' : 'Deshabilitado'}
+                            </button>
+                          </td>
+                          <td className="p-sm px-md text-right font-semibold text-slate-900">${srv.price.toLocaleString('es-AR')}</td>
+                          <td className="p-sm px-md text-center text-slate-600">{srv.priceLastUpdated || 'Sin fecha'}</td>
+                          <td className="p-sm px-md text-center">
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-[10px] text-slate-500 font-medium">
+                                Cada {srv.updateFrequencyDays || 30} días
+                              </span>
+                              {statusInfo.isExpired ? (
+                                <span className="inline-flex px-2 py-0.5 bg-[#FDEDEC] text-[#C0392B] border border-red-200 rounded-full text-[10px] font-semibold" title={`Vencido (hoy > última actualización + ${srv.updateFrequencyDays || 30} días)`}>
+                                  Vencido ({statusInfo.daysDifference}d)
+                                </span>
+                              ) : (
+                                <span className="inline-flex px-2 py-0.5 bg-[#E8F5E9] text-[#27AE60] border border-green-200 rounded-full text-[10px] font-semibold" title="Precio actualizado dentro de la frecuencia recomendada">
+                                  Vigente
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-sm px-md text-center text-slate-700 font-medium">
+                            {lastSaleDate ? (
+                              <span className="text-slate-900 font-semibold">{formatDate(lastSaleDate)}</span>
+                            ) : (
+                              <span className="text-slate-400 italic text-[11px]">Sin ventas</span>
+                            )}
+                          </td>
+                          <td className="p-sm px-md text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditService(srv)}
+                                className="min-h-[38px] px-3 py-1.5 bg-slate-50 hover:bg-purple-50 text-slate-700 hover:text-[#5C3C7B] border border-slate-200 rounded-xl text-xs font-semibold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                                title="Editar servicio / precio"
+                                aria-label={`Editar ${srv.name}`}
+                              >
+                                <span className="material-symbols-outlined text-[16px]">edit</span>
+                                <span>Editar</span>
+                              </button>
+                              <button
+                                onClick={() => handleToggleService(srv)}
+                                className={`min-h-[38px] px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer border shadow-2xs ${
+                                  isServiceDisabled
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                    : 'bg-slate-50 text-slate-600 border-slate-300 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-300'
+                                }`}
+                                title={isServiceDisabled ? 'Habilitar servicio' : 'Deshabilitar servicio (no se borrará)'}
+                                aria-label={isServiceDisabled ? `Habilitar ${srv.name}` : `Deshabilitar ${srv.name}`}
+                              >
+                                <span className="material-symbols-outlined text-[16px]">
+                                  {isServiceDisabled ? 'check_circle' : 'visibility_off'}
+                                </span>
+                                <span>{isServiceDisabled ? 'Habilitar' : 'Deshabilitar'}</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

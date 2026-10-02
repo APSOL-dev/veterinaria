@@ -31,6 +31,7 @@ import {
 } from '../../domain/services/agendaService';
 import { formatDate } from '../../utils/dateUtils';
 import { SearchablePatientSelect } from '../Common/SearchablePatientSelect';
+import { SearchableServiceSelect } from '../Common/SearchableServiceSelect';
 import { AutoResizeTextarea } from '../Common/AutoResizeTextarea';
 
 interface AgendaViewProps {
@@ -1524,11 +1525,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
               ) : (
                 <>
                   <div>
-                    <label className="font-semibold text-xs text-slate-700 block mb-1">Servicio de estética *</label>
-                    <select
-                      value={selectedGroomServiceId}
-                      onChange={(e) => {
-                        const newId = e.target.value;
+                    <SearchableServiceSelect
+                      services={visibleGroomingServices}
+                      selectedServiceId={selectedGroomServiceId}
+                      onSelectService={(newId) => {
                         setSelectedGroomServiceId(newId);
                         const srv = groomingServices.find(s => s.id === newId);
                         if (srv) {
@@ -1536,19 +1536,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                           setAppEndTime(calculateEndTime(appTime, srv.durationMinutes));
                         }
                       }}
-                      className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
-                    >
-                      {visibleGroomingServices.map(s => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} ({s.durationMinutes} min - ${s.price})
-                        </option>
-                      ))}
-                    </select>
-                    {speciesFallback && (
-                      <p className="text-[11px] text-amber-700 font-medium mt-1">
-                        No hay servicios de estética cargados para esta especie. Se muestran todos; verifique el servicio elegido.
-                      </p>
-                    )}
+                      label="Servicio de estética"
+                      required={true}
+                      speciesFallback={speciesFallback}
+                    />
                   </div>
                 </>
               )}

@@ -20,22 +20,28 @@ El módulo **Cobros** administra la emisión de facturas electrónicas, remitos 
    - Incluyen la propiedad `onFocus={(e) => e.target.select()}`, lo que selecciona automáticamente todo el texto al hacer clic para facilitar la tipeación directa.
    - Al cambiar el precio unitario de un renglón, se recalculan automáticamente el subtotal, los descuentos y el total general de la factura mediante `parsePriceInput`.
 
-4. **Configuración de Cobro y Control de Emisión Fiscal AFIP:**
+4. **Configuración de Cobro y Validación Obligatoria:**
+   - **Campos Obligatorios de Emisión:** El **Número de Comprobante / Factura** (`customInvoiceNumber`) y el **Archivo de Comprobante / Factura Adjunta** (`voucherUrl`) son **estrictamente obligatorios**. Si el usuario intenta confirmar el cobro con alguno de estos campos vacío, el sistema bloquea el checkout y muestra una notificación clara solicitando completar el número y adjuntar el archivo correspondiente.
    - La opción **"Emitir Comprobante AFIP (CAE)"** se inicializa **desmarcada por defecto** (`isAfip: false`). Esto protege a la veterinaria de enviar autorizaciones fiscales reales a los servidores de AFIP de manera accidental o involuntaria en cada cobro estándar. El usuario debe tildarla explícitamente cuando requiera emitir con CAE fiscal.
    - En dispositivos móviles, todos los campos de texto y desplegables de Cobros poseen un tamaño tipográfico mínimo de 16px (`text-base sm:text-xs`) para evitar el zoom involuntario de pantalla en iOS Safari al tocarlos.
 
 5. **Caja de Adjunto de Comprobante / Factura:**
-   - En el panel derecho **Configuración de cobro**, se incluye un componente de carga de archivos (`.PDF`, `.PNG`, `.JPG`, `.JPEG`) para adjuntar la factura o comprobante impreso.
+   - En el panel derecho **Configuración de cobro**, se incluye un componente de carga de archivos (`.PDF`, `.PNG`, `.JPG`, `.JPEG`) para adjuntar la factura o comprobante impreso obligatorio con indicador visual de asterisco rojo.
    - El archivo adjunto genera una vista previa del nombre con opción de desadjuntarlo antes de emitir el cobro.
    - La información del comprobante (`voucherName`, `voucherUrl`) se persiste en el `BillReceipt`.
 
-6. **Historial de Comprobantes y Persistencia en Supabase:**
-   - Mantiene una tabla limpia con Comprobante Nº, Fecha, Paciente/Dueño, Tipo Doc, Medio de Pago, Total y Acciones.
-   - Sincroniza la cabecera del comprobante en `vetsoft_recibos` y sus renglones en `vetsoft_detalle_recibos`.
-   - En la consulta desde Supabase, soporta mapeo robusto para nombres de columna en snake_case (`invoice_number`, `patient_name`, `owner_name`, `payment_method`, `total_amount`) y realiza fallback automático a `vetsoft_recibos` si la vista `vetsoft_vw_recibos` no estuviese disponible.
-   - **Estado Vacío Amigable:** Si no existen cobros emitidos o registrados, la tabla muestra un mensaje claro con icono ("No hay cobros registrados") invitando a emitir una nueva factura en lugar de quedar vacía.
+6. **Historial de Comprobantes, Búsqueda Avanzada, Métricas y Detalle:**
+   - **Buscador General Multicriterio:** Permite buscar comprobantes en tiempo real por número de comprobante/factura, nombre del tutor, nombre del paciente/mascota, medio de pago, tipo de comprobante, código CAE y descripción/concepto de los ítems facturados.
+   - **Filtros Combinables:** Permite filtrar de forma simultánea por Tipo de Comprobante (Factura A, B, C, Remito), Medio de Pago (Efectivo, Tarjeta, Transferencia, Cuenta Corriente) y Período Temporal (Hoy, Últimos 7 días, Este mes, Este año).
+   - **Indicador de Total Facturado:** Presenta en la cabecera el Total Facturado acumulado según los filtros y búsquedas aplicadas.
+   - **Ordenamiento Multicolumna:** Todas las columnas clave (Comprobante Nº, Fecha, Tutor/Paciente, Tipo Doc, Medio Pago, Total) son interactivas y permiten ordenar de forma ascendente y descendente con indicadores visuales claros.
+   - **Detalle Completo e Impresión (`ComprobanteDetailModal`):** Al hacer clic sobre cualquier fila del historial o en el botón de visualización, se abre el modal con desglose de conceptos, cantidades, precios unitarios, descuentos aplicados, totales y descarga/vista previa de adjuntos.
+   - **Persistencia en Supabase:** Sincroniza la cabecera del comprobante en `vetsoft_recibos` y sus renglones en `vetsoft_detalle_recibos`.
 
 **Casos borde conocidos:**
+- **Validación de Cobro:** Checkout cancelado si falta el número personalizado de factura o el comprobante adjunto.
 - **Facturas A / B vs C:** Si el usuario decide cambiar manualmente a Factura A o B, se activa el cálculo de IVA (21% por defecto), manteniendo todos los precios editados por el usuario.
 - **Formato de Archivo Adjunto:** Se permite subir imágenes y PDFs manteniendo persistencia en base64 u objeto en memoria/storage.
+- **Filtrado sin resultados:** Cuando los filtros activos no coinciden con ningún comprobante, se muestra un mensaje informativo con botón directo "Limpiar filtros" para restablecer la vista.
+
 

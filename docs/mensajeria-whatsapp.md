@@ -7,6 +7,10 @@ Módulo de mensajería WhatsApp integrado con Evolution API (v2 / Baileys). Perm
 - Indicador del "Estado de conexión" en el header (Conectado / Desconectado / Conectando) de diseño sobrio sin botones secundarios redundantes.
 - Ocultamiento de la interfaz de chat (sidebar con lista de conversaciones y buscador) en estado desconectado, presentando de forma limpia y centrada únicamente la tarjeta de vinculación QR.
 - Pantalla e instructivo de vinculación ampliados (`max-w-5xl`, tarjeta de QR `w-60 h-60`) en español con 3 pasos explicativos, el botón "Generar QR" y el botón "Cancelar" (renderizado condicionalmente sólo cuando se está generando o mostrando un QR).
+- **Generación y Recuperación Robusta de QR:**
+  - `evolutionService.getQrCode()` implementa fallback automático: si la instancia no existe en el servidor (HTTP 404), la crea dinámicamente (`POST /instance/create` con integración `WHATSAPP-BAILEYS`) antes de solicitar el código QR de conexión.
+  - Soporte para múltiples esquemas de respuesta devueltos por distintas versiones de Evolution API (`data.instance.qrcode.base64`, `data.base64`, `data.qrcode.base64`, `data.code`).
+  - Alertas descriptivas en caso de fallos de red o configuración de API.
 - Resolución automática del nombre de instancia activa en el servidor de mensajería para prevenir errores 404 de vinculación.
 - Presentación limpia y profesional en la interfaz de usuario bajo la denominación WhatsApp Web.
 - Lista de conversaciones con filtrado (Todos, Clientes VETSOFT, No leídos) y búsqueda por nombre/teléfono.

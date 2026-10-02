@@ -7,10 +7,13 @@ El módulo **Proveedores** integra el control de facturas comerciales de compra,
 
 1. **Consulta e Inspección de Detalle de Factura al Hacer Clic en el Registro:**
    - Al hacer clic en cualquier fila/registro de la tabla del listado de facturas (`SuppliersView`), el sistema abre inmediatamente el panel desplegable de detalle (`NewInvoiceDrawer`) cargando todos los datos del comprobante y el desglose completo de sus productos/ítems asociados.
+   - **Bloqueo de Edición en Facturas Pagadas:** Las facturas que ya han sido canceladas en su totalidad (`isPaid === true`) no permiten modificar sus renglones ni importes para resguardar la integridad contable. El botón de edición se deshabilita mostrando un icono de candado explicativo. Sin embargo, la acción de **eliminar factura** permanece disponible, removiendo los pagos asociados en cascada.
 
-2. **Filtros Avanzados y Ordenación por Columnas en Facturas:**
+2. **Filtros Avanzados, Presets de Fechas y Ordenación por Columnas:**
    - **Búsqueda por Proveedor y N° Factura:** Barra superior de filtros que permite escribir de forma interactiva y elegir de una lista desplegable el proveedor, además de buscar por número de factura.
+   - **Filtros Rápidos de Fecha (Presets):** Junto al selector de rango de fechas de PowerBI, se ofrecen accesos directos para acotar la consulta en un solo clic: `"Este mes"`, `"Próximos 3 meses"` y `"Próximos 6 meses"`, actualizando la visualización de manera inmediata.
    - **Ordenación por Encabezados de Columna:** Cada columna del listado (Fecha emisión, Fecha pago, Proveedor, N° factura, Ítems, Monto total, Saldo restante, Estado) permite alternar el orden ascendente y descendente (mayor a menor y viceversa) con indicadores visuales de flecha (▲/▼).
+   - **Insignias de Estado Legibles:** La etiqueta del estado `"Pago parcial"` cuenta con ancho reservado y estilos `whitespace-nowrap` para evitar saltos de línea indeseados o cortes de texto.
 
 3. **Eliminación en Cascada de Pagos al Borrar Factura:**
    - Al eliminar una factura de compras desde el sistema, cualquier pago registrado previamente asociado a dicho comprobante se remueve en cascada del estado local y de la base de datos Supabase (`vetsoft_pagos_proveedores`), manteniendo el balance de Cuentas Corrientes consistente.
@@ -18,7 +21,9 @@ El módulo **Proveedores** integra el control de facturas comerciales de compra,
 4. **Copiar Gasto sin Comprobante Adjunto:**
    - Al duplicar/copiar un gasto existente en el submódulo de Gastos, los campos de categoría, asignación, monto y descripción se precargan, pero el comprobante adjunto se limpia automáticamente para evitar adjuntar recibos desactualizados al nuevo registro.
 
-5. **Vista Consolidada de Cuentas Corrientes (Tabla de 2 Columnas: Proveedor y Saldo):**
+5. **Vista Consolidada de Cuentas Corrientes y Alta de Proveedores:**
+   - **Modal "Agregar Proveedor":** En la cabecera de Cuentas Corrientes se incluye el botón "+ Agregar Proveedor", el cual despliega un modal para registrar nuevos proveedores indicando Nombre / Razón Social (*), CUIT y su Plazo Comercial por defecto (Contado, 30 días, 60 días, 90 días o Personalizado). Los proveedores personalizados se persisten localmente (`vetsoft_registered_suppliers`) y se integran automáticamente en todos los selectores del sistema.
+   - **Desplazamiento Fluido (Scroll):** La vista de Cuentas Corrientes y el listado de proveedores cuentan con scroll vertical nativo habilitado tanto en pantallas de escritorio como móviles.
    - **Estructura Simplificada:** Se reemplazó el formato clásico de Debe y Haber por una tabla directa de 2 columnas principales: **Proveedor** y **Saldo**.
    - **Columna Proveedor:** Muestra el nombre comercial de cada proveedor registrado o con movimientos, su inicial de avatar y un indicador de cantidad de comprobantes registrados / facturas pendientes.
    - **Columna Saldo:** Presenta el saldo neto consolidado ($ \text{Total Facturado} - \text{Total Pagado} $) con formato numérico y badge de estado (*Saldo a pagar*, *Saldo a favor* o *Al día*).
@@ -27,14 +32,11 @@ El módulo **Proveedores** integra el control de facturas comerciales de compra,
    - **Acción Superior "Registrar Pago":** Ubicado arriba a la derecha en Cuentas Corrientes para abrir el panel de pagos a proveedores.
 
 6. **Entrada de Stock Unificada con Carga de Factura:**
-   - **Formulario Multilínea (`NewInvoiceDrawer`):** Permite registrar la factura del proveedor asociando $N$ productos del catálogo de inventario con sus cantidades recibidas y precios de costo unitarios.
+   - **Formulario Multilínea en Blanco (`NewInvoiceDrawer`):** Al presionar "Agregar línea de producto", la nueva fila se crea en blanco (`productId: ''`, `productName: ''`) con buscador integrado (`SearchableProductSelect`), permitiendo buscar y seleccionar productos sin sustituir elementos preelegidos.
    - **Actualización Automática de Inventario:** Al guardar la factura, el sistema actualiza de manera simultánea el stock físico (`currentStock += cantidad`) y opcionalmente el precio de catálogo de cada producto, registrando el comprobante en Cuentas Corrientes.
 
-7. **Cálculo de Tarjetas KPI de Resumen en Facturas (Modelo Proyección / Vencimientos):**
-   - **Comprado este mes:** Suma total de erogaciones proyectadas del mes actual (Adeudado que vence en el mes + Pagado en el mes + Gastos operativos del mes) -> **$848.125,04**.
-   - **Facturas pagadas:** Suma total exclusiva de los pagos realizados en el mes actual sobre facturas de proveedores (`totalPagado` del mes) -> **$100.000,00**.
-   - **Pendiente de pago:** Saldo adeudado proyectado con vencimiento exclusivo en el mes actual (`totalAdeudado` del mes en curso) -> **$719.625,04**.
-   - **Comprometido a 30 días:** Saldo total adeudado proyectado a vencer en el próximo mes / próximos 30 días (`totalAdeudado` del mes siguiente en proyección) -> **$1.155.668,50**.
+7. **Cálculo Dinámico de Tarjetas KPI de Resumen:**
+   - Las tarjetas KPI superiores de Resumen (Comprado, Facturas pagadas, Pendiente de pago y Gastos operativos) se recalculan **dinámicamente en tiempo real** en base al rango de fechas y filtros activos aplicados por el usuario.
    - **Formato decimal de moneda:** Todos los montos en las tarjetas KPI se formatean siempre con 2 decimales explícitos.
 
 **Casos borde conocidos y mejoras de persistencia:**

@@ -229,6 +229,27 @@ describe('supplierService', () => {
       expect(totals.pendingBillsTotal).toBe(0);
       expect(totals.committed30DaysTotal).toBe(0);
     });
+
+    it('debe calcular KPIs dinámicamente sumando todos los meses comprendidos en el rango de fechas filtrado (ej: Julio a Enero)', () => {
+      const filteredTotals = calculateSupplierTotals(
+        mockBills,
+        [],
+        mockPayments,
+        undefined,
+        mockExpenses,
+        [],
+        '2026-07-01',
+        '2027-01-31'
+      );
+      // Facturas pendientes: Septiembre ($719.625,04) + Octubre ($1.155.668,50) + Noviembre ($200.000,00) = $2.075.293,54
+      expect(filteredTotals.pendingBillsTotal).toBeCloseTo(2075293.54, 2);
+      // Facturas pagadas: Septiembre ($100.000,00)
+      expect(filteredTotals.paidBillsTotal).toBeCloseTo(100000.00, 2);
+      // Gastos operativos: Septiembre ($28.500,00)
+      expect(filteredTotals.committed30DaysTotal).toBeCloseTo(28500.00, 2);
+      // Total comprado (Adeudado + Pagado + Gastos = 2.075.293,54 + 100.000 + 28.500 = 2.203.793,54)
+      expect(filteredTotals.purchasedThisMonthTotal).toBeCloseTo(2203793.54, 2);
+    });
   });
 
   describe('calculateMonthlyExpenditureProjections', () => {

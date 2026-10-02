@@ -54,11 +54,31 @@ Permite administrar tanto el inventario de productos físicos (medicamentos, ali
   - Seguimiento de fecha de última venta (`lastSoldAt`).
   - **Paginación integrada y Selección múltiple:** Soporta navegación paginada con selector de elementos por página y selección con checkboxes individuales o por página.
 
+- **Deshabilitación Segura (Soft Disable) y Gestión de Deshabilitados:**
+  - Los productos y servicios no se eliminan de manera destructiva de la base de datos para preservar la integridad histórica de cobros y recetas. En su lugar, se deshabilitan (`isActive: false`).
+  - Botón al margen **"Ver deshabilitados"** con contador en tiempo real para alternar la visualización de ítems inactivos o filtrarlos con el botón de estados.
+  - Los ítems deshabilitados pueden ser rehabilitados con un solo clic (`Habilitar`).
+
+- **Ordenamiento Multicolumna Dinámico:**
+  - Ambas tablas (Productos Físicos y Servicios) permiten ordenar de menor a mayor y de mayor a menor haciendo clic en cualquier encabezado (Nombre, Categoría, Stock actual, Stock mínimo, Precio, Última actualización, Última venta, Frecuencia).
+  - Los encabezados muestran indicadores visuales claros de orden (`arrow_upward` / `arrow_downward`).
+
+- **Filtros por Estado de Stock y Categorías:**
+  - Selector de estados: **Todos**, **Stock OK / Normal**, **Stock Bajo** (stock <= mínimo), **Sin Stock** (stock = 0) y **Deshabilitados**.
+  - Selector de categorías combinable para aislar segmentos específicos del inventario.
+
+- **Columna de Última Venta Integrada con Cobros:**
+  - Tanto en la tabla de productos como en la de servicios, la columna **"Última venta"** calcula dinámicamente la fecha del comprobante de cobro más reciente donde se comercializó el producto o se prestó el servicio.
+
+- **Contenedor con Scroll Interno y Encabezados Sticky:**
+  - Al aumentar el tamaño de página a 50 o 100 registros, la tabla se mantiene dentro de los límites visuales con un contenedor scrollable (`max-h-[580px] overflow-y-auto`) y encabezados fijos (`sticky top-0 bg-slate-100 z-10`), evitando desbordar la ventana.
+
 **Casos borde conocidos:**
 - Pagos que superan el saldo: El saldo restante no toma valores negativos (`Math.max(0, importe - pagado)`).
 - Aumento del 0% o lista vacía: No modifica los precios ni altera las fechas de actualización.
 - Intento de facturación de servicios inactivos: El sistema alerta y requiere activación previa en el catálogo.
 - Búsqueda sin resultados: La paginación muestra `Mostrando 0-0 de 0 productos` de forma segura sin desbordes.
+- Productos sin ventas históricas: Muestran el indicador `Sin ventas` en la columna de Última Venta.
 
 **Restricciones o supuestos:**
 - Los precios calculados por inflación se redondean a 2 decimales para evitar inconsistencias de punto flotante.

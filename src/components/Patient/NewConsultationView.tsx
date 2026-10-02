@@ -184,9 +184,9 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full flex-1 gap-md h-full overflow-y-auto p-md lg:p-0 lg:overflow-hidden">
+    <div className="flex flex-col w-full flex-1 gap-md h-full overflow-y-auto p-md lg:p-4">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md mb-md">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-md mb-2 shrink-0">
         <div>
           <h1 className="font-display-lg text-lg lg:text-[22px] text-slate-900 leading-tight font-semibold">
             Clínica — Nueva consulta ({currentPatient.name})
@@ -211,7 +211,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
       </div>
 
       {/* Main Form Body */}
-      <div className="flex flex-col justify-between lg:flex-1 lg:overflow-hidden bg-surface-container-lowest rounded-2xl p-lg shadow-md gap-md border border-outline-variant/30">
+      <div className="flex flex-col bg-surface-container-lowest rounded-2xl p-lg shadow-md gap-md border border-outline-variant/30">
         <div className="shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-sm border-b border-surface-variant pb-xs">
           <div className="flex items-center gap-sm">
             <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -288,7 +288,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
         )}
 
         {/* Drag & Drop File Upload Zone */}
-        <div className="flex-1 flex flex-col min-h-0 gap-xs">
+        <div className="flex flex-col gap-xs min-h-[140px]">
           <label className="shrink-0 font-label-md text-on-surface-variant text-[11px] font-medium">
             Archivos adjuntos (Estudios, radiografías, análisis de laboratorio)
           </label>
@@ -307,7 +307,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`flex-1 min-h-0 w-full p-md rounded-2xl flex flex-col items-center justify-center gap-xs cursor-pointer transition-all border-2 border-dashed shadow-xs ${
+            className={`w-full p-6 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all border-2 border-dashed shadow-xs min-h-[130px] ${
               isDragging
                 ? 'bg-primary-container/20 border-primary scale-[0.99]'
                 : 'bg-surface-container-low hover:bg-surface-container border-secondary/50'

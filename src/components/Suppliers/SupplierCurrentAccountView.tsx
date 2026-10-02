@@ -36,6 +36,22 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDebtOnly, setFilterDebtOnly] = useState<'all' | 'debt' | 'zero'>('all');
 
+  // Custom persistent suppliers
+  const [customSuppliers, setCustomSuppliers] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('vetsoft_registered_suppliers');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Modal State for adding a new supplier
+  const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierCuit, setNewSupplierCuit] = useState('');
+  const [newSupplierTerm, setNewSupplierTerm] = useState<SupplierCreditTerm['termType']>('contado');
+
   // Modal State for viewing single supplier details / movements
   const [selectedSupplierDetail, setSelectedSupplierDetail] = useState<string | null>(null);
 
@@ -47,16 +63,22 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
   const [dias60Percent, setDias60Percent] = useState<number>(0);
   const [dias90Percent, setDias90Percent] = useState<number>(0);
 
-  // Extract all unique suppliers
-  const allSuppliersList = useMemo(() => {
-    const set = new Set<string>([...registeredSuppliers, ...bills.map(b => b.supplierName).filter(Boolean)]);
+  // Extract all unique suppliers (defaults + custom + from bills)
+  const effectiveRegisteredSuppliers = useMemo(() => {
+    const set = new Set<string>([
+      ...registeredSuppliers,
+      ...customSuppliers,
+      ...bills.map(b => b.supplierName).filter(Boolean)
+    ]);
     return Array.from(set);
-  }, [registeredSuppliers, bills]);
+  }, [registeredSuppliers, customSuppliers, bills]);
+
+  const allSuppliersList = effectiveRegisteredSuppliers;
 
   // Calculate 2-column summary balances per supplier
   const supplierBalances = useMemo(() => {
-    return calculateSupplierSummaryBalances(bills, payments, registeredSuppliers);
-  }, [bills, payments, registeredSuppliers]);
+    return calculateSupplierSummaryBalances(bills, payments, effectiveRegisteredSuppliers);
+  }, [bills, payments, effectiveRegisteredSuppliers]);
 
   // Filter summaries
   const filteredSummaries = useMemo(() => {
@@ -138,8 +160,68 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
     setShowEditModal(false);
   };
 
+  const handleAddSupplierSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newSupplierName.trim();
+    if (!name) return;
+
+    if (!effectiveRegisteredSuppliers.some(s => s.toLowerCase() === name.toLowerCase())) {
+      const updated = [...customSuppliers, name];
+      setCustomSuppliers(updated);
+      try {
+        localStorage.setItem('vetsoft_registered_suppliers', JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Error saving suppliers:', err);
+      }
+    }
+
+    if (onSaveCreditTerm) {
+      let contado = 0;
+      let d30 = 0;
+      let d60 = 0;
+      let d90 = 0;
+      let days = 0;
+
+      if (newSupplierTerm === 'contado') {
+        contado = 100;
+        days = 0;
+      } else if (newSupplierTerm === '30_dias') {
+        d30 = 100;
+        days = 30;
+      } else if (newSupplierTerm === '60_dias') {
+        d60 = 100;
+        days = 60;
+      } else if (newSupplierTerm === '90_dias') {
+        d90 = 100;
+        days = 90;
+      } else if (newSupplierTerm === 'cuotas_30_60_90') {
+        d30 = 33.33;
+        d60 = 33.33;
+        d90 = 33.34;
+        days = 90;
+      }
+
+      onSaveCreditTerm({
+        supplierName: name,
+        cuit: newSupplierCuit.trim() || undefined,
+        termDays: days,
+        termType: newSupplierTerm,
+        contadoPercent: contado,
+        dias30Percent: d30,
+        dias60Percent: d60,
+        dias90Percent: d90,
+        lastUpdated: new Date().toISOString().split('T')[0]
+      });
+    }
+
+    setNewSupplierName('');
+    setNewSupplierCuit('');
+    setNewSupplierTerm('contado');
+    setShowAddSupplierModal(false);
+  };
+
   return (
-    <div className="flex flex-col w-full flex-1 lg:h-full gap-md font-body-md text-on-surface">
+    <div className="flex flex-col w-full flex-1 h-full overflow-y-auto gap-md font-body-md text-on-surface">
       {/* Header con título e Icono / Botón de Plazos arriba a la derecha */}
       <div className="flex items-center justify-between mb-xs flex-wrap gap-sm">
         <div>
@@ -151,7 +233,17 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
           </p>
         </div>
 
-        <div className="flex items-center gap-sm">
+        <div className="flex items-center gap-sm flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowAddSupplierModal(true)}
+            className="bg-purple-50 hover:bg-purple-100 text-[#5C3C7B] border border-purple-200 px-md py-2.5 rounded-xl font-label-md text-xs font-bold flex items-center gap-xs shadow-2xs transition-all cursor-pointer whitespace-nowrap"
+            title="Dar de alta un nuevo proveedor"
+          >
+            <span className="material-symbols-outlined text-[18px]">person_add</span>
+            <span>Agregar Proveedor</span>
+          </button>
+
           {onOpenRegisterPayment && (
             <button
               type="button"
@@ -641,6 +733,92 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
                 >
                   <span className="material-symbols-outlined text-[16px]">save</span>
                   <span>Guardar Plazos</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Agregar Proveedor */}
+      {showAddSupplierModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[70] flex items-start sm:items-center justify-center p-3 sm:p-md pt-6 sm:pt-10 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-lg shadow-2xl flex flex-col gap-md border border-slate-200 my-4 sm:my-auto text-slate-900">
+            <div className="flex justify-between items-center border-b border-slate-200 pb-sm">
+              <h3 className="font-headline-sm text-slate-900 font-semibold text-base flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#7B5EA7] text-[20px]">person_add</span>
+                <span>Agregar Nuevo Proveedor</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddSupplierModal(false)}
+                className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleAddSupplierSubmit} className="flex flex-col gap-md">
+              <div className="flex flex-col gap-xs">
+                <label className="font-label-md text-slate-700 text-xs font-semibold flex items-center justify-between">
+                  <span>Nombre / Razón Social</span>
+                  <span className="text-red-500 font-bold">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newSupplierName}
+                  onChange={(e) => setNewSupplierName(e.target.value)}
+                  placeholder="Ej. Distribuidora FarmaVet SA"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 px-3 text-xs text-slate-900 font-semibold outline-none focus:bg-white focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20"
+                />
+              </div>
+
+              <div className="flex flex-col gap-xs">
+                <label className="font-label-md text-slate-700 text-xs font-medium">
+                  CUIT (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={newSupplierCuit}
+                  onChange={(e) => setNewSupplierCuit(e.target.value)}
+                  placeholder="Ej. 30-12345678-9"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 px-3 text-xs text-slate-900 font-semibold outline-none focus:bg-white focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 font-mono"
+                />
+              </div>
+
+              <div className="flex flex-col gap-xs">
+                <label className="font-label-md text-slate-700 text-xs font-medium">
+                  Plazo comercial predeterminado
+                </label>
+                <select
+                  value={newSupplierTerm}
+                  onChange={(e) => setNewSupplierTerm(e.target.value as any)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 px-3 text-xs text-slate-800 font-medium outline-none focus:bg-white focus:border-[#9A7DB8] cursor-pointer"
+                >
+                  <option value="contado">Contado / Inmediato (0 días)</option>
+                  <option value="30_dias">30 días</option>
+                  <option value="60_dias">60 días</option>
+                  <option value="90_dias">90 días</option>
+                  <option value="cuotas_30_60_90">Cuotas 30 / 60 / 90 días</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-sm pt-sm border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowAddSupplierModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newSupplierName.trim()}
+                  className="px-4 py-2 bg-[#7B5EA7] hover:bg-[#654B8C] disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">check</span>
+                  <span>Guardar proveedor</span>
                 </button>
               </div>
             </form>

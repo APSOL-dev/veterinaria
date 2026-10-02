@@ -137,7 +137,9 @@ export function calculateSupplierTotals(
   payments: SupplierPayment[] = [],
   referenceDateStr?: string,
   expenses: ExpenseRecord[] = [],
-  creditTerms: SupplierCreditTerm[] = []
+  creditTerms: SupplierCreditTerm[] = [],
+  startDate?: string,
+  endDate?: string
 ): {
   purchasedThisMonthTotal: number;
   paidBillsTotal: number;
@@ -145,6 +147,26 @@ export function calculateSupplierTotals(
   committed30DaysTotal: number;
   approvedQuotesTotal: number;
 } {
+  // Si se proporciona un rango de fechas de filtrado (startDate / endDate), calcular totales acumulados para dicho período
+  if (startDate || endDate) {
+    const projections = calculateMonthlyExpenditureProjections(bills, {}, payments, startDate, endDate, creditTerms, expenses);
+    const purchasedThisMonthTotal = projections.reduce((sum, p) => sum + p.total, 0);
+    const paidBillsTotal = projections.reduce((sum, p) => sum + Math.max(0, p.totalPagado - (p.totalGastos || 0)), 0);
+    const pendingBillsTotal = projections.reduce((sum, p) => sum + p.totalAdeudado, 0);
+    const committed30DaysTotal = projections.reduce((sum, p) => sum + (p.totalGastos || 0), 0);
+    const approvedQuotesTotal = quotes
+      .filter(q => q.status === 'approved')
+      .reduce((sum, q) => sum + q.amount, 0);
+
+    return {
+      purchasedThisMonthTotal,
+      paidBillsTotal,
+      pendingBillsTotal,
+      committed30DaysTotal,
+      approvedQuotesTotal
+    };
+  }
+
   let currentMonthKey: string;
   let refTime: number;
 

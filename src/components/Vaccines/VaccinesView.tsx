@@ -129,6 +129,136 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
   const dueOrExpiredDosis = patientDoses.find(d => d.status === 'expired' || d.status === 'due_soon');
   const todayStr = getLocalDateString();
 
+  // History table filters & sorting
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<'todas' | 'al_dia' | 'vencida' | 'pendiente'>('todas');
+  const [historySortField, setHistorySortField] = useState<'vaccineName' | 'applicationDate' | 'vetName' | 'expirationDate' | 'status'>('applicationDate');
+  const [historySortDirection, setHistorySortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Catalog table filters & sorting
+  const [catalogSearchQuery, setCatalogSearchQuery] = useState('');
+  const [catalogSortField, setCatalogSortField] = useState<'name' | 'frequencyDays'>('name');
+  const [catalogSortDirection, setCatalogSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const filteredCatalog = useMemo(() => {
+    let list = [...vaccineCatalog];
+    if (catalogSearchQuery.trim()) {
+      const q = catalogSearchQuery.toLowerCase().trim();
+      list = list.filter(item => item.name.toLowerCase().includes(q));
+    }
+    list.sort((a, b) => {
+      if (catalogSortField === 'name') {
+        return catalogSortDirection === 'asc'
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name);
+      } else {
+        return catalogSortDirection === 'asc'
+          ? a.frequencyDays - b.frequencyDays
+          : b.frequencyDays - a.frequencyDays;
+      }
+    });
+    return list;
+  }, [vaccineCatalog, catalogSearchQuery, catalogSortField, catalogSortDirection]);
+
+  const patientHistoryRows = useMemo(() => {
+    const appliedReqsWithoutDose = (activePatient.requiredVaccines || []).filter(
+      v => v.status === 'aplicada' && !patientDoses.some(d => d.vaccineName.toLowerCase() === v.vaccineName.toLowerCase())
+    );
+
+    const pendingReqs = (activePatient.requiredVaccines || []).filter(
+      v => v.status === 'pendiente' && !patientDoses.some(d => d.vaccineName.toLowerCase() === v.vaccineName.toLowerCase())
+    );
+
+    const rows: Array<{
+      id: string;
+      vaccineName: string;
+      applicationDate: string;
+      vetName: string;
+      expirationDate: string;
+      status: 'al_dia' | 'vencida' | 'pendiente';
+      isDose: boolean;
+      doseObj?: VaccineDosis;
+    }> = [];
+
+    // 1. Dosis registradas
+    patientDoses.forEach((dose) => {
+      const isExpired = dose.status === 'expired' || dose.expirationDate < todayStr;
+      rows.push({
+        id: `dose-${dose.id}`,
+        vaccineName: dose.vaccineName,
+        applicationDate: dose.applicationDate,
+        vetName: dose.vetName,
+        expirationDate: dose.expirationDate,
+        status: isExpired ? 'vencida' : 'al_dia',
+        isDose: true,
+        doseObj: dose
+      });
+    });
+
+    // 2. Requeridas aplicadas
+    appliedReqsWithoutDose.forEach((req) => {
+      const cat = vaccineCatalog.find(c => c.name.toLowerCase() === req.vaccineName.toLowerCase());
+      const freqDays = cat?.frequencyDays || 365;
+      const appDate = req.appliedDate || req.suggestedDate || todayStr;
+      const expDate = new Date(new Date(appDate).getTime() + freqDays * 24 * 60 * 1000 * 60 * 60).toISOString().split('T')[0];
+      const isExpired = expDate < todayStr;
+      rows.push({
+        id: `req-app-${req.id}`,
+        vaccineName: req.vaccineName,
+        applicationDate: appDate,
+        vetName: currentVetName || 'Veterinaria',
+        expirationDate: expDate,
+        status: isExpired ? 'vencida' : 'al_dia',
+        isDose: false
+      });
+    });
+
+    // 3. Requeridas pendientes
+    pendingReqs.forEach((req) => {
+      const isExpired = req.suggestedDate < todayStr;
+      rows.push({
+        id: `req-pen-${req.id}`,
+        vaccineName: req.vaccineName,
+        applicationDate: '',
+        vetName: '-',
+        expirationDate: req.suggestedDate,
+        status: isExpired ? 'vencida' : 'pendiente',
+        isDose: false
+      });
+    });
+
+    // Filter
+    let result = rows;
+    if (historySearchQuery.trim()) {
+      const q = historySearchQuery.toLowerCase().trim();
+      result = result.filter(r =>
+        r.vaccineName.toLowerCase().includes(q) ||
+        r.vetName.toLowerCase().includes(q) ||
+        r.applicationDate.includes(q) ||
+        r.expirationDate.includes(q) ||
+        r.status.toLowerCase().includes(q)
+      );
+    }
+
+    if (historyStatusFilter !== 'todas') {
+      result = result.filter(r => r.status === historyStatusFilter);
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let valA: string | number = a[historySortField] || '';
+      let valB: string | number = b[historySortField] || '';
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      if (valA < valB) return historySortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return historySortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return result;
+  }, [activePatient.requiredVaccines, patientDoses, vaccineCatalog, todayStr, currentVetName, historySearchQuery, historyStatusFilter, historySortField, historySortDirection]);
+
   const filteredPatients = useMemo(() => {
     return getRecentOrFilteredPatients(patients || [], patientSearch, activePatient?.id, 15);
   }, [patients, patientSearch, activePatient?.id]);
@@ -210,39 +340,104 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
         </div>
 
         {/* Catalog Table */}
-        <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200 lg:flex-1 lg:overflow-hidden">
-          <div className="flex items-center justify-between mb-md">
+        <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-sm mb-md">
             <h2 className="font-headline-sm text-sm font-semibold text-slate-900 flex items-center gap-xs">
               <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">list_alt</span>
-              Vacunas registradas en la clínica ({vaccineCatalog.length})
+              Vacunas registradas en la clínica ({filteredCatalog.length} de {vaccineCatalog.length})
             </h2>
+
+            <div className="w-full sm:w-72 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 flex items-center gap-2">
+              <span className="material-symbols-outlined text-slate-400 text-[18px]">search</span>
+              <input
+                type="text"
+                value={catalogSearchQuery}
+                onChange={(e) => setCatalogSearchQuery(e.target.value)}
+                placeholder="Buscar en el catálogo..."
+                className="w-full bg-transparent outline-none text-xs text-slate-800 placeholder:text-slate-400 font-medium"
+              />
+              {catalogSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setCatalogSearchQuery('')}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="w-full overflow-x-auto border border-slate-200 rounded-xl">
             <table className="w-full text-left font-body-md text-xs whitespace-nowrap">
               <thead>
                 <tr className="bg-slate-50 text-slate-700 font-semibold text-[11px] border-b border-slate-200">
-                  <th className="p-sm px-md">Nombre de la vacuna</th>
-                  <th className="p-sm px-md">Frecuencia / vigencia</th>
+                  <th
+                    className="p-sm px-md cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                    onClick={() => {
+                      if (catalogSortField === 'name') {
+                        setCatalogSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setCatalogSortField('name');
+                        setCatalogSortDirection('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Nombre de la vacuna</span>
+                      {catalogSortField === 'name' && (
+                        <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                          {catalogSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="p-sm px-md cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                    onClick={() => {
+                      if (catalogSortField === 'frequencyDays') {
+                        setCatalogSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setCatalogSortField('frequencyDays');
+                        setCatalogSortDirection('asc');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Frecuencia / vigencia</span>
+                      {catalogSortField === 'frequencyDays' && (
+                        <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                          {catalogSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                        </span>
+                      )}
+                    </div>
+                  </th>
                   <th data-card-hide className="p-sm px-md">Equivalente meses</th>
                   <th className="p-sm px-md text-center">Estado</th>
                   <th className="p-sm px-md text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="text-slate-800">
-                {vaccineCatalog.map((item) => {
-                  const months = Math.round(item.frequencyDays / 30);
-                  return (
-                    <tr key={item.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                      <td className="p-sm px-md font-medium text-slate-900 text-xs">{item.name}</td>
-                      <td className="p-sm px-md font-medium text-slate-800">{item.frequencyDays} días</td>
-                      <td className="p-sm px-md text-slate-600 font-medium">~ {months} {months === 1 ? 'mes' : 'meses'}</td>
-                      <td className="p-sm px-md text-center">
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">
-                          Activa
-                        </span>
-                      </td>
-                      <td className="p-sm px-md text-right">
+                {filteredCatalog.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-slate-500 text-xs font-medium">
+                      No se encontraron vacunas que coincidan con "{catalogSearchQuery}".
+                    </td>
+                  </tr>
+                ) : (
+                  filteredCatalog.map((item) => {
+                    const months = Math.round(item.frequencyDays / 30);
+                    return (
+                      <tr key={item.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                        <td className="p-sm px-md font-medium text-slate-900 text-xs">{item.name}</td>
+                        <td className="p-sm px-md font-medium text-slate-800">{item.frequencyDays} días</td>
+                        <td className="p-sm px-md text-slate-600 font-medium">~ {months} {months === 1 ? 'mes' : 'meses'}</td>
+                        <td className="p-sm px-md text-center">
+                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">
+                            Activa
+                          </span>
+                        </td>
+                        <td className="p-sm px-md text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleOpenEditModal(item)}
@@ -264,7 +459,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>
@@ -353,7 +548,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
 
   // Patients Module: Control de Vacunas (With Master Patient Selection)
   return (
-    <div className="flex flex-col md:flex-row gap-md w-full flex-1 font-body-md text-slate-800 h-full overflow-y-auto p-md lg:p-0 lg:overflow-hidden">
+    <div className="flex flex-col md:flex-row gap-md w-full flex-1 font-body-md text-slate-800 h-full overflow-y-auto p-md lg:p-0">
       {/* Left Column: All Patients Master List */}
       {patients && patients.length > 0 && (
         <aside className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-64 xl:w-72 gap-xs shrink-0 overflow-hidden h-full min-h-0`}>
@@ -604,170 +799,270 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
 
             {/* Historial Table */}
             <div className="bg-white rounded-2xl p-md shadow-sm border border-slate-200">
-              <h2 className="font-headline-sm text-sm font-semibold text-slate-900 mb-md flex items-center gap-xs">
-                <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">vaccines</span>
-                Historial de vacunación — {activePatient.name}
-              </h2>
+              <div className="flex flex-col gap-sm mb-md">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-sm">
+                  <h2 className="font-headline-sm text-sm font-semibold text-slate-900 flex items-center gap-xs">
+                    <span className="material-symbols-outlined text-[#9A7DB8] text-[18px]">vaccines</span>
+                    Historial de vacunación — {activePatient.name} ({patientHistoryRows.length})
+                  </h2>
+
+                  {/* Search bar */}
+                  <div className="w-full sm:w-64 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-slate-400 text-[18px]">search</span>
+                    <input
+                      type="text"
+                      value={historySearchQuery}
+                      onChange={(e) => setHistorySearchQuery(e.target.value)}
+                      placeholder="Buscar en historial..."
+                      className="w-full bg-transparent outline-none text-xs text-slate-800 placeholder:text-slate-400 font-medium"
+                    />
+                    {historySearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setHistorySearchQuery('')}
+                        className="text-slate-400 hover:text-slate-600"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Status Filter Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryStatusFilter('todas')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      historyStatusFilter === 'todas'
+                        ? 'bg-[#7B5EA7] text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Todas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryStatusFilter('al_dia')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                      historyStatusFilter === 'al_dia'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Al día
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryStatusFilter('vencida')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                      historyStatusFilter === 'vencida'
+                        ? 'bg-red-600 text-white shadow-xs'
+                        : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                    Vencidas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryStatusFilter('pendiente')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                      historyStatusFilter === 'pendiente'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                    Pendientes
+                  </button>
+                </div>
+              </div>
 
               <div className="w-full overflow-x-auto border border-slate-200 rounded-xl">
                 <table className="w-full text-left font-body-md text-xs whitespace-nowrap">
                   <thead>
                     <tr className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200 text-[11px]">
-                      <th className="py-2.5 px-md">Vacuna</th>
-                      <th className="py-2.5 px-md">Fecha aplicación</th>
-                      <th className="py-2.5 px-md">Profesional</th>
-                      <th className="py-2.5 px-md">Vencimiento / Refuerzo</th>
-                      <th className="py-2.5 px-md">Estado</th>
+                      <th
+                        className="py-2.5 px-md cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                        onClick={() => {
+                          if (historySortField === 'vaccineName') {
+                            setHistorySortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setHistorySortField('vaccineName');
+                            setHistorySortDirection('asc');
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span>Vacuna</span>
+                          {historySortField === 'vaccineName' && (
+                            <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                              {historySortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        className="py-2.5 px-md cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                        onClick={() => {
+                          if (historySortField === 'applicationDate') {
+                            setHistorySortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setHistorySortField('applicationDate');
+                            setHistorySortDirection('asc');
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span>Fecha aplicación</span>
+                          {historySortField === 'applicationDate' && (
+                            <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                              {historySortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        className="py-2.5 px-md cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                        onClick={() => {
+                          if (historySortField === 'vetName') {
+                            setHistorySortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setHistorySortField('vetName');
+                            setHistorySortDirection('asc');
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span>Profesional</span>
+                          {historySortField === 'vetName' && (
+                            <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                              {historySortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        className="py-2.5 px-md cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                        onClick={() => {
+                          if (historySortField === 'expirationDate') {
+                            setHistorySortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setHistorySortField('expirationDate');
+                            setHistorySortDirection('asc');
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span>Vencimiento / Refuerzo</span>
+                          {historySortField === 'expirationDate' && (
+                            <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                              {historySortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        className="py-2.5 px-md cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                        onClick={() => {
+                          if (historySortField === 'status') {
+                            setHistorySortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setHistorySortField('status');
+                            setHistorySortDirection('asc');
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span>Estado</span>
+                          {historySortField === 'status' && (
+                            <span className="material-symbols-outlined text-[14px] text-[#7B5EA7]">
+                              {historySortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
                       {onDeleteDosis && <th className="py-2.5 px-md text-right">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="text-slate-800">
-                    {(() => {
-                      const appliedReqsWithoutDose = (activePatient.requiredVaccines || []).filter(
-                        v => v.status === 'aplicada' && !patientDoses.some(d => d.vaccineName.toLowerCase() === v.vaccineName.toLowerCase())
-                      );
+                    {patientHistoryRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={onDeleteDosis ? 6 : 5} className="py-8 text-center text-slate-500 text-xs font-medium">
+                          {historySearchQuery || historyStatusFilter !== 'todas'
+                            ? 'No se encontraron vacunas que coincidan con los filtros aplicados.'
+                            : `No hay vacunas registradas para ${activePatient.name}.`}
+                        </td>
+                      </tr>
+                    ) : (
+                      patientHistoryRows.map((row) => {
+                        const isExpired = row.status === 'vencida';
+                        const isPending = row.status === 'pendiente';
 
-                      const pendingReqs = (activePatient.requiredVaccines || []).filter(
-                        v => v.status === 'pendiente' && !patientDoses.some(d => d.vaccineName.toLowerCase() === v.vaccineName.toLowerCase())
-                      );
-
-                      if (patientDoses.length === 0 && pendingReqs.length === 0 && appliedReqsWithoutDose.length === 0) {
                         return (
-                          <tr>
-                            <td colSpan={onDeleteDosis ? 6 : 5} className="py-md text-center text-slate-500 text-xs font-medium">
-                              No hay vacunas registradas para {activePatient.name}.
+                          <tr key={row.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                            <td className="py-sm px-md font-medium text-slate-900 text-xs">{row.vaccineName}</td>
+                            <td className="py-sm px-md font-medium text-slate-800">
+                              {row.applicationDate ? formatDate(row.applicationDate) : '-'}
                             </td>
+                            <td className="py-sm px-md flex items-center gap-xs font-medium text-slate-800">
+                              {row.vetName !== '-' ? (
+                                <>
+                                  <div className="w-5 h-5 rounded-full bg-purple-100 text-[#5C3C7B] flex items-center justify-center font-semibold text-[10px]">
+                                    {row.vetName.slice(0, 2).toUpperCase()}
+                                  </div>
+                                  {row.vetName}
+                                </>
+                              ) : (
+                                <span className="text-slate-400">-</span>
+                              )}
+                            </td>
+                            <td className={`py-sm px-md font-semibold ${
+                              isExpired ? 'text-red-700' : 'text-slate-800'
+                            }`}>
+                              {formatDate(row.expirationDate)}
+                            </td>
+                            <td className="py-sm px-md">
+                              {isExpired ? (
+                                <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold text-[10px]">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+                                  Vencida
+                                </span>
+                              ) : isPending ? (
+                                <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-semibold text-[10px]">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                                  Pendiente
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                  Al día
+                                </span>
+                              )}
+                            </td>
+                            {onDeleteDosis && (
+                              <td className="py-sm px-md text-right">
+                                {row.isDose && row.doseObj ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setDoseToDelete(row.doseObj!)}
+                                    aria-label={`Eliminar dosis de ${row.vaccineName} del ${formatDate(row.applicationDate)}`}
+                                    title="Eliminar dosis"
+                                    className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-400 text-xs">-</span>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         );
-                      }
-
-                      return (
-                        <>
-                          {/* Dosis Aplicadas */}
-                          {patientDoses.map((dose) => {
-                            const isExpired = dose.status === 'expired' || dose.expirationDate < todayStr;
-                            return (
-                              <tr key={dose.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                                <td className="py-sm px-md font-medium text-slate-900 text-xs">{dose.vaccineName}</td>
-                                <td className="py-sm px-md font-medium text-slate-800">{formatDate(dose.applicationDate)}</td>
-                                <td className="py-sm px-md flex items-center gap-xs font-medium text-slate-800">
-                                  <div className="w-5 h-5 rounded-full bg-purple-100 text-[#5C3C7B] flex items-center justify-center font-semibold text-[10px]">
-                                    {dose.vetName.slice(0, 2).toUpperCase()}
-                                  </div>
-                                  {dose.vetName}
-                                </td>
-                                <td className={`py-sm px-md font-semibold ${
-                                  isExpired ? 'text-red-700' : 'text-slate-800'
-                                }`}>
-                                  {formatDate(dose.expirationDate)}
-                                </td>
-                                <td className="py-sm px-md">
-                                  {isExpired ? (
-                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold text-[10px]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
-                                      Vencida
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                                      Al día
-                                    </span>
-                                  )}
-                                </td>
-                                {onDeleteDosis && (
-                                  <td className="py-sm px-md text-right">
-                                    <button
-                                      type="button"
-                                      onClick={() => setDoseToDelete(dose)}
-                                      aria-label={`Eliminar dosis de ${dose.vaccineName} del ${formatDate(dose.applicationDate)}`}
-                                      title="Eliminar dosis"
-                                      className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                                    >
-                                      <span className="material-symbols-outlined text-[18px]">delete</span>
-                                    </button>
-                                  </td>
-                                )}
-                              </tr>
-                            );
-                          })}
-
-                          {/* Vacunas Requeridas Aplicadas sin registro de dosis separado */}
-                          {appliedReqsWithoutDose.map((req) => {
-                            const cat = vaccineCatalog.find(c => c.name.toLowerCase() === req.vaccineName.toLowerCase());
-                            const freqDays = cat?.frequencyDays || 365;
-                            const appDate = req.appliedDate || req.suggestedDate || todayStr;
-                            const expDate = new Date(new Date(appDate).getTime() + freqDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-                            const isExpired = expDate < todayStr;
-                            return (
-                              <tr key={req.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                                <td className="py-sm px-md font-medium text-slate-900 text-xs">{req.vaccineName}</td>
-                                <td className="py-sm px-md font-medium text-slate-800">{formatDate(appDate)}</td>
-                                <td className="py-sm px-md flex items-center gap-xs font-medium text-slate-800">
-                                  <div className="w-5 h-5 rounded-full bg-purple-100 text-[#5C3C7B] flex items-center justify-center font-semibold text-[10px]">
-                                    VE
-                                  </div>
-                                  {currentVetName || 'Veterinaria'}
-                                </td>
-                                <td className={`py-sm px-md font-semibold ${
-                                  isExpired ? 'text-red-700' : 'text-slate-800'
-                                }`}>
-                                  {formatDate(expDate)}
-                                </td>
-                                <td className="py-sm px-md">
-                                  {isExpired ? (
-                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold text-[10px]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
-                                      Vencida
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold text-[10px]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                                      Al día
-                                    </span>
-                                  )}
-                                </td>
-                                {onDeleteDosis && (
-                                  <td className="py-sm px-md text-right text-slate-400">-</td>
-                                )}
-                              </tr>
-                            );
-                          })}
-
-                          {/* Vacunas Requeridas Pendientes */}
-                          {pendingReqs.map((req) => {
-                            const isExpired = req.suggestedDate < todayStr;
-                            return (
-                              <tr key={req.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                                <td className="py-sm px-md font-medium text-slate-900 text-xs">{req.vaccineName}</td>
-                                <td className="py-sm px-md font-medium text-slate-400">-</td>
-                                <td className="py-sm px-md font-medium text-slate-400">-</td>
-                                <td className={`py-sm px-md font-semibold ${
-                                  isExpired ? 'text-red-700' : 'text-slate-800'
-                                }`}>
-                                  {formatDate(req.suggestedDate)}
-                                </td>
-                                <td className="py-sm px-md">
-                                  {isExpired ? (
-                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold text-[10px]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
-                                      Vencida
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-semibold text-[10px]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
-                                      Pendiente
-                                    </span>
-                                  )}
-                                </td>
-                                {onDeleteDosis && (
-                                  <td className="py-sm px-md text-right text-slate-400">-</td>
-                                )}
-                              </tr>
-                            );
-                          })}
-                        </>
-                      );
-                    })()}
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>

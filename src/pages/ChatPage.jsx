@@ -377,6 +377,7 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
       }
     } catch (err) {
       console.error('Error generando QR desde Evolution API:', err);
+      alert('No se pudo generar el código QR de WhatsApp: ' + (err.message || 'Verifique que el servidor de mensajería esté activo.'));
     } finally {
       setIsLoadingQr(false);
     }
