@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BillItem, Product } from '../types';
+import { BillItem, BillReceipt, Patient, Product } from '../types';
 import { 
   calculateItemSubtotal, 
   calculateBillSummary, 
@@ -7,7 +7,8 @@ import {
   generateReceiptNumber,
   formatPriceInputDisplay,
   parsePriceInput,
-  determineAppointmentsToComplete
+  determineAppointmentsToComplete,
+  enrichReceiptsWithPatients
 } from './billingService';
 
 describe('billingService', () => {
@@ -409,5 +410,43 @@ describe('billingService', () => {
       expect(defaultIsAfip).toBe(false);
       expect(defaultEmitAfip).toBe(false);
     });
+  });
+});
+
+describe('enrichReceiptsWithPatients', () => {
+  const patients = [
+    { id: 'p1', name: 'Mateo Prueba', ownerName: 'Mateo prueba' },
+    { id: 'p2', name: 'MONA', ownerName: 'PEDRO' }
+  ] as unknown as Patient[];
+
+  const receipt = (extra: Partial<BillReceipt>): BillReceipt => ({
+    id: 'r1', receiptNumber: 'FC-C-0001-00000001', documentType: 'factura-c', emitAfip: false,
+    date: '2026-10-01', paymentMethod: 'cuenta-corriente', items: [],
+    subtotal: 1, discountTotal: 0, taxAmount: 0, total: 1, totalAmount: 1, ...extra
+  });
+
+  it('fills pet and owner from the patient when the receipt only has patientId', () => {
+    const [res] = enrichReceiptsWithPatients([receipt({ patientId: 'p1' })], patients);
+    expect(res.patientName).toBe('Mateo Prueba');
+    expect(res.ownerName).toBe('Mateo prueba');
+  });
+
+  it('replaces generic placeholders but keeps real names already stored', () => {
+    const [generic] = enrichReceiptsWithPatients(
+      [receipt({ patientId: 'p2', patientName: 'Cliente General', ownerName: 'Sin tutor' })], patients);
+    expect(generic.patientName).toBe('MONA');
+    expect(generic.ownerName).toBe('PEDRO');
+
+    const original = receipt({ patientId: 'p2', patientName: 'Mona (nombre original)', ownerName: 'Pedro G.' });
+    expect(enrichReceiptsWithPatients([original], patients)[0]).toBe(original);
+  });
+
+  it('leaves receipts without a known patient untouched', () => {
+    const noPatient = receipt({});
+    const unknown = receipt({ id: 'r2', patientId: 'zzz' });
+    const res = enrichReceiptsWithPatients([noPatient, unknown], patients);
+    expect(res[0]).toBe(noPatient);
+    expect(res[1]).toBe(unknown);
+    expect(enrichReceiptsWithPatients([noPatient], [])).toEqual([noPatient]);
   });
 });

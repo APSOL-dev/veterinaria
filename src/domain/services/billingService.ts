@@ -1,4 +1,4 @@
-import { BillItem, BillReceipt, DocumentType, PaymentMethod, Product, StockMovement, MedicalAppointment, GroomingAppointment } from '../types';
+import { BillItem, BillReceipt, DocumentType, PaymentMethod, Patient, Product, StockMovement, MedicalAppointment, GroomingAppointment } from '../types';
 import { recordStockSale } from './inventoryService';
 
 export function calculateItemSubtotal(unitPrice: number, quantity: number, discountPercent: number = 0): number {
@@ -254,3 +254,28 @@ export function determineAppointmentsToComplete(
   return { medicalIdsToComplete, groomingIdsToComplete };
 }
 
+const RECEIPT_PLACEHOLDERS = new Set(['', 'cliente general', 'sin tutor', 'no especificada']);
+
+/**
+ * La tabla de comprobantes solo guarda patient_id: al recargar se pierden el nombre de la mascota y del tutor.
+ * Completa patientName/ownerName desde el paciente asociado cuando faltan o son un texto genérico.
+ * Devuelve la misma referencia del comprobante si no hay nada que completar.
+ */
+export function enrichReceiptsWithPatients(receipts: BillReceipt[], patients: Patient[]): BillReceipt[] {
+  if (!receipts.length || !patients.length) return receipts;
+  const byId = new Map(patients.map(p => [String(p.id), p]));
+  const isMissing = (value?: string) => RECEIPT_PLACEHOLDERS.has((value || '').trim().toLowerCase());
+
+  return receipts.map(r => {
+    const patient = r.patientId ? byId.get(String(r.patientId)) : undefined;
+    if (!patient) return r;
+    const needsPatientName = isMissing(r.patientName);
+    const needsOwnerName = isMissing(r.ownerName);
+    if (!needsPatientName && !needsOwnerName) return r;
+    return {
+      ...r,
+      patientName: needsPatientName ? patient.name : r.patientName,
+      ownerName: needsOwnerName ? patient.ownerName : r.ownerName
+    };
+  });
+}

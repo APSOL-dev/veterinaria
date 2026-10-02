@@ -58,7 +58,7 @@ import {
 import { MOBILE_TABLE_QUERY, watchResponsiveTables } from './utils/responsiveTables';
 import { createDosisRecord } from './domain/services/vaccineService';
 import { getLowStockAlerts, recordStockEntry, recordStockAdjustment, processStockReceiptFromBill } from './domain/services/inventoryService';
-import { processCheckout, determineAppointmentsToComplete } from './domain/services/billingService';
+import { processCheckout, determineAppointmentsToComplete, enrichReceiptsWithPatients } from './domain/services/billingService';
 import { createNewPatientRecord, normalizePatientCoat, updateClinicalNoteRecord, deleteClinicalNoteRecord } from './domain/services/patientService';
 import { createSupplierBillRecord, createSupplierQuoteRecord, saveSupplierCreditTerm, filterPaymentsByDeletedBill, formatInvoiceFullNumber } from './domain/services/supplierService';
 import { createExpenseRecord } from './domain/services/expenseService';
@@ -246,6 +246,8 @@ export const App: React.FC = () => {
     };
   }, []);
   const [receipts, setReceipts] = useState<BillReceipt[]>(initialReceipts);
+  // Los comprobantes guardan solo patient_id: se completa el nombre de la mascota y del tutor al mostrarlos
+  const receiptsWithPatients = useMemo(() => enrichReceiptsWithPatients(receipts, patients), [receipts, patients]);
 
   const handleLoginSuccess = useCallback((session: UserSession) => {
     saveUserSession(session);
@@ -1266,7 +1268,7 @@ export const App: React.FC = () => {
                   <TutoresView
                     patients={patients}
                     onUpdatePatients={handleUpdatePatients}
-                    receipts={receipts}
+                    receipts={receiptsWithPatients}
                     medicalAppointments={medicalAppointments}
                     groomingAppointments={groomingAppointments}
                     onSelectPatient={(pat) => {
@@ -1327,7 +1329,7 @@ export const App: React.FC = () => {
               <CobrosView
                 patients={patients}
                 selectedPatient={selectedPatient}
-                receipts={receipts}
+                receipts={receiptsWithPatients}
                 activeSubmodule={activeSubmodule}
                 initialItems={pendingBillingItems}
                 products={products}
