@@ -9,10 +9,12 @@ El módulo **Cobros** administra la emisión de facturas electrónicas, remitos 
    - La pantalla de **Nueva Facturación** se inicializa predeterminadamente con **Factura C** (`documentType: 'factura-c'`).
    - Al ser Factura C, el discriminado de IVA se desactiva de forma automática (`applyTax: false`).
 
-2. **Selección Directa desde Catálogos de Productos y Servicios:**
+2. **Selección Directa y Buscador Integrado en Modal de Agregar Conceptos:**
    - En el modal de **Agregar Concepto a Factura**, el usuario alterna entre **Servicio** y **Producto**.
+   - **Buscador Integrado en Tiempo Real:** Incorpora un campo de búsqueda interactivo con icono de lupa, placeholder dinámico (`Buscar servicio por nombre, categoría o precio...` / `Buscar producto por nombre, categoría o precio...`) y botón para limpiar la búsqueda rápidamente.
+   - **Lista Desplegable Filtrada:** Muestra los ítems coincidentes en una lista desplazable (`max-h-56`) con insignia de categoría, precio referencial formateado, estado de selección visual y mensaje amigable en caso de no hallar coincidencias con la búsqueda.
    - Permite filtrar por categorías dinámicas registradas en el sistema (ej. `Clínica`, `Peluquería`, `Medicamentos`, `Alimentación`, `Accesorios`, `Insumos Clínicos`).
-   - El desplegable lista los ítems existentes en el catálogo con sus precios de referencia, autocompletando la descripción y el costo.
+   - Al seleccionar un ítem de la lista, autocompleta la descripción y el costo unitario de referencia en el formulario del concepto.
 
 3. **Edición Directa de Precios Unitarios (Precio Editable sin ceros pre-cargados):**
    - El precio unitario de cualquier concepto en la tabla de detalle y en el modal de agregación de conceptos es **completamente editable en tiempo real**.

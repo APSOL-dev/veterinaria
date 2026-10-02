@@ -176,6 +176,13 @@ input[placeholder*="Escribir nombre" i]:not(.bg-transparent):not(:focus) {
   border-color: #94a3b8;
 }
 
+/* Texto largo sin espacios (diagnósticos, correos, códigos): se parte en vez de salirse del recuadro */
+@media screen and (max-width: 768px) {
+  :where(main, .fixed) :where(p, h1, h2, h3, h4, h5, li, label, dt, dd, blockquote, pre, strong, em) {
+    overflow-wrap: anywhere;
+  }
+}
+
 /* Utilidad para scroll horizontal suave en móviles sin mostrar barra de desplazamiento */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

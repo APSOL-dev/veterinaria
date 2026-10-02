@@ -500,7 +500,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
           </div>
 
           {/* Datos del Cliente / Tutor Destacados en la Parte Superior Derecha */}
-          <div className="bg-slate-50/90 border border-slate-200 rounded-xl p-2.5 px-3.5 flex items-center gap-md self-stretch md:self-auto justify-between md:justify-end shadow-2xs">
+          <div className="bg-slate-50/90 border border-slate-200 rounded-xl p-2.5 px-3.5 flex flex-col sm:flex-row sm:items-center gap-sm md:gap-md self-stretch md:self-auto sm:justify-between md:justify-end shadow-2xs min-w-0">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-[#5C3C7B] text-[20px]">person</span>
               <div className="flex flex-col">
@@ -509,13 +509,13 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto min-w-0">
               {selectedPatient.ownerPhone && (
                 <a
                   href={`https://wa.me/${cleanPhone(selectedPatient.ownerPhone)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="bg-[#25D366] text-white hover:brightness-105 px-3.5 py-2 min-h-[44px] sm:min-h-[40px] rounded-xl font-label-sm text-xs flex items-center gap-1.5 shadow-sm font-semibold transition-all"
+                  className="bg-[#25D366] text-white hover:brightness-105 px-3.5 py-2 min-h-[44px] sm:min-h-[40px] rounded-xl font-label-sm text-xs flex flex-1 sm:flex-none justify-center items-center gap-1.5 shadow-sm font-semibold transition-all"
                   title="Enviar WhatsApp al dueño"
                 >
                   <span className="material-symbols-outlined text-[16px]" aria-hidden="true">chat</span>
@@ -525,7 +525,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
               <button
                 onClick={handleOpenEditPetModal}
-                className="bg-white hover:bg-slate-100 text-[#5C3C7B] border border-slate-300 px-3.5 py-2 min-h-[44px] sm:min-h-[40px] rounded-xl font-label-sm text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
+                className="bg-white hover:bg-slate-100 text-[#5C3C7B] border border-slate-300 px-3.5 py-2 min-h-[44px] sm:min-h-[40px] rounded-xl font-label-sm text-xs font-semibold flex flex-1 sm:flex-none justify-center items-center gap-1.5 transition-all shadow-2xs cursor-pointer sm:whitespace-nowrap"
                 title="Editar datos clínicos del paciente"
               >
                 <span className="material-symbols-outlined text-[16px]" aria-hidden="true">edit</span>

@@ -231,14 +231,16 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
   // Ref para auto-scroll del chat
   const messagesEndRef = useRef(null);
 
-  // 1. Verificar Estado de Conexión
-  const checkConnection = useCallback(async () => {
+  // 1. Verificar Estado de Conexión (solo muestra spinner a pantalla completa en la carga inicial si no hay estado previo)
+  const checkConnection = useCallback(async (isInitial = false) => {
     if (!config.apiUrl || !config.apiKey) {
       setConnectionState('close');
       sessionStorage.setItem('whatsapp_conn_state', 'close');
       return;
     }
-    setIsLoadingState(true);
+    if (isInitial) {
+      setIsLoadingState(true);
+    }
     try {
       const state = await evolutionService.getConnectionState();
       setConnectionState(state);
@@ -256,43 +258,55 @@ export const ChatPage = ({ patientsList = /** @type {any[]} */ ([]), onOpenPatie
       setSelectedChat(null);
       setMessages([]);
     } finally {
-      setIsLoadingState(false);
+      if (isInitial) {
+        setIsLoadingState(false);
+      }
     }
   }, [config.apiUrl, config.apiKey]);
 
   useEffect(() => {
-    checkConnection();
-    const interval = setInterval(checkConnection, 15000);
+    // Solo mostramos pantalla de carga inicial si no conocemos el estado de conexión
+    const hasInitialState = !!sessionStorage.getItem('whatsapp_conn_state');
+    checkConnection(!hasInitialState);
+    const interval = setInterval(() => {
+      checkConnection(false);
+    }, 30000);
     return () => clearInterval(interval);
   }, [checkConnection]);
 
-  // 2. Cargar Chats Reales de la API únicamente cuando la conexión está abierta
-  const loadChats = useCallback(async () => {
+  // 2. Cargar Chats Reales de la API (silent en background para no parpadear ni resetear scroll)
+  const loadChats = useCallback(async (isSilent = false) => {
     if (connectionState !== 'open' || !config.apiUrl || !config.apiKey || !config.instance) {
       setChats([]);
       setSelectedChat(null);
       setMessages([]);
       return;
     }
-    setIsLoadingChats(true);
+    if (!isSilent) {
+      setIsLoadingChats(true);
+    }
     try {
       const response = await evolutionService.fetchChats();
       const chatList = Array.isArray(response) ? response : (response?.chats || response?.data || []);
       setChats(chatList);
     } catch (err) {
       console.warn('No se pudieron obtener chats de Evolution API:', err);
-      setChats([]);
+      if (!isSilent) {
+        setChats([]);
+      }
     } finally {
-      setIsLoadingChats(false);
+      if (!isSilent) {
+        setIsLoadingChats(false);
+      }
     }
   }, [config.apiUrl, config.apiKey, config.instance, connectionState]);
 
   useEffect(() => {
-    loadChats();
+    loadChats(false);
     if (connectionState !== 'open') return;
     const interval = setInterval(() => {
-      loadChats();
-    }, 5000);
+      loadChats(true);
+    }, 15000);
     return () => clearInterval(interval);
   }, [loadChats, connectionState]);
 
