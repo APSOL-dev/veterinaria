@@ -553,7 +553,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   setAppDate(activeDayISO);
                   setShowNewModal(true);
                 }}
-                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white text-xs font-semibold px-4 py-2 min-h-[40px] rounded-xl mt-1 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white text-xs font-semibold px-4 py-2 min-h-[44px] sm:min-h-[40px] rounded-xl mt-1 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]" aria-hidden="true">add</span>
                 + Agendar turno

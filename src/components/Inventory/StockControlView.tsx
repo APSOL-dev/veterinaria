@@ -988,7 +988,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleToggleService(srv)}
-                        className={`px-3 py-1 min-h-[36px] rounded-full text-xs font-bold cursor-pointer transition-all border ${
+                        className={`px-3 py-1 min-h-[44px] sm:min-h-[36px] rounded-full text-xs font-bold cursor-pointer transition-all border ${
                           srv.isActive 
                             ? 'bg-[#E8F5E9] text-[#1B5E20] border-emerald-300 hover:bg-emerald-200' 
                             : 'bg-[#FDEDEC] text-[#C0392B] border-red-300 hover:bg-red-200'
