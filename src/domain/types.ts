@@ -84,6 +84,8 @@ export interface VaccineCatalogItem {
   id: string;
   name: string;
   frequencyDays: number;
+  species?: Species | 'Ambos' | string;
+  description?: string;
 }
 
 export interface VaccineDosis {

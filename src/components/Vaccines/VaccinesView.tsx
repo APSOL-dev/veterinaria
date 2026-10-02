@@ -10,6 +10,7 @@ import {
 } from '../../domain/services/vaccineService';
 import { getRecentOrFilteredPatients } from '../../domain/services/patientService';
 import { AppConfirmModal } from '../Common/AppConfirmModal';
+import { SearchableVaccineSelect } from '../Common/SearchableVaccineSelect';
 import { formatDate } from '../../utils/dateUtils';
 
 const getLocalDateString = (): string => {
@@ -960,17 +961,14 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
             <form onSubmit={handleRegisterDosis} className="flex flex-col gap-md text-xs">
               <div>
                 <label className="font-semibold text-xs text-slate-700 block mb-1">Seleccionar vacuna *</label>
-                <select
-                  value={selectedVacId}
-                  onChange={(e) => setSelectedVacId(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-medium text-xs focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 shadow-xs cursor-pointer"
-                >
-                  {vaccineCatalog.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} ({item.frequencyDays} días)
-                    </option>
-                  ))}
-                </select>
+                <SearchableVaccineSelect
+                  catalog={vaccineCatalog}
+                  selectedVaccineId={selectedVacId}
+                  onSelectVaccine={(vac) => setSelectedVacId(vac.id)}
+                  speciesFilter={activePatient.species}
+                  placeholder="Escriba para buscar o elija del desplegable..."
+                  required
+                />
               </div>
 
               <div>

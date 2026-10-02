@@ -399,5 +399,38 @@ export function completeVaccineFromAppointment(
   return { updatedPatient, newDosis };
 }
 
+/**
+ * Filters the vaccine catalog by search query and optional species filter.
+ */
+export function filterVaccineCatalog(
+  catalog: VaccineCatalogItem[],
+  query: string,
+  speciesFilter?: string
+): VaccineCatalogItem[] {
+  let result = catalog;
+
+  if (speciesFilter && speciesFilter !== 'Todos' && speciesFilter !== 'Ambos') {
+    const sNorm = speciesFilter.toLowerCase().trim();
+    result = result.filter(item => {
+      if (!item.species || item.species === 'Ambos' || item.species === 'Todos') return true;
+      return item.species.toLowerCase() === sNorm;
+    });
+  }
+
+  if (!query || !query.trim()) {
+    return result;
+  }
+
+  const q = query.toLowerCase().trim();
+  return result.filter(item => {
+    return (
+      item.name.toLowerCase().includes(q) ||
+      (item.species && item.species.toLowerCase().includes(q)) ||
+      (item.description && item.description.toLowerCase().includes(q)) ||
+      `${item.frequencyDays}`.includes(q)
+    );
+  });
+}
+
 
 

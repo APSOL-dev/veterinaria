@@ -12,7 +12,8 @@ import {
   getPatientVaccineGlobalStatus,
   findActiveVaccineAppointment,
   matchVaccineNameFromAppointment,
-  completeVaccineFromAppointment
+  completeVaccineFromAppointment,
+  filterVaccineCatalog
 } from './vaccineService';
 import { MedicalAppointment, VaccineCatalogItem } from '../types';
 
@@ -581,6 +582,38 @@ describe('vaccineService', () => {
       expect(newDosis.applicationDate).toBe('2026-10-10');
       expect(newDosis.expirationDate).toBe('2027-10-10');
       expect(newDosis.vetName).toBe('Dr. Vet');
+    });
+  });
+
+  describe('filterVaccineCatalog', () => {
+    const catalog: VaccineCatalogItem[] = [
+      { id: 'v-1', name: 'SÉXTUPLE CANINA', species: 'Canino', frequencyDays: 365, description: 'Parvovirus, Moquillo, Hepatitis' },
+      { id: 'v-2', name: 'TRIPLE FELINA', species: 'Felino', frequencyDays: 365, description: 'Rinotraqueítis, Calicivirus, Panleucopenia' },
+      { id: 'v-3', name: 'ANTIRRÁBICA', species: 'Ambos', frequencyDays: 365, description: 'Rabia para caninos y felinos' },
+      { id: 'v-4', name: 'QUÍNTUPLE CANINA', species: 'Canino', frequencyDays: 365, description: 'Protección canina' }
+    ];
+
+    it('returns all items when query is empty', () => {
+      const res = filterVaccineCatalog(catalog, '');
+      expect(res).toHaveLength(4);
+    });
+
+    it('filters by vaccine name regardless of casing or accents', () => {
+      const res = filterVaccineCatalog(catalog, 'séxtuple');
+      expect(res).toHaveLength(1);
+      expect(res[0].id).toBe('v-1');
+    });
+
+    it('filters by description or disease', () => {
+      const res = filterVaccineCatalog(catalog, 'Parvovirus');
+      expect(res).toHaveLength(1);
+      expect(res[0].id).toBe('v-1');
+    });
+
+    it('filters by target species if specified', () => {
+      const res = filterVaccineCatalog(catalog, '', 'Felino');
+      // Should return TRIPLE FELINA + ANTIRRÁBICA (species: Ambos)
+      expect(res.map(r => r.id)).toEqual(['v-2', 'v-3']);
     });
   });
 });
