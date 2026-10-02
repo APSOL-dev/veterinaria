@@ -143,6 +143,17 @@
   }
 }
 
+/* Buscadores: borde más marcado en todos (el mismo gris azulado de las tarjetas de tabla).
+   Caso 1: el input tiene borde propio. Caso 2: el input es transparente y el borde lo tiene su contenedor.
+   En foco se conserva el color propio de cada buscador. */
+input[placeholder*="Buscar" i]:not(.bg-transparent):not(:focus),
+input[placeholder*="Escribir nombre" i]:not(.bg-transparent):not(:focus) {
+  border: 1.5px solid #b8c2d0 !important;
+}
+:where(div, label):has(> input.bg-transparent[placeholder*="Buscar" i]):not(:focus-within) {
+  border: 1.5px solid #b8c2d0 !important;
+}
+
 /* Utilidad para scroll horizontal suave en móviles sin mostrar barra de desplazamiento */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
