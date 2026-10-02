@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { TutorAccountMovement, BillReceipt } from '../../domain/types';
 import { formatDate } from '../../utils/dateUtils';
-import { dataUrlToFile, getVoucherKind } from '../../utils/fileUtils';
+import { getVoucherKind } from '../../utils/fileUtils';
 
 interface ComprobanteDetailModalProps {
   isOpen: boolean;
@@ -31,29 +31,31 @@ export const ComprobanteDetailModal: React.FC<ComprobanteDetailModalProps> = ({
     window.print();
   };
 
-  const handleDownloadVoucher = (url: string, name?: string) => {
-    if (url.startsWith('data:')) {
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = name || `Comprobante_${movement.id}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      window.open(url, '_blank');
-    }
+  const saveFromHref = (href: string, name: string) => {
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  // Los data: URL no se pueden abrir como página nueva: se convierten a un enlace temporal del navegador
-  const handleOpenVoucher = (url: string, name?: string) => {
+  // El atributo "download" se ignora en archivos de otro dominio: se baja el archivo y se guarda desde el navegador
+  const handleDownloadVoucher = async (url: string, name?: string) => {
+    const fileName = name || `Comprobante_${movement.id}`;
     if (url.startsWith('data:')) {
-      const file = dataUrlToFile(url, name || `Comprobante_${movement.id}`);
-      if (file) {
-        window.open(URL.createObjectURL(file), '_blank', 'noopener');
-        return;
-      }
+      saveFromHref(url, fileName);
+      return;
     }
-    window.open(url, '_blank', 'noopener');
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blobUrl = URL.createObjectURL(await response.blob());
+      saveFromHref(blobUrl, fileName);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    } catch {
+      window.open(url, '_blank', 'noopener');
+    }
   };
 
   const formatDocType = (docType?: string) => {
@@ -271,14 +273,6 @@ export const ComprobanteDetailModal: React.FC<ComprobanteDetailModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleOpenVoucher(receipt.voucherUrl!, receipt.voucherName)}
-                  className="bg-white hover:bg-purple-100 text-[#5C3C7B] border border-purple-300 px-3 py-2 min-h-[44px] sm:min-h-0 rounded-lg font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[15px]">open_in_new</span>
-                  Abrir en pestaña
-                </button>
-                <button
-                  type="button"
                   onClick={() => handleDownloadVoucher(receipt.voucherUrl!, receipt.voucherName)}
                   className="bg-white hover:bg-purple-100 text-[#5C3C7B] border border-purple-300 px-3 py-2 min-h-[44px] sm:min-h-0 rounded-lg font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
                 >
@@ -308,7 +302,7 @@ export const ComprobanteDetailModal: React.FC<ComprobanteDetailModalProps> = ({
                 }
                 return (
                   <p className="text-xs text-slate-600">
-                    Este tipo de archivo no se puede mostrar aquí. Use "Abrir en pestaña" o "Descargar".
+                    Este tipo de archivo no se puede mostrar aquí. Use "Descargar".
                   </p>
                 );
               })()}
