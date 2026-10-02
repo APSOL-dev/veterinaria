@@ -36,6 +36,113 @@
   }
 }
 
+/* Tablas como tarjetas en celular: cada fila es una tarjeta y cada celda muestra "Encabezado: valor".
+   Las celdas reciben data-label desde src/utils/responsiveTables.ts. Se excluyen las tablas con data-no-cards. */
+@media screen and (max-width: 768px) {
+  table[data-cards],
+  table[data-cards] tbody {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+  }
+  table[data-cards] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  table[data-cards] tbody tr {
+    display: block;
+    margin: 0 0 0.75rem;
+    padding: 0.5rem 0.875rem;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.875rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+  table[data-cards] tbody tr:last-child {
+    margin-bottom: 0;
+  }
+  table[data-cards] tbody td,
+  table[data-cards] tbody th {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 0.4rem 0 !important;
+    border: 0 !important;
+    text-align: right !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+  table[data-cards] tbody td + td {
+    border-top: 1px dashed #e2e8f0 !important;
+  }
+  table[data-cards] tbody td[data-label]:not([data-label=""])::before {
+    content: attr(data-label);
+    flex: 0 0 38%;
+    max-width: 38%;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-align: left;
+    text-transform: none;
+    overflow-wrap: normal;
+  }
+  /* Celdas sin encabezado (acciones, filas de grupo o mensajes vacíos): ocupan todo el ancho */
+  table[data-cards] tbody td[data-label=""] {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  table[data-cards] tbody td[colspan] {
+    justify-content: center;
+    text-align: center !important;
+  }
+  table[data-cards] tbody td:empty {
+    display: none;
+  }
+  /* La primera celda funciona como título de la tarjeta: a la izquierda, destacada y sin etiqueta */
+  table[data-cards] tbody td:first-child {
+    justify-content: flex-start;
+    text-align: left !important;
+    font-weight: 600;
+    padding-bottom: 0.5rem !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+  table[data-cards] tbody td:first-child::before {
+    display: none !important;
+  }
+  table[data-cards] tbody td:first-child button {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    white-space: normal;
+    text-align: left;
+  }
+  table[data-cards] tbody td:first-child + td {
+    border-top: 0 !important;
+  }
+  /* Botones y enlaces dentro de las tarjetas: el texto no se parte ni se achican */
+  table[data-cards] tbody td button,
+  table[data-cards] tbody td a {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    flex-shrink: 0;
+  }
+  /* Los contenedores de tabla ya no necesitan scroll lateral */
+  div:has(> table[data-cards]) {
+    overflow-x: visible !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+}
+
 /* Utilidad para scroll horizontal suave en móviles sin mostrar barra de desplazamiento */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

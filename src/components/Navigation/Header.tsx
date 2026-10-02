@@ -49,6 +49,26 @@ export const Header: React.FC<HeaderProps> = React.memo(({
     );
   });
 
+  // En celular los submódulos se reparten el ancho por igual (sin scroll horizontal), con el texto en hasta dos líneas
+  const mobileSubmoduleButtons = submodules.map((sub) => {
+    const isActive = activeSubmodule === sub.id;
+    return (
+      <button
+        key={sub.id}
+        onClick={() => setActiveSubmodule(sub.id)}
+        aria-current={isActive ? 'page' : undefined}
+        className={`min-h-[44px] min-w-0 px-1.5 py-1 rounded-xl transition-all text-[11px] leading-tight flex items-center justify-center gap-1 text-center cursor-pointer ${
+          isActive
+            ? 'bg-secondary text-on-secondary shadow-md font-semibold'
+            : 'text-on-primary hover:bg-primary/40 font-medium'
+        }`}
+      >
+        <span className="material-symbols-outlined text-[16px] shrink-0" aria-hidden="true">{sub.icon}</span>
+        <span className="min-w-0 break-words">{sub.label}</span>
+      </button>
+    );
+  });
+
   const notificationsButton = (
     <button
       onClick={onToggleAlerts}
@@ -84,10 +104,14 @@ export const Header: React.FC<HeaderProps> = React.memo(({
           {notificationsButton}
         </div>
 
-        {/* Fila 2: Submódulos a todo el ancho, con scroll horizontal fluido y sin cortar texto */}
+        {/* Fila 2: Submódulos repartidos en partes iguales a todo el ancho, sin necesidad de deslizar */}
         {submodules.length > 0 && (
-          <nav className="min-h-12 shrink-0 flex items-center gap-2 px-3 py-1 overflow-x-auto scrollbar-hide border-t border-white/20 whitespace-nowrap">
-            {submoduleButtons}
+          <nav
+            aria-label="Submódulos"
+            className="h-12 shrink-0 grid items-center gap-1 px-2 border-t border-white/20"
+            style={{ gridTemplateColumns: `repeat(${submodules.length}, minmax(0, 1fr))` }}
+          >
+            {mobileSubmoduleButtons}
           </nav>
         )}
       </header>

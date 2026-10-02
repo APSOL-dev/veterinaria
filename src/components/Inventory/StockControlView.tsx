@@ -488,7 +488,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
                 />
               </div>
 
-              <div className="flex items-center gap-xs overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+              <div className="flex flex-wrap items-center gap-xs w-full sm:w-auto">
                 {categories.map((cat) => {
                   const isSelected = selectedCategory === cat;
                   return (

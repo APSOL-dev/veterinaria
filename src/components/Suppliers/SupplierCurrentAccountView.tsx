@@ -178,9 +178,9 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
 
       {/* Filter & Summary Bar */}
       <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-md shadow-xs flex flex-wrap items-center justify-between gap-md">
-        <div className="flex items-center gap-md flex-1 min-w-[280px]">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-md flex-1 w-full min-w-0 sm:min-w-[280px]">
           {/* Search bar */}
-          <div className="flex flex-col gap-1 flex-1">
+          <div className="flex flex-col gap-1 flex-1 w-full">
             <label className="text-[11px] font-medium text-on-surface-variant">Buscar proveedor</label>
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
@@ -195,9 +195,9 @@ export const SupplierCurrentAccountView: React.FC<SupplierCurrentAccountViewProp
           </div>
 
           {/* Quick Filters */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 w-full sm:w-auto">
             <label className="text-[11px] font-medium text-on-surface-variant">Filtro de saldo</label>
-            <div className="flex items-center gap-1 bg-surface-container/40 p-1 rounded-xl border border-outline-variant/30">
+            <div className="flex items-center gap-1 bg-surface-container/40 p-1 rounded-xl border border-outline-variant/30 [&>button]:flex-1 sm:[&>button]:flex-none">
               <button
                 type="button"
                 onClick={() => setFilterDebtOnly('all')}

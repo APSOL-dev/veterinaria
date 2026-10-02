@@ -55,6 +55,7 @@ import {
   SupplierCreditTerm
 } from './domain/types';
 
+import { MOBILE_TABLE_QUERY, watchResponsiveTables } from './utils/responsiveTables';
 import { createDosisRecord } from './domain/services/vaccineService';
 import { getLowStockAlerts, recordStockEntry, recordStockAdjustment, processStockReceiptFromBill } from './domain/services/inventoryService';
 import { processCheckout, determineAppointmentsToComplete } from './domain/services/billingService';
@@ -143,6 +144,24 @@ export const App: React.FC = () => {
     return typeof window !== 'undefined' ? window.innerWidth < 1024 : false;
   });
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  // En pantallas angostas las tablas se muestran como tarjetas (ver index.css): se etiquetan las celdas con su encabezado
+  useEffect(() => {
+    const root = document.getElementById('root');
+    if (!root || !userSession) return;
+    const mq = window.matchMedia(MOBILE_TABLE_QUERY);
+    let stop: (() => void) | null = null;
+    const apply = () => {
+      stop?.();
+      stop = mq.matches ? watchResponsiveTables(root) : null;
+    };
+    apply();
+    mq.addEventListener('change', apply);
+    return () => {
+      stop?.();
+      mq.removeEventListener('change', apply);
+    };
+  }, [userSession]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 1023px)');
