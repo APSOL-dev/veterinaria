@@ -504,7 +504,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full flex-1 gap-md font-body-md text-on-surface h-full overflow-y-auto p-md lg:p-0">
+    <div className="flex flex-col w-full flex-1 min-h-0 gap-md font-body-md text-on-surface h-full overflow-y-auto p-2 sm:p-4 lg:p-0">
       {activeSubModule === 'cuentas' ? (
         <SupplierCurrentAccountView
           bills={bills}

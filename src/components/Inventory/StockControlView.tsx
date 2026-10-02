@@ -533,7 +533,7 @@ export const StockControlView: React.FC<StockControlViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full gap-md flex-1 font-body-md text-slate-800 h-full overflow-y-auto p-md lg:p-0 lg:pr-1">
+    <div className="flex flex-col w-full gap-md flex-1 min-h-0 font-body-md text-slate-800 h-full overflow-y-auto p-2 sm:p-4 lg:p-0 lg:pr-1">
       {/* Top Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-sm mb-md shrink-0">
         <div className="flex flex-col">

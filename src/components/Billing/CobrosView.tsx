@@ -610,7 +610,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
   }
 
   return (
-    <div className="flex flex-col w-full flex-1 gap-md font-body-md text-slate-800 h-full overflow-y-auto p-md lg:p-0 lg:overflow-hidden">
+    <div className="flex flex-col w-full flex-1 min-h-0 gap-md font-body-md text-slate-800 h-full overflow-y-auto p-2 sm:p-4 lg:p-0 lg:overflow-hidden">
       {/* Top Header Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-sm shrink-0 mb-md">
         <div>

@@ -216,7 +216,7 @@ export const StoreBillingView: React.FC<StoreBillingViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full h-full gap-md">
+    <div className="flex flex-col w-full h-full min-h-0 overflow-y-auto gap-md p-2 sm:p-4 lg:p-0">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

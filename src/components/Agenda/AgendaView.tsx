@@ -415,7 +415,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
 
   return (
-    <div className="flex flex-col w-full h-full gap-md font-body-md text-slate-800">
+    <div className="flex flex-col w-full h-full min-h-0 overflow-y-auto gap-md font-body-md text-slate-800 p-2 sm:p-4 lg:p-0">
       {/* Module Title Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-md mb-md">
         <div>

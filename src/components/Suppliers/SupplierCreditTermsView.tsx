@@ -131,7 +131,7 @@ export const SupplierCreditTermsView: React.FC<SupplierCreditTermsViewProps> = (
   };
 
   return (
-    <div className="flex flex-col w-full flex-1 lg:h-full gap-md font-body-md text-on-surface">
+    <div className="flex flex-col w-full flex-1 h-full min-h-0 overflow-y-auto gap-md font-body-md text-on-surface p-2 sm:p-4 lg:p-0">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-sm mb-xs">
         <div>

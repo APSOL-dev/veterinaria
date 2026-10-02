@@ -1288,8 +1288,8 @@ export const App: React.FC = () => {
         isMobile ? 'pl-0' : (isSidebarCollapsed ? 'pl-16' : 'pl-64')
       }`}>
         {/* Dynamic Main Workspace Container */}
-        <main className="flex-1 h-full overflow-hidden flex flex-col p-md bg-surface-container-low">
-          <div className="flex-1 h-full overflow-hidden flex flex-col">
+        <main className="flex-1 h-full min-h-0 overflow-y-auto lg:overflow-hidden flex flex-col p-2 sm:p-4 md:p-md bg-surface-container-low">
+          <div className="flex-1 min-h-0 flex flex-col w-full h-full overflow-y-auto lg:overflow-hidden">
             {/* Module: Proveedores */}
             {activeModule === 'proveedores' && (
               <SuppliersView
