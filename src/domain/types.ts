@@ -57,11 +57,20 @@ export interface ClinicalNote {
   prescriptionUrl?: string;
 }
 
+export interface TutorPaymentRecord {
+  id: string;
+  tutorName: string;
+  date: string; // YYYY-MM-DD
+  amount: number;
+  concept?: string;
+  paymentMethod?: string;
+}
+
 export interface TutorAccountMovement {
   id: string;
   type?: 'receipt' | 'payment';
   receipt?: BillReceipt;
-  payment?: any;
+  payment?: TutorPaymentRecord;
   tutorName: string;
   date: string; // YYYY-MM-DD
   concept: string;

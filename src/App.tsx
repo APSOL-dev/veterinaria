@@ -52,10 +52,12 @@ import {
   SupplierPayment,
   ServiceCatalogItem,
   ExpenseRecord,
-  SupplierCreditTerm
+  SupplierCreditTerm,
+  TutorPaymentRecord
 } from './domain/types';
 
 import { MOBILE_TABLE_QUERY, watchResponsiveTables } from './utils/responsiveTables';
+import { dataUrlToFile } from './utils/fileUtils';
 import { createDosisRecord } from './domain/services/vaccineService';
 import { getLowStockAlerts, recordStockEntry, recordStockAdjustment, processStockReceiptFromBill } from './domain/services/inventoryService';
 import { processCheckout, determineAppointmentsToComplete, enrichReceiptsWithPatients } from './domain/services/billingService';
@@ -78,6 +80,9 @@ import {
   fetchGroomingAppointmentsFromSupabase,
   fetchReceiptsFromSupabase,
   fetchSupplierQuotesFromSupabase,
+  fetchTutorPaymentsFromSupabase,
+  insertTutorPaymentToSupabase,
+  deleteTutorPaymentFromSupabase,
   insertPatientToSupabase,
   updatePatientInSupabase,
   insertVaccineDosisToSupabase,
@@ -98,6 +103,7 @@ import {
   updateExpenseInSupabase,
   deleteExpenseFromSupabase,
   insertReceiptToSupabase,
+  uploadReceiptVoucherToSupabase,
   fetchSupplierPaymentsFromSupabase,
   insertSupplierPaymentToSupabase,
   insertVaccineCatalogItemToSupabase,
@@ -219,6 +225,7 @@ export const App: React.FC = () => {
   const [monthlyBudgets, setMonthlyBudgets] = useState<Record<string, number>>(initialMonthlyBudgets);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>(initialExpenses);
   const [payments, setPayments] = useState<SupplierPayment[]>([]);
+  const [tutorPayments, setTutorPayments] = useState<TutorPaymentRecord[]>([]);
   const [creditTerms, setCreditTerms] = useState<SupplierCreditTerm[]>(() => {
     try {
       const saved = localStorage.getItem('vetsoft_supplier_credit_terms');
@@ -373,7 +380,8 @@ export const App: React.FC = () => {
           dbMedApps,
           dbGroomApps,
           dbReceipts,
-          dbQuotes
+          dbQuotes,
+          dbTutorPayments
         ] = await Promise.all([
           fetchPatientsFromSupabase(),
           fetchSupplierBillsFromSupabase(),
@@ -387,7 +395,8 @@ export const App: React.FC = () => {
           fetchMedicalAppointmentsFromSupabase(),
           fetchGroomingAppointmentsFromSupabase(),
           fetchReceiptsFromSupabase(),
-          fetchSupplierQuotesFromSupabase()
+          fetchSupplierQuotesFromSupabase(),
+          fetchTutorPaymentsFromSupabase()
         ]);
 
         if (dbPatients && dbPatients.length > 0) {
@@ -409,6 +418,9 @@ export const App: React.FC = () => {
         }
         if (dbPayments && dbPayments.length > 0) {
           setPayments(dbPayments);
+        }
+        if (dbTutorPayments && dbTutorPayments.length > 0) {
+          setTutorPayments(dbTutorPayments);
         }
         if (dbVaccines && dbVaccines.length > 0) {
           setVaccineCatalog(dbVaccines);
@@ -690,6 +702,20 @@ export const App: React.FC = () => {
   const handleDeleteGroomingAppointment = (id: string) => {
     setGroomingAppointments(prev => deleteAppointmentFromList(prev, id));
     deleteGroomingAppointmentFromSupabase(id);
+  };
+
+  const handleAddTutorPayment = async (payment: TutorPaymentRecord) => {
+    setTutorPayments(prev => [payment, ...prev]);
+    const res = await insertTutorPaymentToSupabase(payment);
+    if (!res.success) {
+      console.error('Error al guardar pago de tutor en Supabase:', res.error);
+      setNotifModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Error al registrar pago',
+        message: `No se pudo guardar el pago en la base de datos: ${res.error || 'Error desconocido'}`
+      });
+    }
   };
 
   const handleAddStockEntry = (productId: string, quantity: number, provider?: string) => {
@@ -1038,6 +1064,26 @@ export const App: React.FC = () => {
     setProducts(result.updatedProducts);
     reportSyncFailure("el cobro", insertReceiptToSupabase(result.receipt));
 
+    // El archivo adjunto viaja como data URL en memoria: se sube al almacenamiento y el comprobante pasa a apuntar a la URL guardada
+    if (data.voucherUrl && data.voucherName) {
+      const receiptId = result.receipt.id;
+      const voucherFile = dataUrlToFile(data.voucherUrl, data.voucherName);
+      if (voucherFile) {
+        uploadReceiptVoucherToSupabase(receiptId, voucherFile).then(uploaded => {
+          if (uploaded) {
+            setReceipts(prev => prev.map(r => r.id === receiptId ? { ...r, voucherName: uploaded.voucherName, voucherUrl: uploaded.voucherUrl } : r));
+          } else {
+            setNotifModal({
+              isOpen: true,
+              type: 'error',
+              title: 'No se pudo guardar el archivo adjunto',
+              message: 'El cobro se registró, pero el archivo adjunto no se pudo subir y no estará disponible al recargar. Vuelva a cargarlo desde el historial o contacte soporte.'
+            });
+          }
+        });
+      }
+    }
+
     // Marcar solo los turnos correspondientes cobrados en la agenda y persistir en Supabase DB
     const { medicalIdsToComplete, groomingIdsToComplete } = determineAppointmentsToComplete(
       data.items,
@@ -1269,6 +1315,8 @@ export const App: React.FC = () => {
                     patients={patients}
                     onUpdatePatients={handleUpdatePatients}
                     receipts={receiptsWithPatients}
+                    tutorPayments={tutorPayments}
+                    onAddTutorPayment={handleAddTutorPayment}
                     medicalAppointments={medicalAppointments}
                     groomingAppointments={groomingAppointments}
                     onSelectPatient={(pat) => {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { 
+  parseReceiptVoucherPath,
   mapRowToReceiptItem,
   groupReceiptItemsByReceipt,
   mapRowToPatient, 
@@ -15,6 +16,7 @@ import {
   mapRowToVaccineDosis,
   mapRowToSupplierQuote,
   mapRowToBillReceipt,
+  mapRowToTutorPayment,
   formatUserFriendlyErrorMessage
 } from './supabaseService';
 
@@ -330,6 +332,26 @@ describe('supabaseService row mappers', () => {
     expect(receipt.taxAmount).toBe(2940);
     expect(receipt.totalAmount).toBe(16940);
   });
+
+  it('should map DB row to TutorPaymentRecord domain model', () => {
+    const rawRow = {
+      id: 'tp-100',
+      tutor_name: 'Mateo Prueba',
+      date: '2026-10-02',
+      amount: '5000.00',
+      concept: 'Pago a cuenta de consulta',
+      payment_method: 'Transferencia'
+    };
+
+    const payment = mapRowToTutorPayment(rawRow);
+
+    expect(payment.id).toBe('tp-100');
+    expect(payment.tutorName).toBe('Mateo Prueba');
+    expect(payment.date).toBe('2026-10-02');
+    expect(payment.amount).toBe(5000);
+    expect(payment.concept).toBe('Pago a cuenta de consulta');
+    expect(payment.paymentMethod).toBe('Transferencia');
+  });
 });
 
 describe('formatUserFriendlyErrorMessage', () => {
@@ -440,5 +462,18 @@ describe('receipt items from the detail table', () => {
     expect(grouped.r1.map(i => i.description)).toEqual(['A', 'B']);
     expect(grouped.r2).toHaveLength(1);
     expect(Object.keys(grouped)).toEqual(['r1', 'r2']);
+  });
+});
+
+describe('receipt voucher storage naming', () => {
+  it('parses <receiptId>__<file> back into receipt and original file name', () => {
+    expect(parseReceiptVoucherPath('rec-123__factura_1361.pdf')).toEqual({ receiptId: 'rec-123', fileName: 'factura_1361.pdf' });
+    expect(parseReceiptVoucherPath('rec-1__a__b.pdf')).toEqual({ receiptId: 'rec-1', fileName: 'a__b.pdf' });
+  });
+
+  it('ignores names that do not follow the convention', () => {
+    expect(parseReceiptVoucherPath('suelto.pdf')).toBeNull();
+    expect(parseReceiptVoucherPath('__sin_id.pdf')).toBeNull();
+    expect(parseReceiptVoucherPath('rec-1__')).toBeNull();
   });
 });

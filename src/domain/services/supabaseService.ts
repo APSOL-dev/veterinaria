@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient';
 import { splitPatientAlerts, mergePatientAlerts } from './patientService';
+import { toSafeFileName } from '../../utils/fileUtils';
 import { 
   Patient, 
   ClinicalNote, 
@@ -14,7 +15,8 @@ import {
   SupplierBill, 
   SupplierQuote, 
   ExpenseRecord,
-  SupplierPayment
+  SupplierPayment,
+  TutorPaymentRecord
 } from '../types';
 
 // =============================================================================
@@ -316,6 +318,17 @@ export function mapRowToSupplierPayment(row: any): SupplierPayment {
   };
 }
 
+export function mapRowToTutorPayment(row: any): TutorPaymentRecord {
+  return {
+    id: String(row.id || ''),
+    tutorName: String(row.tutorName || row.tutor_name || ''),
+    date: sanitizeDateString(row.date) || new Date().toISOString().substring(0, 10),
+    amount: Number(row.amount ?? 0),
+    concept: row.concept || 'Abono / Pago a Cuenta Corriente',
+    paymentMethod: row.paymentMethod || row.payment_method || 'Efectivo'
+  };
+}
+
 // =============================================================================
 // DATABASE DATA FETCHING AND SYNC (Schema: public)
 // =============================================================================
@@ -416,8 +429,15 @@ export async function fetchReceiptsFromSupabase(): Promise<BillReceipt[] | null>
     }
 
     // Los ítems viven en otra tabla (detalle de recibos): se unen acá para que el comprobante diga qué se cobró
-    const itemsByReceipt = await fetchReceiptItemsByReceipt();
-    return receipts.map(r => (r.items.length === 0 && itemsByReceipt[r.id]) ? { ...r, items: itemsByReceipt[r.id] } : r);
+    const [itemsByReceipt, vouchersByReceipt] = await Promise.all([
+      fetchReceiptItemsByReceipt(),
+      fetchReceiptVouchersFromSupabase()
+    ]);
+    return receipts.map(r => {
+      const items = (r.items.length === 0 && itemsByReceipt[r.id]) ? itemsByReceipt[r.id] : r.items;
+      const voucher = !r.voucherUrl ? vouchersByReceipt[toSafeFileName(r.id)] : undefined;
+      return { ...r, items, ...(voucher ? { voucherName: voucher.voucherName, voucherUrl: voucher.voucherUrl } : {}) };
+    });
   } catch {
     return null;
   }
@@ -468,6 +488,21 @@ export async function fetchSupplierQuotesFromSupabase(): Promise<SupplierQuote[]
     }
     if (!data || data.length === 0) return null;
     return data.map(mapRowToSupplierQuote);
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchTutorPaymentsFromSupabase(): Promise<TutorPaymentRecord[] | null> {
+  try {
+    const { data, error } = await supabase.from('vetsoft_vw_pagos_tutores').select('*');
+    if (error) {
+      const { data: rawData, error: rawError } = await supabase.from('vetsoft_pagos_tutores').select('*');
+      if (rawError || !rawData || rawData.length === 0) return null;
+      return rawData.map(mapRowToTutorPayment);
+    }
+    if (!data || data.length === 0) return null;
+    return data.map(mapRowToTutorPayment);
   } catch {
     return null;
   }
@@ -1010,6 +1045,74 @@ export async function uploadInvoiceVoucherToSupabase(file: File): Promise<{ vouc
   }
 }
 
+const RECEIPT_VOUCHER_FOLDER = 'comprobantes';
+const RECEIPT_VOUCHER_SEPARATOR = '__';
+
+/**
+ * Sube el archivo adjunto de un comprobante de cobro. El número de comprobante queda en el nombre
+ * (comprobantes/<id>__<archivo>) para poder recuperarlo al recargar sin tocar el esquema de la base.
+ */
+export async function uploadReceiptVoucherToSupabase(
+  receiptId: string,
+  file: File
+): Promise<{ voucherName: string; voucherUrl: string } | null> {
+  try {
+    const filePath = `${RECEIPT_VOUCHER_FOLDER}/${toSafeFileName(receiptId)}${RECEIPT_VOUCHER_SEPARATOR}${toSafeFileName(file.name)}`;
+    const { data, error } = await supabase.storage
+      .from('veterinaria-archivos')
+      .upload(filePath, file, { cacheControl: '3600', upsert: true });
+    if (error) {
+      console.error('Error uploading receipt voucher to Supabase Storage:', error);
+      return null;
+    }
+    const { data: publicUrlData } = supabase.storage.from('veterinaria-archivos').getPublicUrl(data.path);
+    return { voucherName: file.name, voucherUrl: publicUrlData.publicUrl };
+  } catch (err) {
+    console.error('Exception uploading receipt voucher to Supabase Storage:', err);
+    return null;
+  }
+}
+
+/**
+ * Convierte el nombre guardado (<id>__<archivo>) en el comprobante al que pertenece y el nombre del archivo.
+ */
+export function parseReceiptVoucherPath(storedName: string): { receiptId: string; fileName: string } | null {
+  const index = storedName.indexOf(RECEIPT_VOUCHER_SEPARATOR);
+  if (index <= 0 || index + RECEIPT_VOUCHER_SEPARATOR.length >= storedName.length) return null;
+  return {
+    receiptId: storedName.slice(0, index),
+    fileName: storedName.slice(index + RECEIPT_VOUCHER_SEPARATOR.length)
+  };
+}
+
+/**
+ * Archivos adjuntos de todos los comprobantes, por id de comprobante. Si no se puede listar, devuelve {}.
+ */
+export async function fetchReceiptVouchersFromSupabase(): Promise<Record<string, { voucherName: string; voucherUrl: string }>> {
+  const result: Record<string, { voucherName: string; voucherUrl: string }> = {};
+  try {
+    const pageSize = 1000;
+    for (let offset = 0; offset < 5000; offset += pageSize) {
+      const { data, error } = await supabase.storage
+        .from('veterinaria-archivos')
+        .list(RECEIPT_VOUCHER_FOLDER, { limit: pageSize, offset });
+      if (error || !data || data.length === 0) break;
+      for (const entry of data) {
+        const parsed = parseReceiptVoucherPath(entry.name);
+        if (!parsed) continue;
+        const { data: publicUrlData } = supabase.storage
+          .from('veterinaria-archivos')
+          .getPublicUrl(`${RECEIPT_VOUCHER_FOLDER}/${entry.name}`);
+        result[parsed.receiptId] = { voucherName: parsed.fileName, voucherUrl: publicUrlData.publicUrl };
+      }
+      if (data.length < pageSize) break;
+    }
+  } catch {
+    return result;
+  }
+  return result;
+}
+
 export async function deleteSupplierBillFromSupabase(id: string): Promise<SyncResult> {
   try {
     const { error } = await supabase.from('vetsoft_facturas_proveedores').delete().eq('id', id);
@@ -1188,6 +1291,34 @@ export async function insertSupplierPaymentToSupabase(payment: SupplierPayment):
       voucher_url: payment.voucherUrl || null
     });
     if (error) console.error('Supabase error inserting supplier payment:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function insertTutorPaymentToSupabase(payment: TutorPaymentRecord): Promise<SyncResult> {
+  try {
+    const cleanDate = sanitizeDateString(payment.date) || new Date().toISOString().substring(0, 10);
+    const { error } = await supabase.from('vetsoft_pagos_tutores').insert({
+      id: payment.id,
+      tutor_name: payment.tutorName,
+      date: cleanDate,
+      amount: payment.amount,
+      concept: payment.concept || null,
+      payment_method: payment.paymentMethod || null
+    });
+    if (error) console.error('Supabase error inserting tutor payment:', error);
+    return { success: !error, error: extractErrorMessage(error) };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error de conexión' };
+  }
+}
+
+export async function deleteTutorPaymentFromSupabase(id: string): Promise<SyncResult> {
+  try {
+    const { error } = await supabase.from('vetsoft_pagos_tutores').delete().eq('id', id);
+    if (error) console.error('Supabase error deleting tutor payment:', error);
     return { success: !error, error: extractErrorMessage(error) };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error de conexión' };

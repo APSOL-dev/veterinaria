@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { TutorAccountMovement, BillReceipt } from '../../domain/types';
 import { formatDate } from '../../utils/dateUtils';
+import { dataUrlToFile, getVoucherKind } from '../../utils/fileUtils';
 
 interface ComprobanteDetailModalProps {
   isOpen: boolean;
@@ -13,6 +14,13 @@ export const ComprobanteDetailModal: React.FC<ComprobanteDetailModalProps> = ({
   onClose,
   movement
 }) => {
+  const [showVoucherPreview, setShowVoucherPreview] = useState(false);
+
+  // Al cambiar de comprobante o cerrar, la vista previa vuelve a estar oculta
+  useEffect(() => {
+    setShowVoucherPreview(false);
+  }, [movement?.id, isOpen]);
+
   if (!isOpen || !movement) return null;
 
   const isReceipt = movement.type === 'receipt' || (!movement.type && movement.debe > 0);
@@ -34,6 +42,18 @@ export const ComprobanteDetailModal: React.FC<ComprobanteDetailModalProps> = ({
     } else {
       window.open(url, '_blank');
     }
+  };
+
+  // Los data: URL no se pueden abrir como página nueva: se convierten a un enlace temporal del navegador
+  const handleOpenVoucher = (url: string, name?: string) => {
+    if (url.startsWith('data:')) {
+      const file = dataUrlToFile(url, name || `Comprobante_${movement.id}`);
+      if (file) {
+        window.open(URL.createObjectURL(file), '_blank', 'noopener');
+        return;
+      }
+    }
+    window.open(url, '_blank', 'noopener');
   };
 
   const formatDocType = (docType?: string) => {
@@ -230,25 +250,75 @@ export const ComprobanteDetailModal: React.FC<ComprobanteDetailModalProps> = ({
             </div>
           )}
 
-          {/* Attached voucher / document */}
-          {receipt?.voucherUrl && (
-            <div className="flex items-center justify-between p-3 bg-purple-50 border border-purple-200 rounded-xl">
-              <div className="flex items-center gap-2">
+          {/* Archivo adjunto del comprobante (PDF o imagen) */}
+          {isReceipt && (receipt?.voucherUrl ? (
+            <div className="flex flex-col gap-2 p-3 bg-purple-50 border border-purple-200 rounded-xl">
+              <div className="flex items-center gap-2 min-w-0">
                 <span className="material-symbols-outlined text-[#5C3C7B]">attach_file</span>
-                <span className="font-medium text-slate-800 text-xs truncate max-w-xs">
+                <span className="font-medium text-slate-800 text-xs truncate">
                   {receipt.voucherName || 'Comprobante adjunto'}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => handleDownloadVoucher(receipt.voucherUrl!, receipt.voucherName)}
-                className="bg-[#5C3C7B] hover:bg-[#4A2F66] text-white px-3 py-1.5 rounded-lg font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[15px]">download</span>
-                Descargar
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowVoucherPreview(v => !v)}
+                  aria-expanded={showVoucherPreview}
+                  className="bg-[#5C3C7B] hover:bg-[#4A2F66] text-white px-3 py-2 min-h-[44px] sm:min-h-0 rounded-lg font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[15px]">{showVoucherPreview ? 'visibility_off' : 'visibility'}</span>
+                  {showVoucherPreview ? 'Ocultar archivo' : 'Ver archivo'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenVoucher(receipt.voucherUrl!, receipt.voucherName)}
+                  className="bg-white hover:bg-purple-100 text-[#5C3C7B] border border-purple-300 px-3 py-2 min-h-[44px] sm:min-h-0 rounded-lg font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[15px]">open_in_new</span>
+                  Abrir en pestaña
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadVoucher(receipt.voucherUrl!, receipt.voucherName)}
+                  className="bg-white hover:bg-purple-100 text-[#5C3C7B] border border-purple-300 px-3 py-2 min-h-[44px] sm:min-h-0 rounded-lg font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[15px]">download</span>
+                  Descargar
+                </button>
+              </div>
+              {showVoucherPreview && (() => {
+                const kind = getVoucherKind(receipt.voucherName, receipt.voucherUrl);
+                if (kind === 'pdf') {
+                  return (
+                    <iframe
+                      src={receipt.voucherUrl}
+                      title={`Archivo adjunto ${receipt.voucherName || ''}`}
+                      className="w-full h-[60vh] rounded-lg border border-purple-200 bg-white"
+                    />
+                  );
+                }
+                if (kind === 'image') {
+                  return (
+                    <img
+                      src={receipt.voucherUrl}
+                      alt={receipt.voucherName || 'Comprobante adjunto'}
+                      className="w-full max-h-[60vh] object-contain rounded-lg border border-purple-200 bg-white"
+                    />
+                  );
+                }
+                return (
+                  <p className="text-xs text-slate-600">
+                    Este tipo de archivo no se puede mostrar aquí. Use "Abrir en pestaña" o "Descargar".
+                  </p>
+                );
+              })()}
             </div>
-          )}
+          ) : (
+            <p className="text-[11px] text-slate-500 flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px]">attach_file_off</span>
+              Este comprobante no tiene archivo adjunto.
+            </p>
+          ))}
         </div>
 
         {/* Footer */}

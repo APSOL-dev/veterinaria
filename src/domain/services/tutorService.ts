@@ -120,15 +120,8 @@ export function createPetForTutor(
   };
 }
 
-import { BillReceipt, TutorAccountMovement } from '../types';
-
-export interface TutorPaymentRecord {
-  id: string;
-  tutorName: string;
-  date: string;
-  amount: number;
-  concept?: string;
-}
+import { BillReceipt, TutorAccountMovement, TutorPaymentRecord } from '../types';
+export type { TutorPaymentRecord };
 
 export function calculateTutorAccountMovements(
   tutorName: string,

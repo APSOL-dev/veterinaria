@@ -7,6 +7,7 @@ Gestión centralizada del padrón de tutores (propietarios) y sus mascotas asoci
 - **Persistencia en Base de Datos (Supabase):**
   - La vista SQL `vetsoft_vw_pacientes` realiza un `LEFT JOIN` con la tabla `vetsoft_tutores` en base al `owner_id`.
   - Los datos del tutor (Nombre, Teléfono/WhatsApp, Dirección) y de las mascotas se persisten en `vetsoft_tutores` y `vetsoft_pacientes`.
+  - **Pagos y Abonos de Tutores (`public.vetsoft_pagos_tutores`):** Cada pago registrado con el botón **"Registrar pago"** se inserta en la base de datos Supabase (`vetsoft_pagos_tutores`) mediante `insertTutorPaymentToSupabase` y se carga al iniciar la aplicación con `fetchTutorPaymentsFromSupabase`, garantizando que los abonos al Haber y el saldo de la Cuenta Corriente persistan permanentemente tras recargar o iniciar nueva sesión.
 - **Edición Integral de Tutores:**
   - Nombre completo (`ownerName`).
   - Número de teléfono o WhatsApp (`ownerPhone`).

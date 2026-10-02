@@ -21,6 +21,8 @@ interface TutoresViewProps {
   patients: Patient[];
   onUpdatePatients: (updatedPatients: Patient[]) => void;
   receipts?: BillReceipt[];
+  tutorPayments?: TutorPaymentRecord[];
+  onAddTutorPayment?: (payment: TutorPaymentRecord) => void;
   medicalAppointments?: MedicalAppointment[];
   groomingAppointments?: GroomingAppointment[];
   onSelectPatient?: (patient: Patient) => void;
@@ -30,6 +32,8 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
   patients,
   onUpdatePatients,
   receipts = [],
+  tutorPayments,
+  onAddTutorPayment,
   medicalAppointments = [],
   groomingAppointments = [],
   onSelectPatient
@@ -40,10 +44,9 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
 
-  // Tutor Payments state
-  const [tutorPayments, setTutorPayments] = useState<TutorPaymentRecord[]>([
-    { id: 'tp-init-1', tutorName: 'Carlos Mendoza', date: '2026-08-15', amount: 5000, concept: 'Abono consulta clínica' }
-  ]);
+  // Tutor Payments state (fallback to local state if not provided externally)
+  const [internalPayments, setInternalPayments] = useState<TutorPaymentRecord[]>([]);
+  const effectiveTutorPayments = tutorPayments !== undefined ? tutorPayments : internalPayments;
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [payAmount, setPayAmount] = useState<number>(0);
   const [payConcept, setPayConcept] = useState('');
@@ -75,18 +78,18 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
     const map = new Map<string, TutorDebtAgingInfo>();
     displayedTutores.forEach(t => {
       const petIds = t.pets.map(p => p.id);
-      const movs = calculateTutorAccountMovements(t.ownerName, receipts, tutorPayments, petIds);
+      const movs = calculateTutorAccountMovements(t.ownerName, receipts, effectiveTutorPayments, petIds);
       map.set(t.ownerName.toLowerCase(), calculateTutorDebtAging(movs));
     });
     return map;
-  }, [displayedTutores, receipts, tutorPayments]);
+  }, [displayedTutores, receipts, effectiveTutorPayments]);
 
   // Account movements for active tutor
   const accountMovements = useMemo(() => {
     if (!activeTutor) return [];
     const petIds = activeTutor.pets.map(p => p.id);
-    return calculateTutorAccountMovements(activeTutor.ownerName, receipts, tutorPayments, petIds);
-  }, [activeTutor, receipts, tutorPayments]);
+    return calculateTutorAccountMovements(activeTutor.ownerName, receipts, effectiveTutorPayments, petIds);
+  }, [activeTutor, receipts, effectiveTutorPayments]);
 
   const currentTutorSaldo = useMemo(() => {
     if (accountMovements.length === 0) return 0;
@@ -233,7 +236,11 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
       concept: payConcept.trim() || 'Abono / Pago a Cuenta Corriente'
     };
 
-    setTutorPayments(prev => [newPayment, ...prev]);
+    if (onAddTutorPayment) {
+      onAddTutorPayment(newPayment);
+    } else {
+      setInternalPayments(prev => [newPayment, ...prev]);
+    }
     setShowPaymentModal(false);
     setPayAmount(0);
     setPayConcept('');
