@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import html2pdf from 'html2pdf.js';
 import { Patient, BillReceipt, DocumentType, PaymentMethod, BillItem, Product, ServiceCatalogItem, TutorAccountMovement } from '../../domain/types';
 import { AppNotificationModal } from '../Common/AppNotificationModal';
@@ -77,9 +77,23 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('');
   const [selectedCatalogItemId, setSelectedCatalogItemId] = useState<string>('');
   const [itemSearchQuery, setItemSearchQuery] = useState<string>('');
+  const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
+  const itemDropdownRef = useRef<HTMLDivElement>(null);
+  const itemSearchInputRef = useRef<HTMLInputElement>(null);
   const [newItemDesc, setNewItemDesc] = useState('');
   const [newItemCat, setNewItemCat] = useState('');
   const [newItemPrice, setNewItemPrice] = useState<number>(0);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (itemDropdownRef.current && !itemDropdownRef.current.contains(e.target as Node)) {
+        setIsItemDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Math Calculations
   const rawSubtotal = items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
@@ -152,6 +166,8 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
 
   const handleSelectCatalogItem = (itemId: string) => {
     setSelectedCatalogItemId(itemId);
+    setIsItemDropdownOpen(false);
+    setItemSearchQuery('');
     if (itemType === 'servicio') {
       const s = servicesCatalog.find(item => item.id === itemId);
       if (s) {
@@ -184,7 +200,11 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
 
     setItems(prev => [...prev, newItem]);
     setNewItemDesc('');
+    setNewItemCat('');
+    setNewItemPrice(0);
     setSelectedCatalogItemId('');
+    setItemSearchQuery('');
+    setIsItemDropdownOpen(false);
     setShowAddItemModal(false);
   };
 
@@ -1133,6 +1153,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                   onChange={(e) => {
                     setSelectedCategoryFilter(e.target.value);
                     setSelectedCatalogItemId('');
+                    setIsItemDropdownOpen(false);
                   }}
                   className="w-full bg-white border border-slate-300 rounded-xl p-2.5 outline-none text-slate-900 font-semibold text-base sm:text-xs focus:border-[#9A7DB8] shadow-xs cursor-pointer capitalize"
                 >
@@ -1145,69 +1166,110 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                 </select>
               </div>
 
-              {/* Buscador y Selección del Ítem del Catálogo */}
-              <div className="flex flex-col gap-1">
+              {/* Buscador y Desplegable del Ítem del Catálogo */}
+              <div className="flex flex-col gap-1 relative" ref={itemDropdownRef}>
                 <label className="font-semibold text-xs text-slate-700 block">
                   Buscar y seleccionar {itemType === 'servicio' ? 'servicio' : 'producto'} del catálogo *
                 </label>
 
-                {/* Input con Barra de Búsqueda */}
-                <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-slate-400 text-[18px]">search</span>
+                {/* Input / Trigger con Barra de Búsqueda y Chevron */}
+                <div 
+                  onClick={() => {
+                    setIsItemDropdownOpen(true);
+                    itemSearchInputRef.current?.focus();
+                  }}
+                  className={`relative flex items-center bg-white border rounded-xl transition-all cursor-pointer shadow-xs ${
+                    isItemDropdownOpen
+                      ? 'border-[#9A7DB8] ring-2 ring-[#9A7DB8]/20'
+                      : 'border-slate-300 hover:border-[#9A7DB8]'
+                  }`}
+                >
+                  <span className="material-symbols-outlined absolute left-3 text-slate-400 text-[18px] pointer-events-none">
+                    search
+                  </span>
                   <input
+                    ref={itemSearchInputRef}
                     type="text"
                     value={itemSearchQuery}
-                    onChange={(e) => setItemSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setItemSearchQuery(e.target.value);
+                      if (!isItemDropdownOpen) setIsItemDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsItemDropdownOpen(true)}
                     placeholder={`Escriba para buscar ${itemType === 'servicio' ? 'servicio (ej. Consulta, Baño, Vacuna)...' : 'producto (ej. Medicamento, Alimento)...'}`}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-8 py-2 text-slate-900 font-medium text-xs focus:bg-white focus:border-[#9A7DB8] focus:ring-2 focus:ring-[#9A7DB8]/20 outline-none shadow-xs"
+                    className="w-full bg-transparent pl-9 pr-16 py-2.5 text-slate-900 font-medium text-base sm:text-xs outline-none"
                   />
-                  {itemSearchQuery && (
+                  <div className="absolute right-2 flex items-center gap-1">
+                    {itemSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setItemSearchQuery('');
+                          itemSearchInputRef.current?.focus();
+                        }}
+                        className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                        title="Limpiar búsqueda"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => setItemSearchQuery('')}
-                      className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-                      title="Limpiar búsqueda"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsItemDropdownOpen(prev => !prev);
+                        if (!isItemDropdownOpen) {
+                          setTimeout(() => itemSearchInputRef.current?.focus(), 50);
+                        }
+                      }}
+                      className="text-slate-400 hover:text-[#5C3C7B] p-1 cursor-pointer transition-colors"
+                      title={isItemDropdownOpen ? "Cerrar lista" : "Abrir lista"}
                     >
-                      <span className="material-symbols-outlined text-[16px]">close</span>
+                      <span className="material-symbols-outlined text-[18px] transition-transform duration-200">
+                        {isItemDropdownOpen ? 'expand_less' : 'expand_more'}
+                      </span>
                     </button>
-                  )}
+                  </div>
                 </div>
 
-                {/* Lista de Resultados Filtrados con Scroll */}
-                <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white shadow-2xs mt-1">
-                  {filteredCatalogItems.length === 0 ? (
-                    <div className="p-3 text-center text-slate-400 text-xs">
-                      No se encontraron {itemType === 'servicio' ? 'servicios' : 'productos'} para "{itemSearchQuery}"
-                    </div>
-                  ) : (
-                    filteredCatalogItems.map((item) => {
-                      const isSelected = selectedCatalogItemId === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => handleSelectCatalogItem(item.id)}
-                          className={`w-full text-left p-2.5 px-3 flex items-center justify-between gap-2 transition-colors cursor-pointer ${
-                            isSelected
-                              ? 'bg-purple-100/80 text-[#5C3C7B] font-semibold'
-                              : 'hover:bg-purple-50 text-slate-800'
-                          }`}
-                        >
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-xs truncate">{item.name}</span>
-                            <span className="text-[10px] text-slate-500 font-normal capitalize">{item.category}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="font-bold text-xs text-[#5C3C7B]">${item.price.toLocaleString('es-AR')}</span>
-                            {isSelected && (
-                              <span className="material-symbols-outlined text-[#5C3C7B] text-[16px]">check_circle</span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
+                {/* Lista Desplegable Flotante (solo se abre al hacer clic arriba) */}
+                {isItemDropdownOpen && (
+                  <div className="absolute z-[80] left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100 animate-fade-in">
+                    {filteredCatalogItems.length === 0 ? (
+                      <div className="p-3 text-center text-slate-400 text-xs">
+                        No se encontraron {itemType === 'servicio' ? 'servicios' : 'productos'} para "{itemSearchQuery}"
+                      </div>
+                    ) : (
+                      filteredCatalogItems.map((item) => {
+                        const isSelected = selectedCatalogItemId === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => handleSelectCatalogItem(item.id)}
+                            className={`w-full text-left p-2.5 px-3 flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                              isSelected
+                                ? 'bg-purple-100/80 text-[#5C3C7B] font-semibold'
+                                : 'hover:bg-purple-50 text-slate-800'
+                            }`}
+                          >
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-xs truncate">{item.name}</span>
+                              <span className="text-[10px] text-slate-500 font-normal capitalize">{item.category}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="font-bold text-xs text-[#5C3C7B]">${item.price.toLocaleString('es-AR')}</span>
+                              {isSelected && (
+                                <span className="material-symbols-outlined text-[#5C3C7B] text-[16px]">check_circle</span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Descripción del Concepto seleccionada */}

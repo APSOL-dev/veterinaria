@@ -9,11 +9,11 @@ El módulo **Cobros** administra la emisión de facturas electrónicas, remitos 
    - La pantalla de **Nueva Facturación** se inicializa predeterminadamente con **Factura C** (`documentType: 'factura-c'`).
    - Al ser Factura C, el discriminado de IVA se desactiva de forma automática (`applyTax: false`).
 
-2. **Selección Directa y Buscador Integrado en Modal de Agregar Conceptos:**
+2. **Selección Directa y Desplegable Buscador en Modal de Agregar Conceptos:**
    - En el modal de **Agregar Concepto a Factura**, el usuario alterna entre **Servicio** y **Producto**.
-   - **Buscador Integrado en Tiempo Real:** Incorpora un campo de búsqueda interactivo con icono de lupa, placeholder dinámico (`Buscar servicio por nombre, categoría o precio...` / `Buscar producto por nombre, categoría o precio...`) y botón para limpiar la búsqueda rápidamente.
-   - **Lista Desplegable Filtrada:** Muestra los ítems coincidentes en una lista desplazable (`max-h-56`) con insignia de categoría, precio referencial formateado, estado de selección visual y mensaje amigable en caso de no hallar coincidencias con la búsqueda.
-   - Permite filtrar por categorías dinámicas registradas en el sistema (ej. `Clínica`, `Peluquería`, `Medicamentos`, `Alimentación`, `Accesorios`, `Insumos Clínicos`).
+   - **Desplegable Interactivo (Apertura al hacer Clic):** La lista de productos o servicios permanece colapsada por defecto para mantener el modal compacto y se despliega como un menú flotante sobrepuesto (`absolute z-[80]`) al hacer clic o foco en el campo de búsqueda o en el botón de flecha (chevron).
+   - **Buscador Integrado en Tiempo Real:** Permite escribir para filtrar dinámicamente por nombre, categoría o precio referencial. Incluye botón para limpiar el texto y cierre automático al seleccionar un concepto o al hacer clic fuera del control.
+   - Permite filtrar previamente por categorías dinámicas registradas en el sistema (ej. `Clínica`, `Peluquería`, `Medicamentos`, `Alimentación`, `Accesorios`, `Insumos Clínicos`).
    - Al seleccionar un ítem de la lista, autocompleta la descripción y el costo unitario de referencia en el formulario del concepto.
 
 3. **Edición Directa de Precios Unitarios (Precio Editable sin ceros pre-cargados):**
