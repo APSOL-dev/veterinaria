@@ -65,6 +65,7 @@ export interface TutorAccountMovement {
   tutorName: string;
   date: string; // YYYY-MM-DD
   concept: string;
+  detail?: string; // Qué se cobró (resumen de ítems del comprobante); concept queda como referencia del comprobante
   debe: number;
   haber: number;
   saldo: number;

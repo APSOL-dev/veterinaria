@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { 
+  mapRowToReceiptItem,
+  groupReceiptItemsByReceipt,
   mapRowToPatient, 
   mapRowToClinicalNote, 
   mapRowToProduct, 
@@ -414,5 +416,29 @@ describe('filteredServices logic (Mejora 2 — service search)', () => {
     const result = filterServices(services, 'consulta');
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('srv-1');
+  });
+});
+
+describe('receipt items from the detail table', () => {
+  it('maps snake_case and camelCase rows and tells product from service', () => {
+    const service = mapRowToReceiptItem({ id: 'i1', receipt_id: 'r1', service_id: 'srv-1', description: 'Baño Perro chico', quantity: 1, unit_price: 15000, subtotal: 15000 });
+    expect(service.receiptId).toBe('r1');
+    expect(service.item).toMatchObject({ type: 'service', referenceId: 'srv-1', description: 'Baño Perro chico', quantity: 1, unitPrice: 15000, discountPercent: 0 });
+
+    const product = mapRowToReceiptItem({ id: 'i2', receiptId: 'r1', productId: 'p-9', description: 'Collar', quantity: 2, unitPrice: 1000, subtotal: 1800 });
+    expect(product.item.type).toBe('product');
+    expect(product.item.discountPercent).toBe(10);
+  });
+
+  it('groups items by receipt and ignores rows without receipt', () => {
+    const grouped = groupReceiptItemsByReceipt([
+      { id: 'a', receipt_id: 'r1', description: 'A', quantity: 1, unit_price: 1, subtotal: 1 },
+      { id: 'b', receipt_id: 'r1', description: 'B', quantity: 1, unit_price: 1, subtotal: 1 },
+      { id: 'c', receipt_id: 'r2', description: 'C', quantity: 1, unit_price: 1, subtotal: 1 },
+      { id: 'd', description: 'sin recibo', quantity: 1, unit_price: 1, subtotal: 1 }
+    ]);
+    expect(grouped.r1.map(i => i.description)).toEqual(['A', 'B']);
+    expect(grouped.r2).toHaveLength(1);
+    expect(Object.keys(grouped)).toEqual(['r1', 'r2']);
   });
 });

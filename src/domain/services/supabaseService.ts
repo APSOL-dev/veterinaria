@@ -9,7 +9,8 @@ import {
   GroomingAppointment, 
   Product, 
   ServiceCatalogItem, 
-  BillReceipt, 
+  BillReceipt,
+  BillItem, 
   SupplierBill, 
   SupplierQuote, 
   ExpenseRecord,
@@ -209,6 +210,46 @@ export function mapRowToBillReceipt(row: any): BillReceipt {
   };
 }
 
+/**
+ * Fila de detalle de comprobante (vetsoft_detalle_recibos / vista) -> ítem facturado.
+ * Devuelve también el id del comprobante al que pertenece.
+ */
+export function mapRowToReceiptItem(row: any): { receiptId: string; item: BillItem } {
+  const productId = row.productId ?? row.product_id ?? null;
+  const serviceId = row.serviceId ?? row.service_id ?? null;
+  const quantity = Number(row.quantity ?? 1) || 1;
+  const unitPrice = Number(row.unitPrice ?? row.unit_price ?? 0);
+  const subtotal = Number(row.subtotal ?? quantity * unitPrice);
+  const gross = quantity * unitPrice;
+  return {
+    receiptId: String(row.receiptId ?? row.receipt_id ?? ''),
+    item: {
+      id: String(row.id || ''),
+      type: productId ? 'product' : serviceId ? 'service' : undefined,
+      referenceId: productId || serviceId || undefined,
+      description: String(row.description || ''),
+      quantity,
+      unitPrice,
+      // El descuento no se guarda como columna: se deduce de la diferencia entre bruto y subtotal
+      discountPercent: gross > 0 && subtotal < gross ? Math.round((1 - subtotal / gross) * 10000) / 100 : 0,
+      subtotal
+    }
+  };
+}
+
+/**
+ * Agrupa las filas de detalle por comprobante.
+ */
+export function groupReceiptItemsByReceipt(rows: any[]): Record<string, BillItem[]> {
+  const grouped: Record<string, BillItem[]> = {};
+  for (const row of rows) {
+    const { receiptId, item } = mapRowToReceiptItem(row);
+    if (!receiptId) continue;
+    (grouped[receiptId] ||= []).push(item);
+  }
+  return grouped;
+}
+
 export function mapRowToSupplierBill(row: any): SupplierBill {
   return {
     id: String(row.id || ''),
@@ -349,16 +390,34 @@ export async function fetchGroomingAppointmentsFromSupabase(): Promise<GroomingA
   }
 }
 
+async function fetchReceiptItemsByReceipt(): Promise<Record<string, BillItem[]>> {
+  try {
+    const { data, error } = await supabase.from('vetsoft_vw_detalle_recibos').select('*');
+    if (!error && data) return groupReceiptItemsByReceipt(data);
+    const { data: rawData, error: rawError } = await supabase.from('vetsoft_detalle_recibos').select('*');
+    if (rawError || !rawData) return {};
+    return groupReceiptItemsByReceipt(rawData);
+  } catch {
+    return {};
+  }
+}
+
 export async function fetchReceiptsFromSupabase(): Promise<BillReceipt[] | null> {
   try {
+    let receipts: BillReceipt[];
     const { data, error } = await supabase.from('vetsoft_vw_recibos').select('*');
     if (error) {
       const { data: rawData, error: rawError } = await supabase.from('vetsoft_recibos').select('*');
       if (rawError || !rawData || rawData.length === 0) return null;
-      return rawData.map(mapRowToBillReceipt);
+      receipts = rawData.map(mapRowToBillReceipt);
+    } else {
+      if (!data || data.length === 0) return null;
+      receipts = data.map(mapRowToBillReceipt);
     }
-    if (!data || data.length === 0) return null;
-    return data.map(mapRowToBillReceipt);
+
+    // Los ítems viven en otra tabla (detalle de recibos): se unen acá para que el comprobante diga qué se cobró
+    const itemsByReceipt = await fetchReceiptItemsByReceipt();
+    return receipts.map(r => (r.items.length === 0 && itemsByReceipt[r.id]) ? { ...r, items: itemsByReceipt[r.id] } : r);
   } catch {
     return null;
   }

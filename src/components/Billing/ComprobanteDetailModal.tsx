@@ -163,7 +163,7 @@ export const ComprobanteDetailModal: React.FC<ComprobanteDetailModalProps> = ({
                     ) : (
                       <tr>
                         <td className="py-2.5 px-3 text-slate-900 font-medium">
-                          {movement.concept}
+                          {movement.detail || movement.concept}
                         </td>
                         <td className="py-2.5 px-3 text-center font-mono">1</td>
                         <td className="py-2.5 px-3 text-right font-mono">

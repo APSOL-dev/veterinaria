@@ -520,10 +520,15 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                       <td className="py-2.5 px-md text-center font-mono text-slate-600">
                         {formatDate(m.date)}
                       </td>
-                      <td className="py-2.5 px-md font-medium text-slate-900">
-                        <div className="flex items-center justify-between gap-2">
-                          <span>{m.concept}</span>
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[#5C3C7B] flex items-center gap-0.5 text-[10px] font-semibold bg-purple-100/80 px-2 py-0.5 rounded-md shrink-0">
+                      <td className="card-wide py-2.5 px-md font-medium text-slate-900">
+                        <div className="flex items-start justify-between gap-2 w-full">
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold break-words">{m.detail || m.concept}</span>
+                            {m.detail && (
+                              <span className="text-[11px] text-slate-500 font-normal break-words">{m.concept}</span>
+                            )}
+                          </div>
+                          <span className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-[#5C3C7B] flex items-center gap-0.5 text-[10px] font-semibold bg-purple-100/80 px-2 py-1 rounded-md shrink-0">
                             <span className="material-symbols-outlined text-[13px]">visibility</span>
                             Ver detalle
                           </span>

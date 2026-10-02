@@ -129,6 +129,21 @@
   table[data-cards] tbody td:first-child + td {
     border-top: 0 !important;
   }
+  /* Celdas con contenido largo (td.card-wide): la etiqueta va arriba y el contenido ocupa todo el ancho */
+  table[data-cards] tbody td.card-wide {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    text-align: left !important;
+  }
+  table[data-cards] tbody td.card-wide[data-label]:not([data-label=""])::before {
+    flex: none;
+    max-width: 100%;
+  }
+  table[data-cards] tbody td.card-wide span,
+  table[data-cards] tbody td.card-wide div {
+    overflow-wrap: break-word;
+  }
   /* Botones y enlaces dentro de las tarjetas: el texto no se parte ni se achican */
   table[data-cards] tbody td button,
   table[data-cards] tbody td a {

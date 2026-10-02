@@ -1,4 +1,21 @@
-import { Patient, Species, Sex, MedicalAppointment, GroomingAppointment } from '../types';
+import { Patient, Species, Sex, MedicalAppointment, GroomingAppointment, BillItem } from '../types';
+
+/**
+ * Resume qué se cobró en un comprobante: "Baño Perro chico", "Consulta clínica ×2" o "A, B y 2 más".
+ * Devuelve undefined si el comprobante no tiene ítems cargados.
+ */
+export function summarizeReceiptItems(items?: BillItem[], maxNames: number = 2): string | undefined {
+  const named = (items || []).filter(i => (i.description || '').trim());
+  if (named.length === 0) return undefined;
+  const label = (i: BillItem) => {
+    const name = i.description.trim();
+    return i.quantity > 1 ? `${name} ×${i.quantity}` : name;
+  };
+  const shown = named.slice(0, maxNames).map(label);
+  const rest = named.length - shown.length;
+  if (rest <= 0) return shown.length > 1 ? `${shown.slice(0, -1).join(', ')} y ${shown[shown.length - 1]}` : shown[0];
+  return `${shown.join(', ')} y ${rest} más`;
+}
 
 export interface TutorSummary {
   ownerName: string;
@@ -147,6 +164,7 @@ export function calculateTutorAccountMovements(
     tutorName: string;
     date: string;
     concept: string;
+    detail?: string;
     debe: number;
     haber: number;
   }
@@ -161,6 +179,7 @@ export function calculateTutorAccountMovements(
       tutorName: r.ownerName || r.clientName || tutorName,
       date: r.date ? r.date.split('T')[0] : new Date().toISOString().split('T')[0],
       concept: `Comprobante ${r.receiptNumber || r.id}`,
+      detail: summarizeReceiptItems(r.items),
       debe: r.total || r.totalAmount || 0,
       haber: 0
     });
@@ -196,6 +215,7 @@ export function calculateTutorAccountMovements(
       tutorName: m.tutorName,
       date: m.date,
       concept: m.concept,
+      detail: m.detail,
       debe: m.debe,
       haber: m.haber,
       saldo: currentSaldo

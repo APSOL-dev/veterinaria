@@ -6,7 +6,8 @@ import {
   calculateTutorAccountMovements,
   calculateTutorDebtAging,
   getTutorAppointments,
-  createPetForTutor
+  createPetForTutor,
+  summarizeReceiptItems
 } from './tutorService';
 
 describe('tutorService', () => {
@@ -354,3 +355,26 @@ describe('tutorService', () => {
   });
 });
 
+describe('receipt detail for the tutor account', () => {
+  const item = (description: string, quantity = 1) => ({ id: description, description, quantity, unitPrice: 100, discountPercent: 0 });
+
+  it('summarizeReceiptItems says what was charged', () => {
+    expect(summarizeReceiptItems([item('Baño Perro chico')])).toBe('Baño Perro chico');
+    expect(summarizeReceiptItems([item('Consulta clínica', 2)])).toBe('Consulta clínica ×2');
+    expect(summarizeReceiptItems([item('A'), item('B')])).toBe('A y B');
+    expect(summarizeReceiptItems([item('A'), item('B'), item('C'), item('D')])).toBe('A, B y 2 más');
+    expect(summarizeReceiptItems([])).toBeUndefined();
+    expect(summarizeReceiptItems(undefined)).toBeUndefined();
+  });
+
+  it('account movements keep the receipt number as concept and add the charged items as detail', () => {
+    const receipts = [{
+      id: 'r1', receiptNumber: 'FC-C-0001-00001361', documentType: 'factura-c', emitAfip: false,
+      date: '2026-10-01', ownerName: 'Mateo Prueba', paymentMethod: 'cuenta-corriente',
+      items: [item('Baño Perro chico')], subtotal: 15000, discountTotal: 0, taxAmount: 0, total: 15000, totalAmount: 15000
+    }] as any;
+    const [mov] = calculateTutorAccountMovements('Mateo Prueba', receipts, [], []);
+    expect(mov.concept).toContain('FC-C-0001-00001361');
+    expect(mov.detail).toBe('Baño Perro chico');
+  });
+});
