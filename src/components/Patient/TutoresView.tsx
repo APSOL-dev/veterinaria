@@ -649,7 +649,7 @@ export const TutoresView: React.FC<TutoresViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onSelectPatient(pet)}
-                      className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                      className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                       title={`Ver ficha médica completa de ${pet.name}`}
                     >
                       <span className="material-symbols-outlined text-[14px]" aria-hidden="true">visibility</span>

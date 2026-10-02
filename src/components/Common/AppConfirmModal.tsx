@@ -56,7 +56,7 @@ export const AppConfirmModal: React.FC<AppConfirmModalProps> = ({
             type="button"
             onClick={onConfirm}
             className={`px-md py-2 rounded-xl font-label-md text-xs font-bold text-white transition-colors shadow-xs cursor-pointer ${
-              isDanger ? 'bg-red-600 hover:bg-red-700' : 'bg-[#9A7DB8] hover:bg-[#8362A5]'
+              isDanger ? 'bg-red-600 hover:bg-red-700' : 'bg-[#7B5EA7] hover:bg-[#654B8C]'
             }`}
           >
             {confirmText}

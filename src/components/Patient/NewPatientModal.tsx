@@ -266,7 +266,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
                   }}
                   className={`px-3.5 py-2 min-h-[44px] rounded-lg transition-all cursor-pointer flex items-center justify-center ${
                     tutorMode === 'new'
-                      ? 'bg-[#9A7DB8] text-white shadow-2xs font-semibold'
+                      ? 'bg-[#7B5EA7] text-white shadow-2xs font-semibold'
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -400,7 +400,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
             </button>
             <button
               type="submit"
-              className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
             >
               <span className="material-symbols-outlined text-[18px]">save</span>
               <span>Guardar paciente</span>

@@ -439,7 +439,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                 onClick={() => setAgendaMode('medica')}
                 className={`px-3 py-1.5 rounded-full font-label-md text-xs transition-all flex items-center gap-1 cursor-pointer ${
                   agendaMode === 'medica'
-                    ? 'bg-[#9A7DB8] text-white shadow-sm font-semibold'
+                    ? 'bg-[#7B5EA7] text-white shadow-sm font-semibold'
                     : 'text-slate-600 hover:text-slate-900 font-medium'
                 }`}
               >
@@ -478,7 +478,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
               setAppEndTime(calculateEndTime(appTime, duration));
               setShowNewModal(true);
             }}
-            className="flex items-center gap-1.5 bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 min-h-[44px] sm:min-h-[40px] rounded-full font-label-md text-xs transition-all shadow-sm font-semibold cursor-pointer"
+            className="flex items-center gap-1.5 bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2 min-h-[44px] sm:min-h-[40px] rounded-full font-label-md text-xs transition-all shadow-sm font-semibold cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]" aria-hidden="true">add</span>
             <span>Nuevo turno</span>
@@ -553,7 +553,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   setAppDate(activeDayISO);
                   setShowNewModal(true);
                 }}
-                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white text-xs font-semibold px-4 py-2 min-h-[44px] sm:min-h-[40px] rounded-xl mt-1 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white text-xs font-semibold px-4 py-2 min-h-[44px] sm:min-h-[40px] rounded-xl mt-1 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]" aria-hidden="true">add</span>
                 + Agendar turno
@@ -1041,7 +1041,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                       }}
                       className={`py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                         appDuration === d
-                          ? 'bg-[#9A7DB8] text-white shadow-xs'
+                          ? 'bg-[#7B5EA7] text-white shadow-xs'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
@@ -1097,7 +1097,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                  className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[18px]">calendar_add_on</span>
                   <span>Confirmar turno ({appDuration} min)</span>
@@ -1254,7 +1254,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                    className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                   >
                     <span className="material-symbols-outlined text-[16px]">save</span>
                     Guardar anotaciones
@@ -1293,7 +1293,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                         onClick={() => setEditDuration(d)}
                         className={`py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           editDuration === d
-                            ? 'bg-[#9A7DB8] text-white shadow-xs'
+                            ? 'bg-[#7B5EA7] text-white shadow-xs'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                       >
@@ -1325,7 +1325,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                    className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                   >
                     <span className="material-symbols-outlined text-[16px]">edit_calendar</span>
                     Guardar nuevo horario ({editDuration} min)

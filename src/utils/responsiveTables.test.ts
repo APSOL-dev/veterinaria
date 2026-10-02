@@ -40,6 +40,20 @@ describe('responsiveTables', () => {
     expect(rows[1].children[1].getAttribute('data-label')).toBe('C');
   });
 
+  it('marks cells of columns flagged with data-card-hide so the card can hide them', () => {
+    const table = buildTable(`
+      <table>
+        <thead><tr><th>Nombre</th><th data-card-hide>Equivalente meses</th><th>Estado</th></tr></thead>
+        <tbody><tr><td>SÉXTUPLE</td><td>~ 12 meses</td><td>Activa</td></tr></tbody>
+      </table>`);
+    enhanceTable(table);
+
+    const cells = table.querySelectorAll('tbody td');
+    expect(cells[0].hasAttribute('data-card-hide')).toBe(false);
+    expect(cells[1].hasAttribute('data-card-hide')).toBe(true);
+    expect(cells[2].hasAttribute('data-card-hide')).toBe(false);
+  });
+
   it('skips tables without header row or marked with data-no-cards', () => {
     const noHead = buildTable('<table><tbody><tr><td>x</td></tr></tbody></table>');
     const optOut = buildTable('<table data-no-cards><thead><tr><th>A</th></tr></thead><tbody><tr><td>x</td></tr></tbody></table>');

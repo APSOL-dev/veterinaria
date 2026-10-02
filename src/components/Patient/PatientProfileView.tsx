@@ -427,7 +427,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
 
           <button
             onClick={() => setShowNewPatientModal(true)}
-            className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 rounded-xl text-xs font-medium shadow-sm transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
+            className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2 rounded-xl text-xs font-medium shadow-sm transition-all flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
             <span>Nuevo paciente</span>
@@ -440,7 +440,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
         <div className="flex flex-col md:flex-row gap-md items-start md:items-center justify-between">
           {/* Pet Photo & Basic Meta */}
           <div className="flex items-center gap-md">
-            <div className="relative w-20 h-20 md:w-22 md:h-22 rounded-2xl overflow-hidden shadow-md shrink-0 flex items-center justify-center bg-[#FAF5FF] border border-[#9A7DB8]/30">
+            <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-22 md:h-22 rounded-2xl overflow-hidden shadow-md shrink-0 flex items-center justify-center bg-[#FAF5FF] border border-[#9A7DB8]/30">
               {selectedPatient.photoUrl ? (
                 <img 
                   src={selectedPatient.photoUrl} 
@@ -462,22 +462,22 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               <h2 className="font-headline-sm text-xl text-slate-900 leading-tight font-semibold">
                 {selectedPatient.name}
               </h2>
-              <p className="font-body-md text-xs text-slate-600 font-normal flex flex-wrap items-center gap-2">
+              <p className="font-body-md text-xs text-slate-600 font-normal flex flex-wrap items-center gap-x-2 gap-y-1.5">
                 <span className="bg-purple-50 text-[#5C3C7B] px-2.5 py-0.5 rounded-md font-medium text-[11px] border border-purple-100">
                   {selectedPatient.species}
                 </span>
                 <span>{selectedPatient.breed}</span>
-                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                <span className="hidden sm:block w-1 h-1 bg-slate-300 rounded-full"></span>
                 <span>{selectedPatient.sex}</span>
-                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                <span className="hidden sm:block w-1 h-1 bg-slate-300 rounded-full"></span>
                 <span>Nacimiento: {selectedPatient.birthDate}</span>
                 {selectedPatient.coat && (
                   <>
-                    <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                    <span className="hidden sm:block w-1 h-1 bg-slate-300 rounded-full"></span>
                     <span>Pelaje: {selectedPatient.coat}</span>
                   </>
                 )}
-                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                <span className="hidden sm:block w-1 h-1 bg-slate-300 rounded-full"></span>
                 <button
                   type="button"
                   onClick={() => setShowWeightModal(true)}
@@ -586,16 +586,18 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 {patientAppointments.map(app => {
                   const effStatus = getEffectiveAppointmentStatus(app.date, app.time, app.status);
                   return (
-                    <div key={app.id} className={`px-2.5 py-1 rounded-lg border text-[11px] flex items-center gap-2 ${
+                    <div key={app.id} className={`px-2.5 py-1.5 rounded-lg border text-[11px] flex items-center justify-between gap-2 w-full sm:w-auto ${
                       effStatus.isExpired 
                         ? 'bg-amber-50/90 border-amber-300 font-semibold text-amber-950' 
                         : effStatus.status === 'completed'
                         ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
                         : 'bg-white border-slate-200 text-slate-800'
                     }`}>
-                      <span>{app.type} ({formatDate(app.date)} {app.time}hs)</span>
-                      <span className="text-slate-600 font-normal">• {app.detail}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md border ${effStatus.badgeClass}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 min-w-0">
+                        <span>{app.type} ({formatDate(app.date)} {app.time}hs)</span>
+                        <span className="text-slate-600 font-normal"><span className="hidden sm:inline">• </span>{app.detail}</span>
+                      </div>
+                      <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.2 rounded-md border ${effStatus.badgeClass}`}>
                         {effStatus.label}
                       </span>
                     </div>
@@ -708,7 +710,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               <button
                 type="button"
                 onClick={handleSaveConsultation}
-                className="px-4 py-2 rounded-xl bg-[#9A7DB8] hover:bg-[#8362A5] text-white font-label-md text-xs shadow-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#7B5EA7] hover:bg-[#654B8C] text-white font-label-md text-xs shadow-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   save
@@ -1176,7 +1178,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-md py-1.5 rounded-xl bg-[#9A7DB8] hover:bg-[#8362A5] text-white font-bold transition-all shadow-sm cursor-pointer"
+                  className="px-md py-1.5 rounded-xl bg-[#7B5EA7] hover:bg-[#654B8C] text-white font-bold transition-all shadow-sm cursor-pointer"
                 >
                   Guardar Cambios
                 </button>
@@ -1247,7 +1249,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                       onClick={() => setReqVaccineSource('new')}
                       className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                         reqVaccineSource === 'new'
-                          ? 'bg-[#9A7DB8] text-white shadow-2xs font-semibold'
+                          ? 'bg-[#7B5EA7] text-white shadow-2xs font-semibold'
                           : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
@@ -1313,7 +1315,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                  className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[16px]">save</span>
                   <span>Guardar vacuna</span>
@@ -1388,7 +1390,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                   }
                   setEditingNote(null);
                 }}
-                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 min-h-[40px] rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2 min-h-[40px] rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-[16px]" aria-hidden="true">save</span>
                 <span>Guardar cambios</span>
@@ -1580,7 +1582,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               <button
                 type="button"
                 onClick={handleDownloadClinicalHistoryPDF}
-                className="bg-[#9A7DB8] hover:bg-[#8666A6] text-white px-5 py-2.5 min-h-[44px] rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-5 py-2.5 min-h-[44px] rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]" aria-hidden="true">download</span>
                 <span>Descargar PDF</span>
@@ -1661,7 +1663,7 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
               </div>
               <button
                 type="submit"
-                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-3.5 py-2 min-h-[44px] rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1 cursor-pointer transition-all"
+                className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-3.5 py-2 min-h-[44px] rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1 cursor-pointer transition-all"
               >
                 <span className="material-symbols-outlined text-[15px]">add</span>
                 <span>Registrar</span>

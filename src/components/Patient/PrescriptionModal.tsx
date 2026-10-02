@@ -176,7 +176,7 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           <button
             type="button"
             onClick={handleDownloadPDF}
-            className="bg-[#9A7DB8] hover:bg-[#8666A6] text-white px-5 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+            className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-5 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]">download</span>
             <span>Descargar PDF</span>

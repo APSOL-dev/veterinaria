@@ -198,7 +198,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
               setNewVacDays(365);
               setShowCatalogModal(true);
             }}
-            className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 transition-colors shadow-sm font-semibold cursor-pointer"
+            className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 transition-colors shadow-sm font-semibold cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
             <span>Agregar vacuna al catálogo</span>
@@ -220,7 +220,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 <tr className="bg-slate-50 text-slate-700 font-semibold text-[11px] border-b border-slate-200">
                   <th className="p-sm px-md">Nombre de la vacuna</th>
                   <th className="p-sm px-md">Frecuencia / vigencia</th>
-                  <th className="p-sm px-md">Equivalente meses</th>
+                  <th data-card-hide className="p-sm px-md">Equivalente meses</th>
                   <th className="p-sm px-md text-center">Estado</th>
                   <th className="p-sm px-md text-right">Acciones</th>
                 </tr>
@@ -316,7 +316,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                    className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                   >
                     <span className="material-symbols-outlined text-[18px]">save</span>
                     <span>{editingItem ? 'Guardar cambios' : 'Agregar al catálogo'}</span>
@@ -501,7 +501,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
 
             <button
               onClick={() => setShowRegisterModal(true)}
-              className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 transition-colors shadow-sm font-semibold cursor-pointer"
+              className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2.5 rounded-xl font-label-md text-xs flex items-center gap-1.5 transition-colors shadow-sm font-semibold cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]" aria-hidden="true">add</span>
               <span>Registrar aplicación</span>
@@ -781,7 +781,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 const hasAnyVaccines = (activePatient.requiredVaccines && activePatient.requiredVaccines.length > 0) || patientDoses.length > 0;
                 
                 return (
-                  <div className="bg-[#9A7DB8] text-white rounded-2xl p-md shadow-sm relative overflow-hidden flex flex-col justify-between">
+                  <div className="bg-[#7B5EA7] text-white rounded-2xl p-md shadow-sm relative overflow-hidden flex flex-col justify-between">
                     <div>
                       <h3 className="font-label-md text-purple-100 text-[10px] mb-xs font-semibold">Próxima aplicación</h3>
                       <p className="font-display-lg text-lg mb-xs font-semibold">
@@ -837,7 +837,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                     <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
                       <div 
                         className={`h-full rounded-full transition-all duration-500 ${
-                          coverage.percentage === 100 ? 'bg-emerald-500' : coverage.percentage === 0 ? 'bg-red-500' : 'bg-[#9A7DB8]'
+                          coverage.percentage === 100 ? 'bg-emerald-500' : coverage.percentage === 0 ? 'bg-red-500' : 'bg-[#7B5EA7]'
                         }`}
                         style={{ width: `${coverage.percentage}%` }}
                       ></div>
@@ -989,7 +989,7 @@ export const VaccinesView: React.FC<VaccinesViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                  className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[18px]">save</span>
                   <span>Guardar dosis</span>

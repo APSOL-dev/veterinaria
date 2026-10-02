@@ -350,7 +350,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowAddItemModal(true)}
-                className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2 rounded-xl font-label-md text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2 rounded-xl font-label-md text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">add</span>
                 <span>Agregar ítem</span>
@@ -461,7 +461,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
         {/* Right Section: Summary & Payment Settings (4 Cols) */}
         <div className="lg:col-span-4 flex flex-col gap-md lg:h-full lg:overflow-y-auto">
           {/* Summary Card */}
-          <div className="bg-[#9A7DB8] text-white rounded-2xl p-md shadow-md relative overflow-hidden shrink-0">
+          <div className="bg-[#7B5EA7] text-white rounded-2xl p-md shadow-md relative overflow-hidden shrink-0">
             <h3 className="font-label-md text-purple-100 text-xs mb-xs font-semibold">
               Resumen de cuenta
             </h3>
@@ -729,7 +729,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
             {/* Confirm Action Button */}
             <button
               onClick={handleConfirmCheckout}
-              className="w-full mt-md py-3 rounded-xl bg-[#9A7DB8] hover:bg-[#8362A5] text-white transition-all font-headline-md text-xs font-bold flex items-center justify-center gap-xs shadow-md cursor-pointer"
+              className="w-full mt-md py-3 rounded-xl bg-[#7B5EA7] hover:bg-[#654B8C] text-white transition-all font-headline-md text-xs font-bold flex items-center justify-center gap-xs shadow-md cursor-pointer"
             >
               <span className="material-symbols-outlined text-[18px]">receipt_long</span>
               <span>Confirmar y Emitir Cobro</span>
@@ -874,7 +874,7 @@ export const CobrosView: React.FC<CobrosViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#9A7DB8] hover:bg-[#8362A5] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                  className="bg-[#7B5EA7] hover:bg-[#654B8C] text-white px-4 py-2.5 rounded-xl font-label-md text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[18px]">add</span>
                   <span>Agregar concepto</span>

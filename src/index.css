@@ -102,7 +102,8 @@
     justify-content: center;
     text-align: center !important;
   }
-  table[data-cards] tbody td:empty {
+  table[data-cards] tbody td:empty,
+  table[data-cards] tbody td[data-card-hide] {
     display: none;
   }
   /* La primera celda funciona como título de la tarjeta: a la izquierda, destacada y sin etiqueta */
@@ -148,10 +149,16 @@
    En foco se conserva el color propio de cada buscador. */
 input[placeholder*="Buscar" i]:not(.bg-transparent):not(:focus),
 input[placeholder*="Escribir nombre" i]:not(.bg-transparent):not(:focus) {
-  border: 1.5px solid #b8c2d0 !important;
+  border: 1.5px solid #94a3b8 !important;
 }
 :where(div, label):has(> input.bg-transparent[placeholder*="Buscar" i]):not(:focus-within) {
-  border: 1.5px solid #b8c2d0 !important;
+  border: 1.5px solid #94a3b8 !important;
+}
+
+/* Campos de formulario: borde con contraste suficiente (antes casi invisible sobre el fondo lila).
+   Solo cambia el color de los que ya tienen borde; no pisa errores/avisos (rojo, ámbar, verde), el foco ni los campos sin borde. */
+:is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not([type="file"]):not(:focus):not([class*="border-red"]):not([class*="border-rose"]):not([class*="border-amber"]):not([class*="border-emerald"]):not([class*="border-green"]):not([class*="border-white"]):not([class*="border-transparent"]) {
+  border-color: #94a3b8;
 }
 
 /* Utilidad para scroll horizontal suave en móviles sin mostrar barra de desplazamiento */

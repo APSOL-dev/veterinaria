@@ -220,24 +220,24 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
             <h2 className="font-headline-sm text-base text-primary font-semibold">Registro de ficha médica</h2>
           </div>
 
-          <div className="flex items-center gap-md flex-wrap">
-            <div className="flex items-center gap-xs">
-              <label className="font-label-md text-on-surface-variant text-[10px] font-medium">Veterinario asignado:</label>
+          <div className="grid grid-cols-1 sm:flex sm:items-end gap-md w-full md:w-auto">
+            <div className="flex flex-col gap-1 min-w-0">
+              <label className="font-label-md text-on-surface-variant text-[11px] font-semibold">Veterinario asignado</label>
               <input
                 type="text"
                 value={vetName}
                 onChange={(e) => setVetName(e.target.value)}
-                className="bg-surface-container border border-outline-variant/80 rounded-lg py-1 px-3 text-on-surface font-semibold text-xs outline-none focus:ring-2 focus:ring-secondary shadow-xs"
+                className="w-full sm:w-56 bg-surface-container border border-slate-400 rounded-lg py-2 px-3 text-on-surface font-semibold text-xs outline-none focus:ring-2 focus:ring-secondary shadow-xs"
               />
             </div>
-            <div className="flex items-center gap-xs">
-              <label className="font-label-md text-on-surface-variant text-[10px] font-medium">Matrícula:</label>
+            <div className="flex flex-col gap-1 min-w-0">
+              <label className="font-label-md text-on-surface-variant text-[11px] font-semibold">Matrícula</label>
               <input
                 type="text"
                 value={vetLicenseNumber}
                 onChange={(e) => setVetLicenseNumber(e.target.value)}
                 placeholder=""
-                className="bg-surface-container border border-outline-variant/80 rounded-lg py-1 px-2.5 text-on-surface font-semibold text-xs outline-none focus:ring-2 focus:ring-secondary shadow-xs w-32"
+                className="w-full sm:w-36 bg-surface-container border border-slate-400 rounded-lg py-2 px-3 text-on-surface font-semibold text-xs outline-none focus:ring-2 focus:ring-secondary shadow-xs"
               />
             </div>
           </div>
@@ -259,7 +259,7 @@ export const NewConsultationView: React.FC<NewConsultationViewProps> = ({
             minRows={4}
             maxRows={18}
             placeholder="Ingrese motivo de consulta, auscultación, constantes vitales, examen físico, diagnóstico presuntivo e indicaciones médicas..."
-            className={`w-full bg-surface-container border ${notesError ? 'border-red-500 ring-2 ring-red-400' : 'border-outline-variant/80'} text-on-surface font-body-md text-sm p-md rounded-xl outline-none transition-all focus:bg-surface focus:ring-2 focus:ring-secondary placeholder:text-on-surface-variant/70 font-normal leading-relaxed shadow-xs`}
+            className={`w-full bg-surface-container border ${notesError ? 'border-red-500 ring-2 ring-red-400' : 'border-slate-400'} text-on-surface font-body-md text-sm p-md rounded-xl outline-none transition-all focus:bg-surface focus:ring-2 focus:ring-secondary placeholder:text-on-surface-variant/70 font-normal leading-relaxed shadow-xs`}
           />
           {notesError && (
             <p className="text-red-600 text-xs font-semibold flex items-center gap-1 mt-0.5">

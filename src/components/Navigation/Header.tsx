@@ -78,8 +78,8 @@ export const Header: React.FC<HeaderProps> = React.memo(({
     >
       <span className="material-symbols-outlined text-[22px]" aria-hidden="true">notifications</span>
       {lowStockCount > 0 && (
-        <span className="absolute 1.5 top-1.5 right-1.5 bg-error text-on-error text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
-          {lowStockCount}
+        <span className="absolute top-1 right-1 bg-error text-on-error text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-xs">
+          {lowStockCount > 99 ? '99+' : lowStockCount}
         </span>
       )}
     </button>
